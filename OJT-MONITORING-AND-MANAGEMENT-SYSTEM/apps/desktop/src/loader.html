@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CdM OJT Portal</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #062415;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      user-select: none;
+      text-align: center;
+      padding: 24px;
+      overflow: hidden;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 420px;
+      width: 100%;
+    }
+    .logo-container {
+      width: 72px;
+      height: 72px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+    .logo {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    h1 {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+    .subtitle {
+      font-size: 11px;
+      font-weight: 700;
+      color: #F59E0B;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+    .progress-bar-container {
+      width: 220px;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 9999px;
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 18px;
+    }
+    .progress-bar-indicator {
+      width: 40%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, #F59E0B, #10B981, transparent);
+      border-radius: 9999px;
+      position: absolute;
+      animation: indeterminate 1.6s ease-in-out infinite;
+    }
+    .status {
+      font-size: 12px;
+      color: #94a3b8;
+      font-weight: 500;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+    .hint {
+      font-size: 11px;
+      color: #64748b;
+      line-height: 1.5;
+      margin-top: 14px;
+      max-width: 320px;
+    }
+    .btn-retry {
+      margin-top: 20px;
+      padding: 8px 20px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #e2e8f0;
+      font-weight: 600;
+      font-size: 11px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-block;
+    }
+    .btn-retry:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+    }
+    .btn-retry:active {
+      transform: scale(0.98);
+    }
+    @keyframes indeterminate {
+      0% { left: -40%; }
+      50% { left: 40%; }
+      100% { left: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo-container">
+      <img class="logo" src="../assets/icon.png" alt="CdM Logo">
+    </div>
+    <h1>Colegio de Montalban</h1>
+    <div class="subtitle">OJT Practicum Portal</div>
+    
+    <div class="progress-bar-container" id="connection-progress" aria-hidden="true">
+      <div class="progress-bar-indicator"></div>
+    </div>
+
+    <div class="status" id="status-text">Connecting to Practicum Cloud...</div>
+
+    <div class="hint" id="hint-text" aria-live="polite">
+      Checking the portal server...
+    </div>
+
+    <button class="btn-retry" id="btn-retry" onclick="triggerReconnect()">Retry Connection</button>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const targetUrl = params.get('url') || 'https://ojt-monitoring-and-management-system.vercel.app';
+    const isProd = params.get('isProd') === '1' || targetUrl.startsWith('https://');
+    let attempts = 0;
+
+    function updateConnectionState(state) {
+      const statusText = document.getElementById('status-text');
+      const hintText = document.getElementById('hint-text');
+      const retryButton = document.getElementById('btn-retry');
+      const progress = document.getElementById('connection-progress');
+      if (!state || state.phase === 'checking') {
+        statusText.innerText = attempts
+          ? 'Checking connection (attempt ' + attempts + ')...'
+          : 'Connecting to Practicum Cloud...';
+        hintText.innerText = 'Checking the portal server...';
+        retryButton.disabled = true;
+        progress.style.display = '';
+        return;
+      }
+      if (state.phase === 'connected') return;
+
+      retryButton.disabled = false;
+      progress.style.display = 'none';
+      statusText.innerText = state.statusCode
+        ? 'Portal unavailable (HTTP ' + state.statusCode + ')'
+        : 'Could not reach the portal server';
+      hintText.innerText = state.statusCode && state.statusCode >= 500
+        ? 'The campus cloud service is unavailable. This app will retry in ' + state.retryInSeconds + ' seconds.'
+        : 'Check your internet connection. This app will retry in ' + state.retryInSeconds + ' seconds.';
+    }
+
+    if (window.electronAPI && typeof window.electronAPI.onPortalConnectionState === 'function') {
+      window.electronAPI.onPortalConnectionState(updateConnectionState);
+    }
+
+    function triggerReconnect() {
+      attempts++;
+      if (window.electronAPI && typeof window.electronAPI.retryConnection === 'function') {
+        updateConnectionState({ phase: 'checking' });
+        window.electronAPI.retryConnection();
+      } else {
+        window.location.href = targetUrl;
+      }
+    }
+
+    if (!isProd) {
+      document.getElementById('hint-text').innerHTML = 
+        'Development Environment: <code style="color:#F59E0B;">localhost:3000</code>';
+    } else {
+      document.getElementById('hint-text').innerHTML = 
+        'Connecting to verified campus cloud servers.';
+    }
+
+  </script>
+</body>
+</html>

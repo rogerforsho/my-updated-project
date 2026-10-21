@@ -1,0 +1,42 @@
+name: Verify
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npx tsc --noEmit --incremental false -p apps/mobile/tsconfig.json
+      - run: npx --yes expo-doctor@1.21.5 apps/mobile
+      - name: Export mobile Android bundle
+        working-directory: apps/mobile
+        env:
+          EXPO_PUBLIC_APP_ENV: ci
+          EXPO_PUBLIC_SUPABASE_URL: https://ci.invalid
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ci-build-only
+          EXPO_PUBLIC_WEB_URL: https://ci.invalid
+        run: npx expo export --platform android --output-dir "${{ runner.temp }}/expo-android-export"
+      - run: npm run lint -w apps/web
+      - run: node node_modules/typescript/bin/tsc --noEmit --incremental false -p apps/web/tsconfig.json
+      - run: npm run build:web
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      # Release gate: high/critical advisories fail CI until remediated.
+      - run: npm audit --omit=dev --audit-level=high

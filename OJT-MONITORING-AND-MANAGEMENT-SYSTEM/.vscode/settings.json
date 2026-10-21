@@ -1,0 +1,6 @@
+{
+  "python.experiments.enabled": false,
+  "python.analysis.indexing": false,
+  "python.terminal.activateEnvironment": false,
+  "css.lint.unknownAtRules": "ignore"
+}

@@ -1,0 +1,39 @@
+{
+  "name": "cross-platform-ojt-system",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "apps/web",
+    "apps/mobile",
+    "shared",
+    "apps/desktop"
+  ],
+  "overrides": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "@xmldom/xmldom": "^0.8.13",
+    "postcss": "^8.5.23",
+    "minimatch@^10.0.0": {
+      "brace-expansion": "^5.0.12"
+    },
+    "uuid": "^11.1.1",
+    "follow-redirects": "1.16.1",
+    "shell-quote": "^1.11.0"
+  },
+  "scripts": {
+    "build": "npm run build:web",
+    "dev:web": "npm run dev -w apps/web",
+    "dev:mobile": "npm run dev -w apps/mobile",
+    "dev:desktop": "concurrently -k \"npm run dev -w apps/web\" \"wait-on http://localhost:3000 && electron apps/desktop\"",
+    "build:web": "npm run build -w apps/web",
+    "build:desktop": "npm run build -w apps/desktop",
+    "test": "node --test scripts/regressions.test.cjs scripts/security.test.cjs scripts/desktop-connection.test.cjs scripts/mobile-target-safety.test.cjs && node scripts/check-account-collision.cjs && node scripts/check-security-boundaries.cjs && node scripts/check-department-rls.cjs && node scripts/check-registration-resubmission.cjs && node scripts/check-attendance-credit-range.cjs && node scripts/check-supervisor-report-boundary.cjs && node scripts/check-workflow-safety.cjs && node scripts/check-evaluation-appeals.cjs && node scripts/check-hte-branches.cjs && node scripts/check-practicum-review.cjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "concurrently": "^9.1.2",
+    "electron": "^44.7.0",
+    "next": "^15.2.4",
+    "wait-on": "^8.0.2"
+  }
+}

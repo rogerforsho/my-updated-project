@@ -1,0 +1,39 @@
+name: cdm-ojt-local
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?Set this in .env.docker}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?Set this in .env.docker}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+    env_file:
+      - .env.docker
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${OJT_LOCAL_LAN_IP:?Set OJT_LOCAL_LAN_IP in .env.docker}:3000:3000"
+    volumes:
+      - shared-stuff:/stuff
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/ready').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 6s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  shared-stuff:
+    external: true

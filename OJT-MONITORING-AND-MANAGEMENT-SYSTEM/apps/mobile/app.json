@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "CDM OJT Monitoring",
+    "slug": "cdm-ojt-monitoring",
+    "scheme": "cdm-ojt-monitoring",
+    "platforms": ["ios", "android"],
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ph.edu.cdm.ojtmonitoring",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Colegio de Montalban OJT System requires your location to verify workplace presence when clocking in or out.",
+        "NSCameraUsageDescription": "Colegio de Montalban OJT System requires camera access for daily attendance selfie verification."
+      }
+    },
+    "android": {
+      "package": "ph.edu.cdm.ojtmonitoring",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Colegio de Montalban OJT System requires your location to verify workplace presence when clocking in or out."
+        }
+      ],
+      [
+        "@rbayuokt/expo-face-vision",
+        {
+          "cameraPermission": "Colegio de Montalban OJT System requires camera access for daily attendance selfie verification."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e62cecef-bc8d-4b50-b5a2-c3afa5928642"
+      }
+    },
+    "owner": "ball01"
+  }
+}

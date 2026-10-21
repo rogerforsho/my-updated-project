@@ -1,0 +1,58 @@
+{
+  "name": "desktop",
+  "version": "1.0.0",
+  "description": "Colegio de Montalban OJT Practicum System - Desktop Application",
+  "author": "Colegio de Montalban",
+  "main": "src/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux",
+    "dev": "electron .",
+    "dev:desktop": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^44.7.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "ph.edu.cdm.ojt.desktop",
+    "productName": "CdM OJT Portal",
+    "electronVersion": "44.7.0",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "assets/icon.png"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "assets/icon.png",
+      "category": "public.app-category.education"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "assets/icon.png",
+      "category": "Education"
+    },
+    "nsis": {
+      "artifactName": "CdM-OJT-Portal-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "CdM-OJT-Portal-Portable-${version}.${ext}"
+    }
+  }
+}

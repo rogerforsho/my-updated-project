@@ -1,0 +1,129 @@
+name: CI and Vercel deployment
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Test and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run project checks
+        run: npm test
+
+      - name: Check mobile types
+        run: npx tsc --noEmit --incremental false -p apps/mobile/tsconfig.json
+
+      - name: Check mobile Expo compatibility
+        run: npx --yes expo-doctor@1.21.5 apps/mobile
+
+      - name: Export mobile Android bundle
+        working-directory: apps/mobile
+        env:
+          EXPO_PUBLIC_APP_ENV: ci
+          EXPO_PUBLIC_SUPABASE_URL: https://ci.invalid
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ci-build-only
+          EXPO_PUBLIC_WEB_URL: https://ci.invalid
+        run: npx expo export --platform android --output-dir "${{ runner.temp }}/expo-android-export"
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Lint web app
+        run: npm run lint --workspace=apps/web
+
+      - name: Build web app
+        run: npm run build:web
+
+  deploy:
+    name: Deploy to Vercel
+    needs: checks
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository)
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - name: Check whether Vercel secrets are configured
+        id: vercel-secrets
+        shell: bash
+        run: |
+          if [[ -n "$VERCEL_TOKEN" && -n "$VERCEL_ORG_ID" && -n "$VERCEL_PROJECT_ID" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Vercel deployment skipped::Add VERCEL_TOKEN, VERCEL_ORG_ID, and VERCEL_PROJECT_ID as GitHub repository secrets to enable deployments."
+          fi
+
+      - name: Check out repository
+        if: steps.vercel-secrets.outputs.configured == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        if: steps.vercel-secrets.outputs.configured == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Vercel CLI
+        if: steps.vercel-secrets.outputs.configured == 'true'
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel project settings
+        if: steps.vercel-secrets.outputs.configured == 'true'
+        working-directory: apps/web
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          else
+            vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+          fi
+
+      - name: Build Vercel deployment
+        if: steps.vercel-secrets.outputs.configured == 'true'
+        working-directory: apps/web
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            vercel build --prod --token="$VERCEL_TOKEN"
+          else
+            vercel build --token="$VERCEL_TOKEN"
+          fi
+
+      - name: Deploy to Vercel
+        if: steps.vercel-secrets.outputs.configured == 'true'
+        working-directory: apps/web
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+          else
+            vercel deploy --prebuilt --token="$VERCEL_TOKEN"
+          fi
