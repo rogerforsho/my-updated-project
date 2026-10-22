@@ -558,3 +558,10 @@ test('desktop IPC hides to tray and transitions between valid widget/window size
   assert.deepEqual(calls, ['hide', 'unmaximize', ['minimum', 380, 540], ['size', 380, 540],
     ['minimum', 980, 640], ['size', 1280, 840]]);
 });
+
+test('Supervisor attendance review shows Time In and Time Out errand/justification notes', () => {
+  const page = fs.readFileSync(path.join(root, 'apps/web/app/(dashboard)/supervisor/attendance/page.tsx'), 'utf8');
+  assert.match(page, /selected\.time_out_flag_reason/);
+  assert.match(page, /time_out_location_status/);
+  assert.match(page, /location_unavailable/);
+});

@@ -10,6 +10,12 @@ import type { VerificationStatus } from '@ojt/shared';
 
 const PAGE_SIZE = 20;
 
+// Errand / justification entries are outside-geofence or no-GPS logs with a student note, at Time In or Time Out.
+function isFieldEntry(r: AttendanceWithStudent) {
+  return [r.time_in_location_status, r.time_out_location_status].some(s => s === 'flagged_out_of_bounds' || s === 'location_unavailable') ||
+    Boolean(r.time_in_flag_reason || r.time_out_flag_reason);
+}
+
 const FILTERS: { label: string; value: VerificationStatus | undefined }[] = [
   { label: 'All Records', value: undefined },
   { label: 'Pending Review', value: 'pending' },
@@ -105,17 +111,9 @@ export default function SupervisorAttendancePage() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const cleanLogs = records.filter(
-    r =>
-      r.verification_status === 'pending' &&
-      r.late_status === 'on_time' &&
-      r.time_in_location_status !== 'flagged_out_of_bounds' &&
-      !r.time_in_flag_reason
+    r => r.verification_status === 'pending' && r.late_status === 'on_time' && !isFieldEntry(r)
   );
-  const fieldLogs = records.filter(
-    r =>
-      r.verification_status === 'pending' &&
-      (r.time_in_location_status === 'flagged_out_of_bounds' || Boolean(r.time_in_flag_reason))
-  );
+  const fieldLogs = records.filter(r => r.verification_status === 'pending' && isFieldEntry(r));
   const lateLogs = records.filter(
     r => r.verification_status === 'pending' && r.late_status === 'late'
   );
@@ -240,8 +238,8 @@ export default function SupervisorAttendancePage() {
               <tbody className="divide-y divide-slate-100">
                 {records.map(r => {
                   const isOfflineSynced = r.sync_status === 'pending_sync' || Boolean(r.time_in_selfie_path?.includes('offline'));
-                  const isClean = r.verification_status === 'pending' && r.late_status === 'on_time' && r.time_in_location_status !== 'flagged_out_of_bounds' && !r.time_in_flag_reason;
-                  const isField = r.time_in_location_status === 'flagged_out_of_bounds' || Boolean(r.time_in_flag_reason);
+                  const isField = isFieldEntry(r);
+                  const isClean = r.verification_status === 'pending' && r.late_status === 'on_time' && !isField;
                   return (
                     <tr key={r.attendance_id} className="hover:bg-slate-50/60 transition-colors">
                       <td className="px-5 py-4">
@@ -263,7 +261,7 @@ export default function SupervisorAttendancePage() {
                                 ✓ Clean Log
                               </span>
                             ) : isField ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200" title={r.time_in_flag_reason || ''}>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200" title={r.time_in_flag_reason || r.time_out_flag_reason || ''}>
                                 📍 Field Errand
                               </span>
                             ) : (
@@ -393,6 +391,19 @@ export default function SupervisorAttendancePage() {
                 )}
               </div>
             ) : null}
+
+            {/* Notes the time-in banner above does not already show */}
+            {[
+              { label: 'Time In', status: selected.time_in_location_status, reason: selected.time_in_location_status === 'flagged_out_of_bounds' ? null : selected.time_in_flag_reason },
+              { label: 'Time Out', status: selected.time_out_location_status, reason: selected.time_out_flag_reason },
+            ].filter(note => note.reason).map(note => (
+              <div key={note.label} className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs">
+                <p className="font-bold text-amber-900">
+                  {note.label}: {note.status === 'flagged_out_of_bounds' ? 'Outside the geofence' : note.status === 'location_unavailable' ? 'GPS location unavailable' : 'Flagged'}
+                </p>
+                <p className="text-amber-800 mt-1 italic">Trainee Note / Activity: &ldquo;{note.reason}&rdquo;</p>
+              </div>
+            ))}
 
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
