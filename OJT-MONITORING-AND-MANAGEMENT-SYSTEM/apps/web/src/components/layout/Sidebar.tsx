@@ -248,7 +248,7 @@ export default function Sidebar({ user, isOpen = false, onClose }: Props) {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="font-medium text-slate-300">v1.2.0 Online</span>
             </div>
-            <span className="text-[9px] text-slate-400 font-medium">RA 10173 â€¢ ISO/IEC</span>
+            <span className="text-[9px] text-slate-400 font-medium">RA 10173 • ISO/IEC</span>
           </div>
         </div>
       </aside>

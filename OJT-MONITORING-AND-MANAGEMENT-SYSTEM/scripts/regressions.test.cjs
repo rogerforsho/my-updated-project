@@ -522,6 +522,17 @@ test('production HTTP works on loopback while deployed hosts still require HTTPS
   assert.match(deployed.headers.get('location'), /^https:/);
 });
 
+test('web source files contain no double-encoded UTF-8 (mojibake)', () => {
+  const bad = [];
+  const walk = dir => fs.readdirSync(dir, { withFileTypes: true }).forEach(entry => {
+    const file = path.join(dir, entry.name);
+    if (entry.isDirectory()) walk(file);
+    else if (/\.tsx?$/.test(entry.name) && /â€|Ã[\u0080-¿]|Â[ -¿]/.test(fs.readFileSync(file, 'utf8'))) bad.push(path.relative(root, file));
+  });
+  ['apps/web/src', 'apps/web/app'].forEach(dir => walk(path.join(root, dir)));
+  assert.deepEqual(bad, []);
+});
+
 test('desktop IPC hides to tray and transitions between valid widget/window sizes', async () => {
   const handlers = new Map();
   const calls = [];
