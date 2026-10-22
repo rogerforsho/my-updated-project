@@ -581,11 +581,13 @@ test('only the assigned active supervisor can mark attendance verified or disput
   assert.equal((await coordinator.module('attendance').verifyAttendance(attendanceId(1), 'verified')).error.code, 'FORBIDDEN');
 });
 
-test('supervisor attendance page labels the rejected decision as DISPUTED', () => {
+test('supervisor disputes via "Mark Disputed" but the stored rejected status keeps its Rejected label', () => {
+  // 'rejected' is also a Coordinator exception rejection, so only the Supervisor action says Disputed.
   const page = fs.readFileSync(path.join(root, 'apps/web/app/(dashboard)/supervisor/attendance/page.tsx'), 'utf8');
-  assert.match(page, /label: 'Disputed', value: 'rejected'/);
-  assert.match(page, /Mark Disputed/);
-  assert.doesNotMatch(page, /Reject Record|label: 'Rejected'/);
+  assert.match(page, /onClick=\{\(\) => handleVerify\('rejected'\)\}[\s\S]{0,300}Mark Disputed/);
+  assert.match(page, /label: 'Rejected', value: 'rejected'/);
+  assert.doesNotMatch(page, /'Disputed'|Reject Record/);
+  assert.doesNotMatch(page, /<Badge status=\{[^}]*verification_status\}>/);
 });
 
 test('Coordinator attendance exceptions use one audited database decision', async () => {
