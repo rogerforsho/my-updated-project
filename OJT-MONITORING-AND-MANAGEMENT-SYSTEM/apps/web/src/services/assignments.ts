@@ -184,11 +184,19 @@ export async function updateStudentStatus(
   status: StudentStatus
 ): Promise<AppResult<null>> {
   if (!student_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Student ID is required.' } };
+  // Completion goes through the final-grade workflow, not this control.
+  if (!(['dropped', 'inc', 'terminated'] as StudentStatus[]).includes(status))
+    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Status must be DROPPED, INC, or TERMINATED.' } };
 
   const { supabase, user, role, authorized } = await assertCoordinator();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   if (!await canManageDepartmentStudent(supabase, user.id, role, student_id))
     return { data: null, error: { code: 'FORBIDDEN', message: 'Student is outside your department.' } };
+
+  const { data: certificate } = await supabase
+    .from('certificates').select('student_id').eq('student_id', student_id).maybeSingle();
+  if (certificate)
+    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Completed OJT records are read-only.' } };
 
   const { error } = await supabase
     .from('students')

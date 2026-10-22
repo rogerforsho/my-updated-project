@@ -371,7 +371,7 @@ test('OJT Coordinator approvals, grading, assignments, and schedule reviews reje
       ['evaluations', 'overrideEvaluation', ['evaluation', 90, 'Review']],
       ['assignments', 'createAssignment', [{ student_id: 'foreign', company_id: 'company', supervisor_id: 'supervisor', start_date: '2026-10-06' }]],
       ['assignments', 'updateAssignmentStatus', ['assignment', 'completed']],
-      ['assignments', 'updateStudentStatus', ['foreign', 'completed']],
+      ['assignments', 'updateStudentStatus', ['foreign', 'dropped']],
       ['assignments', 'reassignStudent', ['foreign', 'company', 'supervisor', '2026-10-06']],
       ['schedule', 'reviewPracticumSchedule', ['schedule', 'approve']],
     ];
@@ -408,6 +408,27 @@ test('OJT Coordinator can approve, assign, and review their department without m
     assert.equal(fixture.tables.student_assignments[0].student_id, 'own');
     assert.equal(fixture.tables.practicum_schedules[0].status, 'approved');
   }
+});
+
+test('OJT Coordinator sets only DROPPED, INC, or TERMINATED on an unfinalized department student, with an audit event', async () => {
+  const fixture = workflowFixture('Coordinator', { tables: {
+    students: [{ student_id: 'own', user_id: 'student-user', course: 'BSIT', status: 'active' },
+      { student_id: 'done', user_id: 'done-user', course: 'BSIT', status: 'active' }],
+    certificates: [{ student_id: 'done' }],
+  } });
+  const assignments = fixture.module('assignments');
+  for (const status of ['dropped', 'inc', 'terminated']) {
+    assert.equal((await assignments.updateStudentStatus('own', status)).error, null, status);
+    assert.equal(fixture.tables.students[0].status, status);
+    assert.equal(fixture.events.at(-1).action, `STUDENT_STATUS_${status.toUpperCase()}`);
+  }
+  const writes = fixture.writes.length;
+  for (const status of ['completed', 'active', 'bogus'])
+    assert.equal((await assignments.updateStudentStatus('own', status)).error.code, 'VALIDATION_FAILURE', status);
+  assert.equal((await assignments.updateStudentStatus('done', 'dropped')).error.code, 'VALIDATION_FAILURE');
+  assert.equal(fixture.tables.students[1].status, 'active');
+  assert.equal(fixture.writes.length, writes);
+  assert.equal(fixture.events.length, 3);
 });
 
 test('web schedule insert persists the policy-normalized lunch interval', async () => {
