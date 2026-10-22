@@ -24,7 +24,13 @@ async function claimActionLimit(action: AuthAction, secret: string, subject: str
   const { data, error } = await serviceClient().rpc('claim_auth_rate_limit', {
     p_action: action, p_subject_hash: subjectHash, p_max_attempts: maxAttempts, p_window_seconds: windowSeconds,
   });
-  if (error) return null;
+  if (error) {
+    console.error('[authActionLimit] claim_auth_rate_limit RPC failed', {
+      code: error.code,
+      message: error.message,
+    });
+    return null;
+  }
   return data === true;
 }
 

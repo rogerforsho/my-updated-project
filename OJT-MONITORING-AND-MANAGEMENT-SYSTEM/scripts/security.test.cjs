@@ -655,6 +655,23 @@ test('Super Admin actions require an AAL2 session before service-role access', a
   assert.equal(fixture.serviceCalls, 0);
 });
 
+test('local Super Admin MFA can be enrolled without browser OTP autofill', () => {
+  const config = fs.readFileSync(path.join(root, 'supabase/config.toml'), 'utf8');
+  const totpConfig = config.match(/\[auth\.mfa\.totp\]([\s\S]*?)(?=\n\[|\s*$)/)?.[1];
+  assert.match(totpConfig || '', /^\s*enroll_enabled\s*=\s*true\s*$/m);
+  assert.match(totpConfig || '', /^\s*verify_enabled\s*=\s*true\s*$/m);
+
+  const gate = fs.readFileSync(path.join(root, 'apps/web/app/(dashboard)/admin/AdminMfaGate.tsx'), 'utf8');
+  assert.doesNotMatch(gate, /autoComplete=["']one-time-code["']/);
+  const prepareStart = gate.indexOf('async function prepareFactor()');
+  const prepareEnd = gate.indexOf('prepareFactor().catch', prepareStart);
+  assert.notEqual(prepareStart, -1);
+  assert.notEqual(prepareEnd, -1);
+  assert.doesNotMatch(gate.slice(prepareStart, prepareEnd), /auth\.mfa\.(?:enroll|unenroll)/);
+  assert.match(gate, /factors\.all\.filter\(factor => factor\.factor_type === 'totp' && factor\.status === 'unverified'\)/);
+  assert.match(gate, /onClick=\{startEnrollment\}/);
+});
+
 test('admin overview reports database failures instead of zero statistics', async () => {
   const fixture = workflowFixture('Admin', { fail: (table, _op, serviceOnly) => serviceOnly && table === 'users' ? 'database unavailable' : null });
   const result = await fixture.module('admin').getSystemOverview();
