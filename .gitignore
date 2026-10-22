@@ -3,3 +3,10 @@ node_modules/
 
 node_modules/
 **/apps/desktop/dist/
+
+# Local env files with generated credentials
+OJT-MONITORING-AND-MANAGEMENT-SYSTEM/.env.docker
+OJT-MONITORING-AND-MANAGEMENT-SYSTEM/apps/mobile/.env
+
+# Personal Claude Code settings
+.claude/settings.local.json
