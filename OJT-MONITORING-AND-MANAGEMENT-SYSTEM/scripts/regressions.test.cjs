@@ -558,3 +558,53 @@ test('desktop IPC hides to tray and transitions between valid widget/window size
   assert.deepEqual(calls, ['hide', 'unmaximize', ['minimum', 380, 540], ['size', 380, 540],
     ['minimum', 980, 640], ['size', 1280, 840]]);
 });
+
+test('forgotten time-out: open attendance older than 10 hours is auto timed-out and left pending', async () => {
+  const now = Date.now();
+  const hours = h => new Date(now - h * 3600000).toISOString();
+  const rows = [
+    { attendance_id: 'old', time_in: hours(11) },
+    { attendance_id: 'fresh', time_in: hours(2) },
+  ];
+  const updates = [];
+  const service = { from(table) {
+    assert.equal(table, 'attendance');
+    const filters = {};
+    const query = {
+      select() { return this; },
+      is(column, value) { filters[column] = value; return this; },
+      lte(column, value) { filters.lte = [column, value]; return this; },
+      neq() { return this; },
+      eq(column, value) { filters.eq = [column, value]; return this; },
+      limit() { return this; },
+      update(values) { filters.update = values; return this; },
+      then(resolve) {
+        if (filters.update) {
+          assert.equal(filters.time_out, null);
+          updates.push({ id: filters.eq[1], ...filters.update });
+          return resolve({ data: [{ attendance_id: filters.eq[1] }], error: null });
+        }
+        assert.equal(filters.time_out, null);
+        assert.equal(filters.lte[0], 'time_in');
+        return resolve({ data: rows.filter(r => r.time_in <= filters.lte[1]), error: null });
+      },
+    };
+    return query;
+  } };
+  const load = loader({ '@/src/lib/supabase/service': { getServiceClient: () => service } },
+    { Response, process: { env: { CRON_SECRET: 'test-secret' } } });
+  const { POST } = load('apps/web/app/api/internal/auto-time-out/route.ts');
+  const url = 'http://localhost/api/internal/auto-time-out';
+
+  assert.equal((await POST(new Request(url, { method: 'POST', headers: { authorization: 'Bearer wrong' } }))).status, 401);
+  assert.equal(updates.length, 0);
+
+  const response = await POST(new Request(url, { method: 'POST', headers: { authorization: 'Bearer test-secret' } }));
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { timedOut: 1, failed: 0 });
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].id, 'old');
+  assert.equal(updates[0].time_out, new Date(Date.parse(rows[0].time_in) + 10 * 3600000).toISOString());
+  assert.equal(updates[0].verification_status, 'pending');
+  assert.match(updates[0].time_out_flag_reason, /automatic time-out/i);
+});

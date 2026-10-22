@@ -109,7 +109,8 @@ export default function SupervisorAttendancePage() {
       r.verification_status === 'pending' &&
       r.late_status === 'on_time' &&
       r.time_in_location_status !== 'flagged_out_of_bounds' &&
-      !r.time_in_flag_reason
+      !r.time_in_flag_reason &&
+      !r.time_out_flag_reason
   );
   const fieldLogs = records.filter(
     r =>
@@ -240,7 +241,7 @@ export default function SupervisorAttendancePage() {
               <tbody className="divide-y divide-slate-100">
                 {records.map(r => {
                   const isOfflineSynced = r.sync_status === 'pending_sync' || Boolean(r.time_in_selfie_path?.includes('offline'));
-                  const isClean = r.verification_status === 'pending' && r.late_status === 'on_time' && r.time_in_location_status !== 'flagged_out_of_bounds' && !r.time_in_flag_reason;
+                  const isClean = r.verification_status === 'pending' && r.late_status === 'on_time' && r.time_in_location_status !== 'flagged_out_of_bounds' && !r.time_in_flag_reason && !r.time_out_flag_reason;
                   const isField = r.time_in_location_status === 'flagged_out_of_bounds' || Boolean(r.time_in_flag_reason);
                   return (
                     <tr key={r.attendance_id} className="hover:bg-slate-50/60 transition-colors">
@@ -261,6 +262,10 @@ export default function SupervisorAttendancePage() {
                             {isClean ? (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                                 ✓ Clean Log
+                              </span>
+                            ) : r.time_out_flag_reason ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200" title={r.time_out_flag_reason}>
+                                Time Out flagged
                               </span>
                             ) : isField ? (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200" title={r.time_in_flag_reason || ''}>
@@ -340,6 +345,7 @@ export default function SupervisorAttendancePage() {
                     Event times are reported by the student&apos;s device; server receipt times show when the system received them. Review both times and the evidence. Syncing never approves attendance.
                     {selected.time_in_received_at && ` Server received Time In at ${new Date(selected.time_in_received_at).toLocaleString()}.`}
                     {selected.time_out_received_at && ` Server received Time Out at ${new Date(selected.time_out_received_at).toLocaleString()}.`}
+                    {selected.time_out_flag_reason && ` Time Out note: ${selected.time_out_flag_reason}`}
                   </p>
                 </div>
             </div>
