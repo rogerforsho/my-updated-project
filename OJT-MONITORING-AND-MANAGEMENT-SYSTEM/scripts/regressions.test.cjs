@@ -565,3 +565,11 @@ test('Supervisor attendance review shows Time In and Time Out errand/justificati
   assert.match(page, /time_out_location_status/);
   assert.match(page, /location_unavailable/);
 });
+
+test('Supervisor bulk verify only includes clean logs, never flagged entries', () => {
+  const page = fs.readFileSync(path.join(root, 'apps/web/app/(dashboard)/supervisor/attendance/page.tsx'), 'utf8');
+  assert.match(page, /setBatchIds\(cleanLogs\.map\(/);
+  assert.match(page, /cleanLogs\.length > 0 &&/);
+  assert.doesNotMatch(page, /Verify this page/);
+  assert.match(page, /r\.time_out_flag_reason/);
+});

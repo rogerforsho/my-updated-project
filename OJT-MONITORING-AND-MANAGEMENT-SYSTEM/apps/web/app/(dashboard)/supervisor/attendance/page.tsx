@@ -125,22 +125,23 @@ export default function SupervisorAttendancePage() {
           <h1 className="text-2xl font-black text-slate-900 font-serif tracking-tight">Attendance Verification</h1>
           <p className="text-xs text-slate-500 mt-1">Review trainee daily logs, selfie evidence, punctuality, and sync statuses.</p>
         </div>
-        {filter === 'pending' && records.length > 0 && (
+        {/* Flagged, late and auto time-out entries (time_out_flag_reason) must be opened and verified one by one. */}
+        {filter === 'pending' && cleanLogs.length > 0 && (
           <Button
-            onClick={() => setBatchIds(records.filter(record => record.verification_status === 'pending').map(record => record.attendance_id))}
+            onClick={() => setBatchIds(cleanLogs.map(record => record.attendance_id))}
             loading={batchLoading}
             disabled={loading}
             className="bg-[#0A3824] hover:bg-[#092E1D] text-white font-bold text-xs shadow-2xs py-2 px-4 whitespace-nowrap"
           >
-            Verify this page ({records.length})
+            Verify clean logs ({cleanLogs.length})
           </Button>
         )}
       </div>
 
       {error && <div className="mb-4"><Alert type="error" message={error} /></div>}
       {success && <div className="mb-4"><Alert type="success" message={success} /></div>}
-      <Modal title="Verify visible attendance" open={batchIds.length > 0} onClose={() => { if (!batchLoading) setBatchIds([]); }}>
-        <p className="text-sm">Verify the {batchIds.length} pending records from this page? Review the selfie evidence and any location or punctuality flags before confirming.</p>
+      <Modal title="Verify clean logs" open={batchIds.length > 0} onClose={() => { if (!batchLoading) setBatchIds([]); }}>
+        <p className="text-sm">Verify the {batchIds.length} clean pending records from this page (on time, no location flag, no student note)? Flagged or late entries are not included; open each one to review it.</p>
         <div className="flex justify-end gap-3 mt-5">
           <Button variant="outline" disabled={batchLoading} onClick={() => setBatchIds([])}>Cancel</Button>
           <Button loading={batchLoading} onClick={handleBatchVerify}>Verify {batchIds.length} records</Button>
