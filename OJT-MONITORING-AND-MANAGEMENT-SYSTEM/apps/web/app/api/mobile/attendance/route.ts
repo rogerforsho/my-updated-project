@@ -8,6 +8,13 @@ import { readLimitedJson } from '@/src/lib/read-limited-json';
 export const runtime = 'nodejs';
 type LocationStatus = 'verified' | 'flagged_out_of_bounds' | 'location_unavailable' | 'not_applicable';
 const MAX_SELFIE_SIZE = 5 * 1024 * 1024;
+// Small allowance for device/server clock drift; anything later is a future-dated entry.
+const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
+const FUTURE_FAILURE = { status: 400, code: 'VALIDATION_FAILURE', message: 'Attendance cannot be recorded for a future date or time.' } as const;
+
+function isFuture(value: string): boolean {
+  return new Date(value).getTime() > Date.now() + MAX_CLOCK_SKEW_MS;
+}
 
 function isTimestamp(value: unknown): value is string {
   return typeof value === 'string' && Number.isFinite(new Date(value).getTime());
@@ -168,6 +175,7 @@ export async function POST(request: Request) {
     if (typeof assignmentId !== 'string' || !isTimestamp(capturedAt) || typeof attendanceDate !== 'string' ||
         attendanceDate !== getAttendanceDate(new Date(capturedAt)) || !ownedSelfiePath(selfiePath, studentId, 'time_in'))
       return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Time In details are invalid.' });
+    if (isFuture(capturedAt)) return mobileBffFailure(FUTURE_FAILURE);
     if ([0, 6].includes(getPhilippineClock(new Date(capturedAt)).getUTCDay()))
       return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Attendance is only recorded on weekdays.' });
     if (!await hasValidSelfie(service, selfiePath))
@@ -218,6 +226,7 @@ export async function POST(request: Request) {
         (attendanceId != null && typeof attendanceId !== 'string') ||
         !ownedSelfiePath(selfiePath, studentId, 'time_out'))
       return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Time Out details are invalid.' });
+    if (isFuture(capturedAt)) return mobileBffFailure(FUTURE_FAILURE);
     if (!await hasValidSelfie(service, selfiePath))
       return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Upload a valid selfie before recording Time Out.' });
 

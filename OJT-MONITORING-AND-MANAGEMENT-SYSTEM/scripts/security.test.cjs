@@ -1231,6 +1231,38 @@ test('attendance rejects a date outside the student assignment range before writ
   assert.deepEqual(tables, ['student_assignments']);
 });
 
+test('attendance rejects future-dated Time In and Time Out against the server clock before any lookup', async () => {
+  const route = load('apps/web/app/api/mobile/attendance/route.ts', {
+    '@ojt/shared': {
+      ...load('shared/attendanceDate.ts'),
+      isWithinGeofence: () => ({ isWithin: true, distanceMeters: 0 }),
+    },
+    '@/src/lib/mobile-bff': {
+      async authenticateMobileStudent() { return { actor: { user: { id: 'user' }, studentId: 'student' }, error: null }; },
+      mobileBffFailure(error) { return Response.json({ error: error.code }, { status: error.status }); },
+    },
+    '@/src/lib/supabase/service': { getServiceClient: () => ({
+      from() { throw new Error('future attendance must not reach the database'); },
+      storage: { from() { throw new Error('future attendance must not reach storage'); } },
+    }) },
+    '@/src/services/auth/internal': { async authActionLimit() { return null; } },
+    '@/src/lib/uploadValidation': { validateUploadedBytes() { return { data: true, error: null }; } },
+  });
+  const { getAttendanceDate } = load('shared/attendanceDate.ts');
+  const future = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const post = body => route.POST(new Request('https://portal.example/api/mobile/attendance', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ latitude: 14, longitude: 121, ...body }),
+  }));
+  for (const body of [
+    { action: 'time_in', assignment_id: 'assignment', attendance_date: getAttendanceDate(future), time_in: future.toISOString(), time_in_selfie_path: 'student/time_in_future.jpg' },
+    { action: 'time_out', attendance_date: getAttendanceDate(future), time_out: future.toISOString(), time_out_selfie_path: 'student/time_out_future.jpg' },
+  ]) {
+    const response = await post(body);
+    assert.equal(response.status, 400, body.action);
+    assert.equal((await response.json()).error, 'VALIDATION_FAILURE');
+  }
+});
+
 test('offline attendance from a closed assignment syncs within its placement dates and stays pending', async () => {
   const rows = {
     student_assignments: [{ assignment_id: 'assignment', student_id: 'student', company_id: 'company', branch_id: 'branch', assignment_status: 'completed', start_date: '2026-10-01', end_date: '2026-10-19' }],
