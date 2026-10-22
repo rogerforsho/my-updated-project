@@ -3,6 +3,7 @@
 import { createClient } from '@/src/lib/supabase/server';
 import { getServiceClient } from '@/src/lib/supabase/service';
 import { recordAuditEvent } from '@/src/lib/audit';
+import { restrictDepartment } from '@/src/lib/department-scope';
 import crypto from 'crypto';
 import type { AppResult, UserRole, AccountStatus } from '@ojt/shared';
 
@@ -23,6 +24,22 @@ async function assertSuperAdmin() {
     authorized: profile?.role === 'Admin' && profile?.account_status === 'active',
     user,
   };
+}
+
+// A Coordinator "has" the students of their granted departments; block removal while any of them has an active placement.
+async function coordinatorRemovalBlocked(service: ReturnType<typeof serviceClient>, userId: string): Promise<AppResult<null> | null> {
+  const { data: grants, error } = await service.from('staff_capability_grants').select('department_scope')
+    .eq('user_id', userId).eq('capability', 'academic_workflows').is('revoked_at', null);
+  if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not verify the Coordinator\'s active students.' } };
+  for (const { department_scope } of grants ?? []) {
+    const { count, error: countError } = await restrictDepartment(
+      service.from('students').select('student_id, student_assignments!inner(assignment_id)', { count: 'exact', head: true })
+        .eq('student_assignments.assignment_status', 'active'),
+      department_scope as 'ICS' | 'IBE');
+    if (countError) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not verify the Coordinator\'s active students.' } };
+    if (count) return { data: null, error: { code: 'FORBIDDEN', message: `This Coordinator still has ${count} active student(s) in ${department_scope}. Complete or reassign their placements before deactivating the account.` } };
+  }
+  return null;
 }
 
 export interface UserManagementItem {
@@ -186,6 +203,10 @@ export async function updateUserAccountStatus(
   if (user_id === user.id && status !== 'active') {
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'You cannot deactivate your own administrator account.' } };
   }
+  if (target.role === 'Coordinator' && status !== 'active') {
+    const blocked = await coordinatorRemovalBlocked(service, user_id);
+    if (blocked) return blocked;
+  }
 
   const { data: updatedUser, error } = await service
     .from('users')
@@ -266,6 +287,10 @@ export async function deactivateSystemUser(
 
   if (!targetUser) {
     return { data: null, error: { code: 'NOT_FOUND', message: 'User not found.' } };
+  }
+  if (targetUser.role === 'Coordinator') {
+    const blocked = await coordinatorRemovalBlocked(service, user_id);
+    if (blocked) return blocked;
   }
 
   // Disable access without deleting the Auth identity or linked records.
