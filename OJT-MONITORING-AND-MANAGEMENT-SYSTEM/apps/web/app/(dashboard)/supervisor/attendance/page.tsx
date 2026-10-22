@@ -14,8 +14,11 @@ const FILTERS: { label: string; value: VerificationStatus | undefined }[] = [
   { label: 'All Records', value: undefined },
   { label: 'Pending Review', value: 'pending' },
   { label: 'Verified', value: 'verified' },
-  { label: 'Rejected', value: 'rejected' },
+  { label: 'Disputed', value: 'rejected' },
 ];
+
+// The spec's DISPUTED decision is stored as verification_status 'rejected'.
+const statusLabel = (status: VerificationStatus) => (status === 'rejected' ? 'Disputed' : undefined);
 
 export default function SupervisorAttendancePage() {
   const [records, setRecords] = useState<AttendanceWithStudent[]>([]);
@@ -298,7 +301,7 @@ export default function SupervisorAttendancePage() {
                         <Badge status={r.late_status} />
                       </td>
                       <td className="px-5 py-4">
-                        <Badge status={r.verification_status} />
+                        <Badge status={r.verification_status}>{statusLabel(r.verification_status)}</Badge>
                       </td>
                       <td className="px-5 py-4 text-right">
                         <Button
@@ -496,12 +499,12 @@ export default function SupervisorAttendancePage() {
                   variant="ghost"
                   className="flex-1 text-red-600 hover:bg-red-50 border border-red-200 py-2 font-medium"
                 >
-                  ✕ Reject Record
+                  ✕ Mark Disputed
                 </Button>
               </div>
             ) : (
               <div className="text-center py-2 bg-slate-50 rounded-xl border border-slate-100 text-sm text-slate-600">
-                This record has already been marked as <Badge status={selected.verification_status} />
+                This record has already been marked as <Badge status={selected.verification_status}>{statusLabel(selected.verification_status)}</Badge>
               </div>
             )}
           </div>
