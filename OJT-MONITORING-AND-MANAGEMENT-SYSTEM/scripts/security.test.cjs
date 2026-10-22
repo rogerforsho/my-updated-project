@@ -487,6 +487,32 @@ test('evaluation rejects invalid numeric scores and out-of-range rubric entries 
   assert.equal(fixture.writes.length, 0);
 });
 
+test('evaluation uses a 5-point rating per criterion and requires a comment for any rating below 3', async () => {
+  const fixture = workflowFixture('Supervisor', { tables: {
+    supervisors: [{ user_id: 'actor', supervisor_id: 'supervisor' }],
+    student_assignments: [{ student_id: 'student', supervisor_id: 'supervisor', assignment_id: 'assignment', assignment_status: 'active' }],
+  } });
+  const evaluations = fixture.module('evaluations');
+  const ratings = { technical_competence: 5, productivity_dependability: 4, attendance_punctuality: 4, communication_skills: 3, work_ethics_professionalism: 5 };
+  for (const bad of [0, 6, 2.5, '4', NaN])
+    assert.equal((await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'midterm', performance_score: null, feedback: 'Fine', criteria: { ...ratings, communication_skills: bad } })).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'midterm', performance_score: 99, feedback: 'No rubric' })).error.code, 'VALIDATION_FAILURE');
+  const low = { ...ratings, attendance_punctuality: 2 };
+  const missing = await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'midterm', performance_score: null, feedback: '   ', criteria: low });
+  assert.equal(missing.error.code, 'VALIDATION_FAILURE');
+  assert.match(missing.error.message, /below 3/);
+  assert.equal(fixture.writes.length, 0);
+
+  assert.equal((await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'midterm', performance_score: null, feedback: '', criteria: ratings })).error, null);
+  assert.equal((await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'final', performance_score: null, feedback: 'Often late in week 3.', criteria: low })).error, null);
+  const [midterm, final] = fixture.tables.evaluations;
+  // stored as weighted points (25/20/20/15/20) so summaries, grades and appeals keep the 100-point scale
+  assert.deepEqual({ ...midterm.rubric_scores }, { technical_competence: 25, productivity_dependability: 16, attendance_punctuality: 16, communication_skills: 9, work_ethics_professionalism: 20 });
+  assert.equal(midterm.performance_score, 86);
+  assert.equal(midterm.feedback, '');
+  assert.equal(final.performance_score, 78);
+});
+
 test('modal traps keyboard focus, closes on Escape, and restores focus and scroll state', () => {
   const refs = [], effects = [];
   let onKey, closed = 0;
@@ -726,7 +752,7 @@ test('core student, OJT Coordinator, and supervisor service paths return useful 
     supervisors: [{ user_id: 'actor', supervisor_id: 'supervisor' }],
     student_assignments: [{ student_id: 'student', supervisor_id: 'supervisor', assignment_id: 'assignment', assignment_status: 'active' }],
   } });
-  assert.equal((await supervisor.module('evaluations').createEvaluation({ student_id: 'student', performance_score: 85, feedback: 'Good progress.', evaluation_type: 'midterm' })).error, null);
+  assert.equal((await supervisor.module('evaluations').createEvaluation({ student_id: 'student', performance_score: null, feedback: 'Good progress.', evaluation_type: 'midterm', criteria: { technical_competence: 5, productivity_dependability: 4, attendance_punctuality: 4, communication_skills: 4, work_ethics_professionalism: 4 } })).error, null);
   assert.equal(supervisor.tables.evaluations[0].performance_score, 85);
 
   const head = workflowFixture('Coordinator', { tables: { students: [{ student_id: 'student', course: 'BSIT', users: { account_status: 'active' }, internship_progress: { completed_hours: 120, progress_status: 'in_progress' } }] } });
@@ -1068,7 +1094,7 @@ test('former supervisors cannot verify attendance or submit evaluations through 
   attendance:[{attendance_id:attendanceId(1),student_id:'student',verification_status:'pending'}],
  }});
  assert.equal((await fixture.module('attendance').verifyAttendance(attendanceId(1),'verified')).error.code,'FORBIDDEN');
- assert.equal((await fixture.module('evaluations').createEvaluation({student_id:'student',performance_score:80,feedback:'Test',evaluation_type:'final'})).error.code,'FORBIDDEN');
+ assert.equal((await fixture.module('evaluations').createEvaluation({student_id:'student',performance_score:null,feedback:'Test',evaluation_type:'final',criteria: { technical_competence: 5, productivity_dependability: 4, attendance_punctuality: 4, communication_skills: 4, work_ethics_professionalism: 4 }})).error.code,'FORBIDDEN');
  assert.equal(fixture.writes.length,0);
 });
 

@@ -13,12 +13,24 @@ import {
 const PAGE_SIZE = 20;
 
 const DEFAULT_CRITERIA: EvaluationRubricCriteria = {
-  technical_competence: 23, // out of 25
-  productivity_dependability: 18, // out of 20
-  attendance_punctuality: 19, // out of 20
-  communication_skills: 14, // out of 15
-  work_ethics_professionalism: 18, // out of 20
+  technical_competence: 4,
+  productivity_dependability: 4,
+  attendance_punctuality: 4,
+  communication_skills: 4,
+  work_ethics_professionalism: 4,
 };
+
+// Each criterion is rated 1-5; the weight turns the rating into points of the 100-point grade.
+const RUBRIC: { key: keyof EvaluationRubricCriteria; label: string; hint: string; weight: number }[] = [
+  { key: 'technical_competence', label: '1. Technical Competence', hint: 'Quality of output, technical skill', weight: 25 },
+  { key: 'productivity_dependability', label: '2. Productivity & Dependability', hint: 'Deadlines, task completion', weight: 20 },
+  { key: 'attendance_punctuality', label: '3. Attendance & Punctuality', hint: 'Time compliance, shift discipline', weight: 20 },
+  { key: 'communication_skills', label: '4. Communication & Teamwork', hint: 'Team collaboration, clarity', weight: 15 },
+  { key: 'work_ethics_professionalism', label: '5. Professionalism, Work Ethics & Initiative', hint: 'Etiquette, proactive problem solving', weight: 20 },
+];
+const RATING_LABELS = ['', 'Poor', 'Fair', 'Satisfactory', 'Very Good', 'Excellent'];
+const isValidRatings = (value: unknown): value is EvaluationRubricCriteria =>
+  !!value && RUBRIC.every(({ key }) => [1, 2, 3, 4, 5].includes((value as Record<string, unknown>)[key] as number));
 
 export default function SupervisorEvaluationsPage() {
   const [evaluations, setEvaluations] = useState<any[]>([]);
@@ -35,13 +47,8 @@ export default function SupervisorEvaluationsPage() {
   const [saving, setSaving] = useState(false);
   const [students, setStudents] = useState<{ student_id: string; full_name: string; student_number: string; course: string }[]>([]);
 
-  const computedTotalScore = Math.min(100, Math.max(0,
-    (criteria.technical_competence || 0) +
-    (criteria.productivity_dependability || 0) +
-    (criteria.attendance_punctuality || 0) +
-    (criteria.communication_skills || 0) +
-    (criteria.work_ethics_professionalism || 0)
-  ));
+  const computedTotalScore = RUBRIC.reduce((sum, { key, weight }) => sum + (weight * criteria[key]) / 5, 0);
+  const commentRequired = RUBRIC.some(({ key }) => criteria[key] < 3);
 
   const load = useCallback(async (p: number) => {
     setLoading(true);
@@ -77,7 +84,7 @@ export default function SupervisorEvaluationsPage() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.feedback) setFeedback(parsed.feedback);
-        if (parsed.criteria) setCriteria(parsed.criteria);
+        if (isValidRatings(parsed.criteria)) setCriteria(parsed.criteria);
         if (parsed.evaluationType) setEvaluationType(parsed.evaluationType);
         setDraftRestored(true);
       }
@@ -106,8 +113,8 @@ export default function SupervisorEvaluationsPage() {
       setFormError('Please select a student trainee to evaluate.');
       return;
     }
-    if (!feedback.trim()) {
-      setFormError('Please provide qualitative feedback for the trainee.');
+    if (commentRequired && !feedback.trim()) {
+      setFormError('A comment is required when any rating is below 3.');
       return;
     }
 
@@ -150,7 +157,7 @@ export default function SupervisorEvaluationsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Trainee Performance Evaluations</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Submit competency ratings using the 5-dimension CHED practicum rubric.</p>
+          <p className="text-sm text-slate-500 mt-0.5">Rate each competency on a 5-point scale. A comment is required for any rating below 3.</p>
         </div>
         <Button
           onClick={async () => {
@@ -363,85 +370,28 @@ export default function SupervisorEvaluationsPage() {
                 CHED Practicum Competency Rubric
               </h4>
               <span className="text-[11px] font-bold text-[#0A3824] bg-emerald-100/80 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                100 Point Scale
+                5-Point Scale
               </span>
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Dimension 1 */}
-              <div className="space-y-1 p-3 bg-white rounded-xl border border-slate-200/70 shadow-2xs">
-                <div className="flex justify-between items-center text-xs font-semibold text-slate-800">
-                  <span className="truncate">1. Technical Competence</span>
-                  <span className="font-bold font-mono text-[#0A3824] shrink-0">{criteria.technical_competence} / 25</span>
+              {RUBRIC.map(({ key, label, hint, weight }) => (
+                <div key={key} className="space-y-1 p-3 bg-white rounded-xl border border-slate-200/70 shadow-2xs">
+                  <label htmlFor={`rating-${key}`} className="flex justify-between items-center gap-2 text-xs font-semibold text-slate-800">
+                    <span className="truncate">{label}</span>
+                    <span className="text-[10px] text-slate-400 shrink-0">{weight}% weight</span>
+                  </label>
+                  <select
+                    id={`rating-${key}`}
+                    value={criteria[key]}
+                    onChange={e => setCriteria(c => ({ ...c, [key]: Number(e.target.value) }))}
+                    className={`w-full rounded-lg border px-2.5 py-1.5 text-sm outline-none focus:ring-2 focus:ring-[#0A3824] ${criteria[key] < 3 ? 'border-red-300 bg-red-50 text-red-800' : 'border-slate-200 bg-white text-slate-900'}`}
+                  >
+                    {[5, 4, 3, 2, 1].map(r => <option key={r} value={r}>{r} - {RATING_LABELS[r]}</option>)}
+                  </select>
+                  <p className="text-[10px] text-slate-400">{hint}</p>
                 </div>
-                <input
-                  type="range" min="10" max="25"
-                  value={criteria.technical_competence}
-                  onChange={e => setCriteria(c => ({ ...c, technical_competence: Number(e.target.value) }))}
-                  className="w-full accent-[#0A3824] cursor-pointer"
-                />
-                <p className="text-[10px] text-slate-400">Quality of output, technical skill</p>
-              </div>
-
-              {/* Dimension 2 */}
-              <div className="space-y-1 p-3 bg-white rounded-xl border border-slate-200/70 shadow-2xs">
-                <div className="flex justify-between items-center text-xs font-semibold text-slate-800">
-                  <span className="truncate">2. Productivity & Dependability</span>
-                  <span className="font-bold font-mono text-[#0A3824] shrink-0">{criteria.productivity_dependability} / 20</span>
-                </div>
-                <input
-                  type="range" min="8" max="20"
-                  value={criteria.productivity_dependability}
-                  onChange={e => setCriteria(c => ({ ...c, productivity_dependability: Number(e.target.value) }))}
-                  className="w-full accent-[#0A3824] cursor-pointer"
-                />
-                <p className="text-[10px] text-slate-400">Deadlines, task completion</p>
-              </div>
-
-              {/* Dimension 3 */}
-              <div className="space-y-1 p-3 bg-white rounded-xl border border-slate-200/70 shadow-2xs">
-                <div className="flex justify-between items-center text-xs font-semibold text-slate-800">
-                  <span className="truncate">3. Attendance & Punctuality</span>
-                  <span className="font-bold font-mono text-[#0A3824] shrink-0">{criteria.attendance_punctuality} / 20</span>
-                </div>
-                <input
-                  type="range" min="8" max="20"
-                  value={criteria.attendance_punctuality}
-                  onChange={e => setCriteria(c => ({ ...c, attendance_punctuality: Number(e.target.value) }))}
-                  className="w-full accent-[#0A3824] cursor-pointer"
-                />
-                <p className="text-[10px] text-slate-400">Time compliance, shift discipline</p>
-              </div>
-
-              {/* Dimension 4 */}
-              <div className="space-y-1 p-3 bg-white rounded-xl border border-slate-200/70 shadow-2xs">
-                <div className="flex justify-between items-center text-xs font-semibold text-slate-800">
-                  <span className="truncate">4. Communication & Teamwork</span>
-                  <span className="font-bold font-mono text-[#0A3824] shrink-0">{criteria.communication_skills} / 15</span>
-                </div>
-                <input
-                  type="range" min="5" max="15"
-                  value={criteria.communication_skills}
-                  onChange={e => setCriteria(c => ({ ...c, communication_skills: Number(e.target.value) }))}
-                  className="w-full accent-[#0A3824] cursor-pointer"
-                />
-                <p className="text-[10px] text-slate-400">Team collaboration, clarity</p>
-              </div>
-
-              {/* Dimension 5 */}
-              <div className="space-y-1 p-3 bg-white rounded-xl border border-slate-200/70 shadow-2xs sm:col-span-2">
-                <div className="flex justify-between items-center text-xs font-semibold text-slate-800">
-                  <span className="truncate">5. Professionalism, Work Ethics & Initiative</span>
-                  <span className="font-bold font-mono text-[#0A3824] shrink-0">{criteria.work_ethics_professionalism} / 20</span>
-                </div>
-                <input
-                  type="range" min="8" max="20"
-                  value={criteria.work_ethics_professionalism}
-                  onChange={e => setCriteria(c => ({ ...c, work_ethics_professionalism: Number(e.target.value) }))}
-                  className="w-full accent-[#0A3824] cursor-pointer"
-                />
-                <p className="text-[10px] text-slate-400">Etiquette, proactive problem solving</p>
-              </div>
+              ))}
             </div>
 
             {/* Composite Score Card */}
@@ -469,15 +419,19 @@ export default function SupervisorEvaluationsPage() {
           {/* Qualitative Feedback */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Qualitative Feedback & Mentor Remarks <span className="text-rose-500">*</span>
+              Qualitative Feedback & Mentor Remarks {commentRequired && <span className="text-rose-500">*</span>}
             </label>
+            <p className={`text-[11px] ${commentRequired ? 'text-red-700 font-semibold' : 'text-slate-500'}`}>
+              {commentRequired ? 'Required: at least one rating is below 3. Explain the low rating.' : 'Optional when every rating is 3 or higher. Required for any rating below 3.'}
+            </p>
             <textarea
               value={feedback}
               onChange={e => setFeedback(e.target.value)}
               rows={3}
               placeholder="Detail the trainee's technical strengths, key contributions during their practicum shift, and recommended areas for continuous improvement..."
               className="w-full rounded-xl border border-slate-200 p-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#0A3824] shadow-xs"
-              required
+              required={commentRequired}
+              aria-required={commentRequired}
             />
           </div>
 
