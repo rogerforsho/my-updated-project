@@ -19,13 +19,19 @@ export interface EvaluationWithStudent extends DbEvaluation {
   };
 }
 
+// Supervisor input: each criterion is rated 1-5. Stored as weighted points (out of the weight) so the 100-point grade stays.
 export interface EvaluationRubricCriteria {
-  technical_competence: number; // 0-25
-  productivity_dependability: number; // 0-20
-  attendance_punctuality: number; // 0-20
-  communication_skills: number; // 0-15
-  work_ethics_professionalism: number; // 0-20
+  technical_competence: number; // 1-5, weight 25
+  productivity_dependability: number; // 1-5, weight 20
+  attendance_punctuality: number; // 1-5, weight 20
+  communication_skills: number; // 1-5, weight 15
+  work_ethics_professionalism: number; // 1-5, weight 20
 }
+
+const RUBRIC_WEIGHTS: Record<keyof EvaluationRubricCriteria, number> = {
+  technical_competence: 25, productivity_dependability: 20, attendance_punctuality: 20,
+  communication_skills: 15, work_ethics_professionalism: 20,
+};
 
 export interface EvaluationInput {
   student_id: string;
@@ -67,21 +73,14 @@ export async function listEvaluationsForSupervisor(
 
 export async function createEvaluation(input: EvaluationInput): Promise<AppResult<null>> {
   if (!input.student_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Student is required.' } };
-  if (!input.feedback?.trim()) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Feedback is required.' } };
   if (input.evaluation_type && !['midterm', 'final'].includes(input.evaluation_type))
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Invalid evaluation type.' } };
-  if (input.performance_score !== null && (typeof input.performance_score !== 'number' || !Number.isFinite(input.performance_score) || input.performance_score < 0 || input.performance_score > 100))
-    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Score must be between 0 and 100.' } };
-  if (input.criteria) {
-    const maxima: Record<keyof EvaluationRubricCriteria, number> = {
-      technical_competence: 25, productivity_dependability: 20, attendance_punctuality: 20,
-      communication_skills: 15, work_ethics_professionalism: 20,
-    };
-    if (Object.entries(maxima).some(([key, maximum]) => {
-      const value = input.criteria![key as keyof EvaluationRubricCriteria];
-      return typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > maximum;
-    })) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Each rubric score must be within its displayed range.' } };
-  }
+  const keys = Object.keys(RUBRIC_WEIGHTS) as (keyof EvaluationRubricCriteria)[];
+  const ratings = keys.map(key => input.criteria?.[key]);
+  if (ratings.some(value => !Number.isInteger(value) || value! < 1 || value! > 5))
+    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Rate every criterion from 1 to 5.' } };
+  if (ratings.some(value => value! < 3) && !input.feedback?.trim())
+    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'A comment is required when any rating is below 3.' } };
 
   const { supabase, user, profile } = await getTrustedActor();
   if (!user || profile?.role !== 'Supervisor' || profile?.account_status !== 'active')
@@ -106,25 +105,16 @@ export async function createEvaluation(input: EvaluationInput): Promise<AppResul
 
   const evalType = input.evaluation_type || 'final';
 
-  // Calculate composite score from rubric if provided
-  let computedScore = input.performance_score;
-  if (input.criteria) {
-    computedScore = Math.min(100, Math.max(0,
-      input.criteria.technical_competence +
-      input.criteria.productivity_dependability +
-      input.criteria.attendance_punctuality +
-      input.criteria.communication_skills +
-      input.criteria.work_ethics_professionalism
-    ));
-  }
+  const points = Object.fromEntries(keys.map(key => [key, (RUBRIC_WEIGHTS[key] * input.criteria![key]) / 5]));
+  const computedScore = Object.values(points).reduce((sum, value) => sum + value, 0);
 
   const { data: evalRecord, error } = await supabase.from('evaluations').insert({
     student_id: input.student_id,
     supervisor_id: supervisor.supervisor_id,
     evaluation_type: evalType,
     performance_score: computedScore,
-    rubric_scores: input.criteria || null,
-    feedback: input.feedback.trim(),
+    rubric_scores: points,
+    feedback: input.feedback?.trim() ?? '',
     evaluation_date: new Date().toISOString().slice(0, 10),
   }).select('evaluation_id').single();
 
