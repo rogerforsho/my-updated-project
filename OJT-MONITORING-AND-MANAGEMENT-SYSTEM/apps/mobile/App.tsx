@@ -6,12 +6,15 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from './src/lib/supabase';
 import AuthNavigator from './src/navigation/AuthNavigator';
 import StudentNavigator from './src/navigation/StudentNavigator';
+import ForcePasswordChangeScreen from './src/screens/auth/ForcePasswordChangeScreen';
 import { getAuthUser } from './src/services/auth';
 import type { AuthUser } from '@ojt/shared';
 
 export default function App() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,7 +41,7 @@ export default function App() {
     });
 
     return () => { cancelled = true; subscription.unsubscribe(); };
-  }, []);
+  }, [reloadKey]);
 
   return (
     <SafeAreaProvider>
@@ -48,7 +51,9 @@ export default function App() {
         </View>
       ) : (
         <NavigationContainer>
-          {user && user.account_status === 'active' && user.role === 'Student'
+          {user && user.account_status === 'active' && user.role === 'Student' && user.must_change_password
+            ? <ForcePasswordChangeScreen onDone={() => setReloadKey((k) => k + 1)} />
+            : user && user.account_status === 'active' && user.role === 'Student'
             ? <StudentNavigator />
             : <AuthNavigator initialRouteName={
               user?.role === 'Student' && user.account_status === 'rejected' ? 'Resubmit'

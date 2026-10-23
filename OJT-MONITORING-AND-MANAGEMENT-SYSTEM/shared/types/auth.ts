@@ -35,4 +35,5 @@ export interface AuthUser {
   full_name: string;
   role: import('./roles').UserRole;
   account_status: import('./roles').AccountStatus;
+  must_change_password?: boolean;
 }

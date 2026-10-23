@@ -1,7 +1,9 @@
 import 'server-only';
 import { createClient } from '@/src/lib/supabase/server';
 import { departmentScope, canManageDepartmentStudent } from '@/src/lib/department-scope';
-import { serviceClient } from './internal';
+import { serviceClient, authActionLimit } from './internal';
+import { defaultStudentPassword } from '@/src/lib/default-password';
+import { recordAuditEvent } from '@/src/lib/audit';
 import { toPublicSupabaseUrl } from '@/src/lib/supabase/public-url';
 import type { AppResult } from '@ojt/shared';
 async function assertCoordinator() {
@@ -159,4 +161,47 @@ export async function updateStudentAccountStatus(
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Invalid registration review request.' } };
 
   return { data: { notificationCreated: true, emailQueued: true }, error: null };
+}
+
+export async function resetStudentPasswordToDefault(
+  user_id: string
+): Promise<AppResult<{ hint: string }>> {
+  if (!user_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'User ID is required.' } };
+
+  const { supabase, user, role, authorized } = await assertCoordinator();
+  if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
+  if (!await canManageDepartmentStudent(supabase, user.id, role, user_id, 'user_id'))
+    return { data: null, error: { code: 'FORBIDDEN', message: 'Student is outside your department.' } };
+
+  const limited = await authActionLimit('password_reset_admin', user.id, 30, 3600, 'user');
+  if (limited) return { data: null, error: limited };
+
+  const service = serviceClient();
+  const { data: student } = await service.from('students')
+    .select('student_number, users!inner(role, account_status)')
+    .eq('user_id', user_id).maybeSingle();
+  const profile = Array.isArray((student as any)?.users) ? (student as any).users[0] : (student as any)?.users;
+  if (!student || profile?.role !== 'Student' || profile?.account_status !== 'active')
+    return { data: null, error: { code: 'NOT_FOUND', message: 'Active student not found.' } };
+
+  const { error: authError } = await service.auth.admin.updateUserById(user_id, {
+    password: defaultStudentPassword(student.student_number),
+  });
+  if (authError) {
+    console.error('[resetStudentPasswordToDefault] password update failed');
+    return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to reset the password.' } };
+  }
+  const { error: flagError } = await service.from('users').update({ must_change_password: true }).eq('user_id', user_id);
+  if (flagError) console.error('[resetStudentPasswordToDefault] could not set must_change_password');
+
+  await recordAuditEvent({
+    actor_user_id: user.id,
+    action: 'STUDENT_PASSWORD_RESET_TO_DEFAULT',
+    entity_type: 'user',
+    entity_id: user_id,
+  });
+  return {
+    data: { hint: 'The password is now the student number (prefixed "cdm-" if shorter than 8 characters). The student must change it at next sign-in.' },
+    error: null,
+  };
 }

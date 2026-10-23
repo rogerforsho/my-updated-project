@@ -4,6 +4,7 @@ import {
   listPendingStudents as listPendingStudentsAction,
   listActiveStudents as listActiveStudentsAction,
   updateStudentAccountStatus as updateStudentAccountStatusAction,
+  resetStudentPasswordToDefault as resetStudentPasswordToDefaultAction,
 } from './auth/account-review';
 import {
   registerStudent as registerStudentAction,
@@ -20,6 +21,7 @@ import { requestPasswordReset as requestPasswordResetAction } from './auth/passw
 export async function listPendingStudents(...args: Parameters<typeof listPendingStudentsAction>) { return listPendingStudentsAction(...args); }
 export async function listActiveStudents(...args: Parameters<typeof listActiveStudentsAction>) { return listActiveStudentsAction(...args); }
 export async function updateStudentAccountStatus(...args: Parameters<typeof updateStudentAccountStatusAction>) { return updateStudentAccountStatusAction(...args); }
+export async function resetStudentPasswordToDefault(...args: Parameters<typeof resetStudentPasswordToDefaultAction>) { return resetStudentPasswordToDefaultAction(...args); }
 export async function registerStudent(...args: Parameters<typeof registerStudentAction>) { return registerStudentAction(...args); }
 export async function uploadStudentIdCard(...args: Parameters<typeof uploadStudentIdCardAction>) { return uploadStudentIdCardAction(...args); }
 export async function signIn(...args: Parameters<typeof signInAction>) { return signInAction(...args); }

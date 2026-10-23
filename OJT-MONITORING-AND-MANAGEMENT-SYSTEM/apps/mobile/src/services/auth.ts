@@ -65,7 +65,7 @@ export async function signIn(input: SignInInput): Promise<AppResult<AuthUser>> {
 
   const { data: user, error: userError } = await supabase
     .from('users')
-    .select('user_id, full_name, email, role, account_status')
+    .select('user_id, full_name, email, role, account_status, must_change_password')
     .eq('user_id', data.user.id)
     .single();
 
@@ -171,6 +171,13 @@ export async function changeUserPassword(
   return { data: null, error: null };
 }
 
+/** Clears the forced-change flag after the student replaced a default password. */
+export async function completeForcedPasswordChange(newPassword: string): Promise<AppResult<null>> {
+  const changed = await changeUserPassword('', newPassword);
+  if (changed.error) return changed;
+  return postWebBff<null>('/api/mobile/auth/password-changed', {});
+}
+
 export async function getAuthUser(): Promise<AuthUser | null> {
   if (!await isNetworkAvailable()) return (await getCachedAttendanceIdentity())?.user ?? null;
   const { data: { user } } = await supabase.auth.getUser();
@@ -181,7 +188,7 @@ export async function getAuthUser(): Promise<AuthUser | null> {
 
   const { data } = await supabase
     .from('users')
-    .select('user_id, full_name, email, role, account_status')
+    .select('user_id, full_name, email, role, account_status, must_change_password')
     .eq('user_id', user.id)
     .single();
 

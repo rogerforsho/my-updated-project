@@ -26,6 +26,7 @@ function workflowFixture(role = 'Admin', options = {}) {
   let emailCount = 0;
   let deleted = 0;
   const invites = [];
+  const authUpdates = [];
   const field = (row, key) => key.split('.').reduce((value, part) => {
     const fieldName = part === 'progress_filter' ? 'internship_progress' : part;
     return value?.[fieldName];
@@ -140,7 +141,7 @@ function workflowFixture(role = 'Admin', options = {}) {
       tables.users.push({ user_id: 'new-user', email: input.email, role: input.app_metadata.role, account_status: 'pending' });
       return { data: { user: { id: 'new-user' } }, error: null };
     },
-    async updateUserById() { return { error: null }; },
+    async updateUserById(id, input) { authUpdates.push({ id, ...input }); return { error: null }; },
     async deleteUser(id) {
       deleted++;
       for (const table of ['users','students','coordinators','staff_capability_grants','supervisors']) tables[table] = (tables[table] || []).filter(row => row.user_id !== id);
@@ -183,7 +184,7 @@ function workflowFixture(role = 'Admin', options = {}) {
       'next/navigation': { redirect() {} },
     }, { NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'unit-test-hmac-key', NEXT_PUBLIC_APP_URL: 'https://portal.test' });
   }
-  return { tables, writes, events, invites, module, client, service, get deleted() { return deleted; }, get emailCount() { return emailCount; }, get serviceCalls() { return serviceCalls; } };
+  return { tables, writes, events, invites, authUpdates, module, client, service, get deleted() { return deleted; }, get emailCount() { return emailCount; }, get serviceCalls() { return serviceCalls; } };
 }
 
 const attendanceId = number => `00000000-0000-4000-8000-${String(number).padStart(12, '0')}`;
@@ -710,6 +711,47 @@ test('student approval cannot change staff accounts or overwrite an earlier deci
   assert.equal(fixture.tables.users[2].account_status, 'active');
   assert.equal(fixture.emailCount, 0);
   assert.equal((await auth.updateStudentAccountStatus('student-target', 'inactive')).error.code, 'VALIDATION_FAILURE');
+});
+
+function resetFixture() {
+  const fixture = workflowFixture('Coordinator');
+  fixture.tables.users.push(
+    { user_id: 'ics-student', role: 'Student', account_status: 'active', must_change_password: false },
+    { user_id: 'ibe-student', role: 'Student', account_status: 'active', must_change_password: false },
+    { user_id: 'pending-student', role: 'Student', account_status: 'pending', must_change_password: false },
+  );
+  fixture.tables.students = [
+    { student_id: 's1', user_id: 'ics-student', student_number: '2021-00123', course: 'BSIT', users: { role: 'Student', account_status: 'active' } },
+    { student_id: 's2', user_id: 'ibe-student', student_number: '2021-00456', course: 'BSBA-HRM', users: { role: 'Student', account_status: 'active' } },
+    { student_id: 's3', user_id: 'pending-student', student_number: '123', course: 'BSIT', users: { role: 'Student', account_status: 'pending' } },
+  ];
+  return fixture;
+}
+
+test('coordinator reset sets the student number as password, forces a change and audits without the password', async () => {
+  const fixture = resetFixture();
+  const result = await fixture.module('auth').resetStudentPasswordToDefault('ics-student');
+  assert.equal(result.error, null);
+  assert.deepEqual(fixture.authUpdates, [{ id: 'ics-student', password: '2021-00123' }]);
+  assert.equal(fixture.tables.users.find(row => row.user_id === 'ics-student').must_change_password, true);
+  const event = fixture.events.find(e => e.action === 'STUDENT_PASSWORD_RESET_TO_DEFAULT');
+  assert.equal(event.entity_id, 'ics-student');
+  assert.doesNotMatch(JSON.stringify(event), /2021-00123/);
+});
+
+test('coordinator cannot reset a student outside the granted department or one who is not active', async () => {
+  const fixture = resetFixture();
+  const auth = fixture.module('auth');
+  assert.equal((await auth.resetStudentPasswordToDefault('ibe-student')).error.code, 'FORBIDDEN');
+  assert.equal((await auth.resetStudentPasswordToDefault('pending-student')).error.code, 'NOT_FOUND');
+  assert.equal(fixture.authUpdates.length, 0);
+  assert.equal(fixture.tables.users.some(row => row.must_change_password), false);
+});
+
+test('default student password is the student number, prefixed when shorter than 8 characters', () => {
+  const { defaultStudentPassword } = load('apps/web/src/lib/default-password.ts');
+  assert.equal(defaultStudentPassword('2021-00123'), '2021-00123');
+  assert.equal(defaultStudentPassword(' 123 '), 'cdm-123');
 });
 
 test('duplicate Supabase signup identities are not deleted or persisted as new students', async () => {

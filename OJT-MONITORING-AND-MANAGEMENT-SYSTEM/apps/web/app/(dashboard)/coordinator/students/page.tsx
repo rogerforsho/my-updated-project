@@ -6,7 +6,8 @@ import Button from '@/src/components/ui/Button';
 import { Badge } from '@/src/components/ui/Badge';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { Search, Users } from '@/src/components/ui/Icons';
-import { listActiveStudents } from '@/src/services/auth';
+import Modal from '@/src/components/ui/Modal';
+import { listActiveStudents, resetStudentPasswordToDefault } from '@/src/services/auth';
 
 type ActiveStudent = {
   user_id: string;
@@ -29,6 +30,9 @@ export default function CoordinatorStudentsPage() {
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFilter, setSearchFilter] = useState('');
+  const [resetTarget, setResetTarget] = useState<ActiveStudent | null>(null);
+  const [resetting, setResetting] = useState(false);
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     const timer = setTimeout(() => setSearchFilter(searchQuery.trim()), 250);
@@ -59,6 +63,22 @@ export default function CoordinatorStudentsPage() {
     });
     return () => { active = false; };
   }, [page, searchFilter]);
+
+  async function confirmReset() {
+    if (!resetTarget) return;
+    setResetting(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await resetStudentPasswordToDefault(resetTarget.user_id);
+      if (result.error) setError(result.error.message);
+      else setNotice(`${resetTarget.full_name}: ${result.data?.hint ?? 'Password reset.'}`);
+    } catch {
+      setError('Failed to reset the password.');
+    }
+    setResetting(false);
+    setResetTarget(null);
+  }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -98,6 +118,30 @@ export default function CoordinatorStudentsPage() {
           <Alert type="error" message={error} />
         </div>
       )}
+
+      {notice && (
+        <div>
+          <Alert type="success" message={notice} />
+        </div>
+      )}
+
+      <Modal
+        title="Reset password"
+        open={!!resetTarget}
+        onClose={() => { if (!resetting) setResetTarget(null); }}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setResetTarget(null)} disabled={resetting}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmReset} loading={resetting}>Reset password</Button>
+          </>
+        }
+      >
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          Reset the password of <strong>{resetTarget?.full_name}</strong> to their student number
+          (prefixed with &quot;cdm-&quot; if it is shorter than 8 characters)? They must choose a new
+          password the next time they sign in.
+        </p>
+      </Modal>
 
       {/* Trainees Data Table */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
@@ -143,6 +187,7 @@ export default function CoordinatorStudentsPage() {
                   <th className="px-5 py-3.5">Year</th>
                   <th className="px-5 py-3.5">Status</th>
                   <th className="px-5 py-3.5">Joined</th>
+                  <th className="px-5 py-3.5"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -179,6 +224,11 @@ export default function CoordinatorStudentsPage() {
                         day: 'numeric',
                         year: 'numeric',
                       })}
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <Button variant="outline" size="sm" onClick={() => { setNotice(''); setResetTarget(student); }}>
+                        Reset password
+                      </Button>
                     </td>
                   </tr>
                 ))}
