@@ -12,6 +12,7 @@ import { isNetworkAvailable } from '../../lib/syncEngine';
 import NetworkToast from '../../components/NetworkToast';
 import { STUDENT_REPORT_TYPES, type DbReport } from '@ojt/shared';
 import CompanyRequestModal from '../../components/CompanyRequestModal';
+import IncidentReportModal from '../../components/IncidentReportModal';
 
 const REPORT_TYPES = STUDENT_REPORT_TYPES;
 
@@ -43,6 +44,7 @@ export default function ReportsScreen() {
   const [modalError, setModalError] = useState('');
   const [isOffline, setIsOffline] = useState(false);
   const [companyRequestOpen, setCompanyRequestOpen] = useState(false);
+  const [incidentOpen, setIncidentOpen] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
@@ -154,6 +156,13 @@ export default function ReportsScreen() {
           <Text style={s.subtitle}>Gateway documents, journals & incident reports</Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 8 }}>
+        <TouchableOpacity onPress={() => setIncidentOpen(true)} style={s.btnSubmitHeader} activeOpacity={0.85}
+          accessibilityRole="button" accessibilityLabel="Report a confidential concern to your OJT Coordinator">
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="shield-checkmark" size={16} color="#E4DBC4" />
+            <Text style={s.btnSubmitHeaderText}>Report concern</Text>
+          </View>
+        </TouchableOpacity>
         <TouchableOpacity onPress={() => setCompanyRequestOpen(true)} style={s.btnSubmitHeader} activeOpacity={0.85}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Ionicons name="business" size={16} color="#E4DBC4" />
@@ -402,6 +411,7 @@ export default function ReportsScreen() {
         </KeyboardAvoidingView>
       </Modal>
       <CompanyRequestModal visible={companyRequestOpen} onClose={() => setCompanyRequestOpen(false)} />
+      <IncidentReportModal visible={incidentOpen} onClose={() => setIncidentOpen(false)} />
 
       <NetworkToast isOffline={isOffline} />
     </View>

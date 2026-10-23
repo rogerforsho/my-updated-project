@@ -69,6 +69,10 @@ interface MobileBffDatabase {
         { request_id: string; student_id: string; submitted_by: string; status: string; created_at: string },
         { student_id: string; submitted_by: string; requested_company_name: string; company_address: string; contact_person: string; contact_email: string; contact_number: string; requested_branch_name: string; branch_address: string; business_permit_path?: string | null; moa_path?: string | null }
       >;
+      incident_reports: BffTable<
+        { incident_id: string; student_id: string; submitted_by: string; category: string; status: string; created_at: string },
+        { student_id: string; submitted_by: string; category: string; description: string }
+      >;
     };
     Views: Record<never, never>;
     Functions: Record<never, never>;

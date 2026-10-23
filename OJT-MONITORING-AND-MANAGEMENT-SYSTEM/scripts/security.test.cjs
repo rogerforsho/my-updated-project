@@ -63,6 +63,7 @@ function workflowFixture(role = 'Admin', options = {}) {
       select(_columns, config) { head = config?.head || false; return this; },
       eq(key, value) { filters.push(row => field(row, key) === value); return this; },
       neq(key, value) {
+        if (!key.includes('.')) { filters.push(row => field(row, key) !== value); return this; }
         const [embed, column] = key.split('.');
         assert.equal(embed, 'progress_filter');
         embeddedFilters.set(embed, progress => progress?.[column] != null && progress[column] !== value);
@@ -949,6 +950,52 @@ test('chat attachment links are 60-second downloads for visible chat messages on
   assert.equal((await chat.getChatAttachmentUrl('not-a-uuid')).error.code, 'VALIDATION_FAILURE');
   assert.equal((await workflowFixture('Student').module('chatAttachments').getChatAttachmentUrl(messageId)).error.code, 'FORBIDDEN');
   assert.equal(fixture.storageOps.length, before);
+});
+
+const incidentId = n => `55555555-5555-4555-8555-00000000000${n}`;
+function incidentFixture(role = 'Coordinator') {
+  return workflowFixture(role, { tables: { incident_reports: [
+    { incident_id: incidentId(1), category: 'harassment', description: 'Unwanted remarks at work.', status: 'submitted', coordinator_response: null,
+      created_at: '2026-10-20T01:00:00Z', reviewed_at: null, students: { student_number: '2021-0001', course: 'BSIT', users: { full_name: 'Ana Cruz' } } },
+    { incident_id: incidentId(2), category: 'safety', description: 'No protective gear provided.', status: 'closed', coordinator_response: 'Resolved with the HTE.',
+      created_at: '2026-10-19T01:00:00Z', reviewed_at: '2026-10-19T05:00:00Z', students: [{ student_number: '2021-0002', course: 'BSIT', users: [{ full_name: 'Ben Lee' }] }] },
+  ] } });
+}
+
+test('coordinators list incident reports with student details; open filter hides closed reports', async () => {
+  const fixture = incidentFixture();
+  const service = fixture.module('incidentReports');
+  const open = await service.listIncidentReports('open');
+  assert.equal(open.error, null);
+  assert.equal(JSON.stringify(open.data.map(row => [row.incident_id, row.student_name, row.student_number])), JSON.stringify([[incidentId(1), 'Ana Cruz', '2021-0001']]));
+  const all = await service.listIncidentReports('all');
+  assert.equal(all.data.length, 2);
+  assert.equal(all.data[1].student_name, 'Ben Lee');
+  for (const role of ['Supervisor', 'Admin', 'Student'])
+    assert.equal((await incidentFixture(role).module('incidentReports').listIncidentReports('all')).error.code, 'FORBIDDEN');
+});
+
+test('incident review requires a response to close, refuses closed reports and audits without contents', async () => {
+  const fixture = incidentFixture();
+  const service = fixture.module('incidentReports');
+  assert.equal((await service.reviewIncidentReport({ incident_id: incidentId(1), status: 'closed', response: '  ' })).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await service.reviewIncidentReport({ incident_id: 'nope', status: 'acknowledged' })).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await service.reviewIncidentReport({ incident_id: incidentId(1), status: 'submitted' })).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await service.reviewIncidentReport({ incident_id: incidentId(2), status: 'acknowledged' })).error.code, 'FORBIDDEN');
+  assert.equal(fixture.tables.incident_reports[1].status, 'closed');
+
+  const ack = await service.reviewIncidentReport({ incident_id: incidentId(1), status: 'acknowledged' });
+  assert.equal(ack.error, null);
+  const row = fixture.tables.incident_reports[0];
+  assert.equal(row.status, 'acknowledged');
+  assert.equal(row.reviewed_by, 'actor');
+  const event = fixture.events.at(-1);
+  assert.equal(event.action, 'INCIDENT_REPORT_ACKNOWLEDGED');
+  assert.doesNotMatch(JSON.stringify(event), /Unwanted remarks/);
+
+  const supervisor = incidentFixture('Supervisor');
+  assert.equal((await supervisor.module('incidentReports').reviewIncidentReport({ incident_id: incidentId(1), status: 'acknowledged' })).error.code, 'FORBIDDEN');
+  assert.equal(supervisor.tables.incident_reports[0].status, 'submitted');
 });
 
 test('default student password is the student number, prefixed when shorter than 8 characters', () => {

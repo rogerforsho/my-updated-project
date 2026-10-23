@@ -61,6 +61,7 @@ const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'What-if analysis', href: '/coordinator/what-if', icon: BarChart3 },
     { label: 'Supervisor Evaluations', href: '/coordinator/supervisor-evaluations', icon: Star },
     { label: 'Evaluation Appeals', href: '/coordinator/evaluations', icon: Star },
+    { label: 'Incident Reports', href: '/coordinator/incident-reports', icon: ClipboardCheck },
     { label: 'Department Reports', href: '/coordinator/reports', icon: BarChart3 },
     { label: 'Messages', href: '/coordinator/messages', icon: MessagesSquare },
     { label: 'Notifications', href: '/coordinator/notifications', icon: Bell },
