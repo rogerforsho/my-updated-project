@@ -1586,3 +1586,34 @@ test('Super Admin reads of users and audit logs require MFA (aal2)', async () =>
   assert.equal(await count(uid(2), 'aal1', 'audit_logs'), 1);
   assert.equal(await count(uid(2), 'aal1', 'users'), 2);
 });
+
+test('coordinators cannot update attendance status directly', async () => {
+  const { PGlite } = require('@electric-sql/pglite');
+  const db = new PGlite();
+  await db.exec(`
+    CREATE ROLE anon; CREATE ROLE authenticated; CREATE SCHEMA auth; CREATE SCHEMA private;
+    CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+    CREATE TABLE public.users(user_id uuid PRIMARY KEY, role text);
+    CREATE TABLE public.attendance(attendance_id int PRIMARY KEY, verification_status text);
+    CREATE FUNCTION public.get_my_role() RETURNS text LANGUAGE sql STABLE SECURITY DEFINER AS $$ SELECT role FROM public.users WHERE user_id = auth.uid() $$;
+    GRANT USAGE ON SCHEMA auth, public TO authenticated;
+    GRANT EXECUTE ON FUNCTION auth.uid(), public.get_my_role() TO authenticated;
+    GRANT SELECT, UPDATE ON public.attendance TO authenticated;
+    ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY read_all ON public.attendance FOR SELECT TO authenticated USING (true);
+    CREATE POLICY coordinator_admin_update_attendance ON public.attendance FOR UPDATE TO authenticated
+      USING (public.get_my_role() IN ('Coordinator', 'Admin')) WITH CHECK (public.get_my_role() IN ('Coordinator', 'Admin'));
+    INSERT INTO public.users VALUES ('${uid(1)}','Coordinator');
+    INSERT INTO public.attendance VALUES (1, 'pending');
+    CREATE FUNCTION public.coordinator_decide_attendance_exception(uuid, text, text) RETURNS uuid LANGUAGE sql AS $$ SELECT $1 $$;
+    CREATE FUNCTION public.ojt_security_revision() RETURNS integer LANGUAGE sql AS $$ SELECT 44 $$;
+  `);
+  const direct = async () => {
+    await db.exec(`SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub','${uid(1)}',false)`);
+    try { return (await db.query(`UPDATE public.attendance SET verification_status = 'verified' RETURNING 1`)).rows.length; }
+    finally { await db.exec('RESET ROLE'); }
+  };
+  assert.equal(await direct(), 1); // the hole this migration closes
+  await db.exec(migrationSql('20261024000300_coordinator_attendance_via_rpc_only.sql'));
+  assert.equal(await direct(), 0);
+});
