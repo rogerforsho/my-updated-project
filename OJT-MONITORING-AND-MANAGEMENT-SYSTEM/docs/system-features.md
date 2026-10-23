@@ -16,12 +16,14 @@ There are four roles: OJT Student, Supervisor, OJT Coordinator, Super Admin. The
 ## 2. OJT Coordinator (web, limited to granted ICS/IBE departments)
 
 - **Registrations:** review, approve, or reject student self-registrations (including resubmissions and ID-card images).
+- **Student accounts:** bulk import from CSV with a per-row error preview (all-or-nothing); one-click password reset to the student number, with a forced change at the next mobile sign-in.
 - **Companies (HTEs):** create companies and multiple branches with a map pin and geofence radius (30–50 m); decide student-submitted company requests with evidence view; create Supervisor accounts.
 - **Placement:** assign students to company, branch, supervisor, and dates; review student schedule proposals; reassign students; set status (verified for DROPPED/INC/TERMINATED-type changes).
 - **Monitoring:** department progress summary, attendance list, map view, submissions, and a "what-if" planning page.
 - **Attendance exceptions:** adjudicate or override attendance with an audited reason (atomic).
 - **Reports and evaluation:** review reports; view Supervisor evaluations; decide evaluation appeals as final arbiter; record the final OJT grade; clearance check (credited hours, approved final report, passing final evaluation); completion freezes attendance; issue certificates with public verification (`/verify-certificate`).
-- **Messages:** text chat with Supervisors (read receipts); notifications.
+- **Messages:** chat with Supervisors (read receipts), file attachments (PDF, DOCX, DOC, JPG, PNG, 10 MB) and tags for students of the shared placement; notifications.
+- **Incident reports:** receive confidential student concern reports, acknowledge them, and close them with a response the student can read.
 - Departmental reports page with export code (PDF/Excel output not fully verified).
 
 ## 3. Student (mobile app only)
@@ -30,6 +32,7 @@ There are four roles: OJT Student, Supervisor, OJT Coordinator, Super Admin. The
 - Selects an existing company or requests a new one (modal); proposes a schedule.
 - **Attendance:** time-in/time-out with GPS and a selfie (native face detection, needs an Expo development build); out-of-bounds entries are flagged; a note can be added; offline queue with auto-sync, and synced items are marked pending verification; server receipt time is stored separately from device time; future-dated and out-of-assignment credit is blocked; lunch overlap handling; forgotten time-out is closed server-side and held for review.
 - **Reports:** daily accomplishment reports with uploads (PDF, JPG, PNG, DOCX, 10 MB, validated); supervisor feedback.
+- **Report a concern:** confidential incident report readable only by the department OJT Coordinator (not anonymous).
 - Progress and hours, evaluation results, appeals of evaluations (submission path not fully traced), notifications and announcements, profile/settings.
 - Certificate view on the web side after clearance.
 
@@ -55,15 +58,15 @@ There are four roles: OJT Student, Supervisor, OJT Coordinator, Super Admin. The
 
 Confirmed absent by code search, so do not present these as features:
 
-- Bulk student import (Excel/CSV) and transactional import.
-- Coordinator one-click reset to default password; auto-created student accounts with Student-ID usernames.
+- Excel (.xlsx) student import (CSV import exists).
+- Auto-created student accounts with Student-ID usernames (imports use the student's email to sign in).
 - Mock-location detection, WiFi SSID fallback, "OUTSIDE – INVALID" label, Emergency/Early Out, WFH mode, 5 km off-site expansion.
 - Errand auto-approval, Supervisor geofence-adjustment request, Supervisor PIN (chat or offline approval).
 - Auto-approval after 48 h, escalation reminders, SMS notifications or fallback, push-notification code.
 - Primary/secondary geofences, 100–500 m radius rule (code allows 50–5,000 m).
-- Chat extras: attachments, student tags, quick actions, templates, pins, search, broadcast, response-time red flags, mute/report, 5-minute recall, unassigned-student warning, tamper-proofing.
+- Chat extras: quick actions, templates, pins, search, broadcast, response-time red flags, mute/report, 5-minute recall, unassigned-student warning, tamper-proofing.
 - Weekly auto-compiled reports, LATE flag, report revision requests, DRAFT watermark, version history and edit locking.
-- Confidential/anonymous incident or concern reports.
+- Anonymous incident reports (reports are confidential but identify the student to the Coordinator).
 - Seeded primary/backup Super Admin, in-app backups, soft delete with 30-day recovery (backups are done in the Supabase project).
 - Multiple coordinators with auto-assigned backup; multi-supervisor score averaging is unverified.
 - Super Admin chat viewing or flagged-chat review (deliberately dropped).
