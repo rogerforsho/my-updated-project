@@ -28,6 +28,7 @@ function workflowFixture(role = 'Admin', options = {}) {
   const invites = [];
   const authUpdates = [];
   const importedPasswords = [];
+  const storageOps = [];
   let importedCount = 0;
   const field = (row, key) => key.split('.').reduce((value, part) => {
     const fieldName = part === 'progress_filter' ? 'internship_progress' : part;
@@ -145,7 +146,18 @@ function workflowFixture(role = 'Admin', options = {}) {
     return { data: true, error: null };
   }, auth: { async getUser() { return { data: { user: role ? { id: 'actor' } : null } }; }, mfa: { async getAuthenticatorAssuranceLevel() { return { data: { currentLevel: options.aal || 'aal2' }, error: null }; } }, async signUp() { return options.signupResponse || { data: { user: { id: 'new-student', identities: [{ provider: 'email' }] }, session: null }, error: null }; }, async signOut() { return { error: null }; } } };
   const service = { from(table) { return from(table, true); }, storage: { from() { return {
-    async download() { return { data: file('student-id.jpg', 'image/jpeg', Buffer.from([0xff, 0xd8, 0xff, 0x00])), error: null }; },
+    async download(storagePath) {
+      storageOps.push(['download', storagePath]);
+      if (options.downloadFile) return { data: options.downloadFile(storagePath), error: null };
+      return { data: file('student-id.jpg', 'image/jpeg', Buffer.from([0xff, 0xd8, 0xff, 0x00])), error: null };
+    },
+    async move(from, to) { storageOps.push(['move', from, to]); return { data: {}, error: null }; },
+    async remove(paths) { storageOps.push(['remove', ...paths]); return { data: [], error: null }; },
+    async createSignedUploadUrl(storagePath) { storageOps.push(['signedUpload', storagePath]); return { data: { token: 'upload-token', path: storagePath }, error: null }; },
+    async createSignedUrl(storagePath, expires, urlOptions) {
+      storageOps.push(['signedUrl', storagePath, expires, urlOptions?.download]);
+      return { data: { signedUrl: 'https://test.supabase.co/storage/v1/object/sign/private-documents/x?token=t' }, error: null };
+    },
   }; } }, async rpc() { return { data: true, error: null }; }, auth: { admin: {
     async getUserById(id) { return { data: { user: { id, email_confirmed_at: options.unconfirmedUsers?.includes(id) ? null : '2026-01-01T00:00:00Z' } }, error: null }; },
     // Mirrors the auth.users triggers: without app_metadata.role a new user is a Student and needs ID-card paths.
@@ -211,7 +223,7 @@ function workflowFixture(role = 'Admin', options = {}) {
       'next/navigation': { redirect() {} },
     }, { NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'unit-test-hmac-key', NEXT_PUBLIC_APP_URL: 'https://portal.test' });
   }
-  return { tables, writes, events, invites, authUpdates, importedPasswords, module, client, service, get deleted() { return deleted; }, get emailCount() { return emailCount; }, get serviceCalls() { return serviceCalls; } };
+  return { tables, writes, events, invites, authUpdates, importedPasswords, storageOps, module, client, service, get deleted() { return deleted; }, get emailCount() { return emailCount; }, get serviceCalls() { return serviceCalls; } };
 }
 
 const attendanceId = number => `00000000-0000-4000-8000-${String(number).padStart(12, '0')}`;
@@ -871,6 +883,72 @@ test('import commit removes every account it created when a later row fails', as
   assert.equal((fixture.tables.pending_staff_invites || []).length, 0);
   assert.equal(fixture.events.at(-1).action, 'STUDENT_IMPORT_FAILED');
   assert.equal(fixture.events.at(-1).details.rolled_back, 2);
+});
+
+const chatFileId = '11111111-1111-4111-8111-111111111111';
+const validPdf = () => file('x.pdf', 'application/pdf', Buffer.from('%PDF-1.7\nvalid chat document'));
+
+test('chat attachment upload slots are limited to Coordinators and Supervisors, allowed types and 10 MB', async () => {
+  const coordinator = workflowFixture('Coordinator');
+  const slot = await coordinator.module('chatAttachments').createChatAttachmentUpload({ file_name: 'Plan.PDF', file_size: 1000 });
+  assert.equal(slot.error, null);
+  assert.match(slot.data.pendingPath, /^chat-pending\/actor\/[0-9a-f-]{36}\.pdf$/);
+  assert.equal(slot.data.token, 'upload-token');
+  const chat = coordinator.module('chatAttachments');
+  assert.equal((await chat.createChatAttachmentUpload({ file_name: 'run.exe', file_size: 10 })).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await chat.createChatAttachmentUpload({ file_name: 'big.pdf', file_size: 10 * 1024 * 1024 + 1 })).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await chat.createChatAttachmentUpload({ file_name: 'empty.pdf', file_size: 0 })).error.code, 'VALIDATION_FAILURE');
+  for (const role of ['Student', 'Admin']) {
+    const other = workflowFixture(role);
+    assert.equal((await other.module('chatAttachments').createChatAttachmentUpload({ file_name: 'a.pdf', file_size: 10 })).error.code, 'FORBIDDEN');
+    assert.equal(other.storageOps.length, 0);
+  }
+});
+
+test('finalizing a chat attachment validates the bytes, then moves it into chat/<user>/', async () => {
+  const fixture = workflowFixture('Supervisor', { downloadFile: validPdf });
+  const chat = fixture.module('chatAttachments');
+  const result = await chat.finalizeChatAttachment({ pendingPath: `chat-pending/actor/${chatFileId}.pdf`, file_name: 'Site/Plan.pdf' });
+  assert.equal(result.error, null);
+  assert.equal(result.data.path, `chat/actor/${chatFileId}.pdf`);
+  assert.equal(result.data.name, 'Site_Plan.pdf');
+  assert.equal(JSON.stringify(fixture.storageOps.at(-1)), JSON.stringify(['move', `chat-pending/actor/${chatFileId}.pdf`, `chat/actor/${chatFileId}.pdf`]));
+});
+
+test('finalizing refuses another user path, a bad name or fake file content and deletes the upload', async () => {
+  const fake = workflowFixture('Coordinator', { downloadFile: () => file('x.pdf', 'application/pdf', Buffer.from('MZ not a pdf')) });
+  const chat = fake.module('chatAttachments');
+  const rejected = await chat.finalizeChatAttachment({ pendingPath: `chat-pending/actor/${chatFileId}.pdf`, file_name: 'Plan.pdf' });
+  assert.equal(rejected.error.code, 'VALIDATION_FAILURE');
+  assert.equal(JSON.stringify(fake.storageOps.at(-1)), JSON.stringify(['remove', `chat-pending/actor/${chatFileId}.pdf`]));
+  assert.equal(fake.storageOps.some(op => op[0] === 'move'), false);
+
+  const fixture = workflowFixture('Coordinator', { downloadFile: validPdf });
+  const valid = fixture.module('chatAttachments');
+  for (const pendingPath of [`chat-pending/someone-else/${chatFileId}.pdf`, `chat/actor/${chatFileId}.pdf`, `chat-pending/actor/${chatFileId}.exe`, 'chat-pending/actor/../x.pdf'])
+    assert.equal((await valid.finalizeChatAttachment({ pendingPath, file_name: 'a.pdf' })).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await valid.finalizeChatAttachment({ pendingPath: `chat-pending/actor/${chatFileId}.pdf`, file_name: '  ' })).error.code, 'VALIDATION_FAILURE');
+  assert.equal(fixture.storageOps.length, 0);
+  assert.equal((await workflowFixture('Student').module('chatAttachments').finalizeChatAttachment({ pendingPath: `chat-pending/actor/${chatFileId}.pdf`, file_name: 'a.pdf' })).error.code, 'FORBIDDEN');
+});
+
+test('chat attachment links are 60-second downloads for visible chat messages only', async () => {
+  const messageId = '22222222-2222-4222-8222-222222222222';
+  const fixture = workflowFixture('Coordinator', { tables: { chat_messages: [
+    { message_id: messageId, attachment_path: `chat/other/${chatFileId}.pdf`, attachment_name: 'Plan.pdf' },
+    { message_id: '33333333-3333-4333-8333-333333333333', attachment_path: `actor/reports/${chatFileId}.pdf`, attachment_name: 'Report.pdf' },
+  ] } });
+  const chat = fixture.module('chatAttachments');
+  const link = await chat.getChatAttachmentUrl(messageId);
+  assert.equal(link.error, null);
+  assert.match(link.data.signedUrl, /token=t/);
+  assert.equal(JSON.stringify(fixture.storageOps.at(-1)), JSON.stringify(['signedUrl', `chat/other/${chatFileId}.pdf`, 60, 'Plan.pdf']));
+  const before = fixture.storageOps.length;
+  assert.equal((await chat.getChatAttachmentUrl('44444444-4444-4444-8444-444444444444')).error.code, 'FORBIDDEN');
+  assert.equal((await chat.getChatAttachmentUrl('33333333-3333-4333-8333-333333333333')).error.code, 'FORBIDDEN');
+  assert.equal((await chat.getChatAttachmentUrl('not-a-uuid')).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await workflowFixture('Student').module('chatAttachments').getChatAttachmentUrl(messageId)).error.code, 'FORBIDDEN');
+  assert.equal(fixture.storageOps.length, before);
 });
 
 test('default student password is the student number, prefixed when shorter than 8 characters', () => {

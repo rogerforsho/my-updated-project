@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/src/lib/supabase/client';
+import { createChatAttachmentUpload, finalizeChatAttachment, getChatAttachmentUrl } from '@/src/services/chatAttachments';
 
 type Contact = {
   counterpart_user_id: string;
@@ -12,7 +13,13 @@ type Contact = {
   unread_count: number;
   is_eligible: boolean;
 };
-type Message = { message_id: string; conversation_id: string; sender_user_id: string; content: string; created_at: string };
+type Message = {
+  message_id: string; conversation_id: string; sender_user_id: string; content: string; created_at: string;
+  attachment_name: string | null; attachment_path: string | null; tagged_student_label: string | null;
+};
+type TaggableStudent = { tag_student_id: string; tag_student_name: string; tag_student_number: string };
+const MESSAGE_COLUMNS = 'message_id, conversation_id, sender_user_id, content, created_at, attachment_path, attachment_name, tagged_student_label';
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 const MESSAGE_PAGE_SIZE = 50;
 
 export default function ChatWorkspace({ userId, role }: { userId: string; role: 'Coordinator' | 'Supervisor' }) {
@@ -29,6 +36,9 @@ export default function ChatWorkspace({ userId, role }: { userId: string; role: 
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [seenAt, setSeenAt] = useState<string | null>(null);
+  const [taggable, setTaggable] = useState<TaggableStudent[]>([]);
+  const [tagStudentId, setTagStudentId] = useState('');
+  const [attachment, setAttachment] = useState<File | null>(null);
 
   const refreshContacts = useCallback(async () => {
     const { data, error: rpcError } = await supabase.rpc('list_chat_contacts').abortSignal(AbortSignal.timeout(12000));
@@ -55,7 +65,7 @@ export default function ChatWorkspace({ userId, role }: { userId: string; role: 
 
   const refreshMessages = useCallback(async (id: string) => {
     const { data, error: queryError } = await supabase.from('chat_messages')
-      .select('message_id, conversation_id, sender_user_id, content, created_at')
+      .select(MESSAGE_COLUMNS)
       .eq('conversation_id', id).order('created_at', { ascending: false }).order('message_id', { ascending: false }).limit(MESSAGE_PAGE_SIZE)
       .abortSignal(AbortSignal.timeout(12000));
     if (queryError) { setError('Could not load this conversation.'); return; }
@@ -78,7 +88,7 @@ export default function ChatWorkspace({ userId, role }: { userId: string; role: 
     setLoadingOlder(true);
     const oldest = messages[0];
     const { data, error: queryError } = await supabase.from('chat_messages')
-      .select('message_id, conversation_id, sender_user_id, content, created_at')
+      .select(MESSAGE_COLUMNS)
       .eq('conversation_id', conversationId)
       .or(`created_at.lt.${oldest.created_at},and(created_at.eq.${oldest.created_at},message_id.lt.${oldest.message_id})`)
       .order('created_at', { ascending: false }).order('message_id', { ascending: false }).limit(MESSAGE_PAGE_SIZE)
@@ -93,6 +103,25 @@ export default function ChatWorkspace({ userId, role }: { userId: string; role: 
   }, [conversationId, hasOlderMessages, loadingOlder, messages, supabase]);
 
   useEffect(() => { void refreshContacts(); }, [refreshContacts]);
+
+  const activeEligible = activeContact?.is_eligible ?? false;
+  useEffect(() => {
+    setTagStudentId('');
+    setAttachment(null);
+    if (!activeContactId || !activeEligible) { setTaggable([]); return; }
+    let current = true;
+    void supabase.rpc('list_chat_taggable_students', { p_counterpart_user_id: activeContactId }).then(({ data }) => {
+      if (current) setTaggable((data ?? []) as TaggableStudent[]);
+    });
+    return () => { current = false; };
+  }, [activeContactId, activeEligible, supabase]);
+
+  async function openAttachment(messageId: string) {
+    setError('');
+    const result = await getChatAttachmentUrl(messageId);
+    if (result.error || !result.data) setError(result.error?.message ?? 'The attachment could not be opened.');
+    else window.open(result.data.signedUrl, '_blank', 'noopener,noreferrer');
+  }
 
   useEffect(() => {
     const channel = supabase.channel(`chat-contact-alerts-${userId}`)
@@ -118,16 +147,31 @@ export default function ChatWorkspace({ userId, role }: { userId: string; role: 
   async function sendMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const content = draft.trim();
-    if (!activeContact || !content || content.length > 4000 || sending) return;
+    if (!activeContact || (!content && !attachment) || content.length > 4000 || sending) return;
     setSending(true); setError('');
+    let attached: { path: string; name: string } | null = null;
+    if (attachment) {
+      const slot = await createChatAttachmentUpload({ file_name: attachment.name, file_size: attachment.size });
+      if (slot.error || !slot.data) { setError(slot.error?.message ?? 'Could not prepare the upload.'); setSending(false); return; }
+      const { error: uploadError } = await supabase.storage.from('private-documents').uploadToSignedUrl(slot.data.pendingPath, slot.data.token, attachment);
+      if (uploadError) { setError('The file could not be uploaded. Please try again.'); setSending(false); return; }
+      const finalized = await finalizeChatAttachment({ pendingPath: slot.data.pendingPath, file_name: attachment.name });
+      if (finalized.error || !finalized.data) { setError(finalized.error?.message ?? 'The file could not be checked.'); setSending(false); return; }
+      attached = finalized.data;
+    }
     const { error: sendError } = await supabase.rpc('send_chat_message', {
       p_counterpart_user_id: activeContact.counterpart_user_id,
       p_content: content,
+      p_attachment_path: attached?.path ?? null,
+      p_attachment_name: attached?.name ?? null,
+      p_tagged_student_id: tagStudentId || null,
     }).abortSignal(AbortSignal.timeout(12000));
     if (sendError) {
-      setError(sendError.code === '42501' ? 'This conversation is archived because there is no active shared placement.' : 'Your message could not be sent. Please try again.');
+      setError(sendError.code === '42501' ? 'This conversation is archived, or the tagged student is not part of this placement.' : 'Your message could not be sent. Please try again.');
     } else {
       setDraft('');
+      setAttachment(null);
+      setTagStudentId('');
       await refreshContacts();
     }
     setSending(false);
@@ -165,7 +209,11 @@ export default function ChatWorkspace({ userId, role }: { userId: string; role: 
                 const mine = message.sender_user_id === userId;
                 return <div key={message.message_id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[82%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${mine ? 'bg-teal-700 text-white' : 'border border-slate-200 bg-white text-slate-800'}`}>
-                    <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                    {message.tagged_student_label && <p className={`mb-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${mine ? 'bg-teal-600 text-teal-50' : 'bg-slate-100 text-slate-600'}`}>Re: {message.tagged_student_label}</p>}
+                    {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
+                    {message.attachment_name && <button type="button" onClick={() => void openAttachment(message.message_id)}
+                      className={`mt-1 block max-w-full truncate rounded-lg border px-2.5 py-1 text-left text-xs font-medium underline ${mine ? 'border-teal-500 text-white' : 'border-slate-200 text-teal-800'}`}>
+                      📎 {message.attachment_name}</button>}
                     <time className={`mt-1 block text-[10px] ${mine ? 'text-teal-100' : 'text-slate-400'}`} dateTime={message.created_at}>{new Date(message.created_at).toLocaleString()}{message.message_id === lastSeenMessageId && ' · Seen'}</time>
                   </div>
                 </div>;
@@ -173,10 +221,25 @@ export default function ChatWorkspace({ userId, role }: { userId: string; role: 
             </div>
             {activeContact.is_eligible ? <form onSubmit={sendMessage} className="border-t border-slate-100 p-3">
               <label htmlFor="chat-message" className="sr-only">Write a message</label>
+              <div className="mb-2 flex flex-wrap items-center gap-3 text-xs text-slate-600">
+                {taggable.length > 0 && <label className="flex items-center gap-1.5">Tag student
+                  <select value={tagStudentId} onChange={(event) => setTagStudentId(event.target.value)} className="max-w-[14rem] rounded-lg border border-slate-300 px-2 py-1">
+                    <option value="">None</option>
+                    {taggable.map((student) => <option key={student.tag_student_id} value={student.tag_student_id}>{student.tag_student_name} ({student.tag_student_number})</option>)}
+                  </select></label>}
+                <label className="flex items-center gap-1.5">Attach file
+                  <input type="file" accept=".pdf,.docx,.doc,.jpg,.jpeg,.png" key={attachment ? 'has-file' : 'no-file'}
+                    onChange={(event) => {
+                      const picked = event.target.files?.[0] ?? null;
+                      if (picked && picked.size > MAX_ATTACHMENT_BYTES) { setError('Select a file smaller than 10 MB.'); event.target.value = ''; return; }
+                      setError(''); setAttachment(picked);
+                    }} className="max-w-[14rem] text-xs" /></label>
+                {attachment && <button type="button" onClick={() => setAttachment(null)} className="underline">Remove {attachment.name}</button>}
+              </div>
               <div className="flex items-end gap-3">
                 <textarea id="chat-message" value={draft} onChange={(event) => setDraft(event.target.value.slice(0, 4000))}
                   maxLength={4000} rows={2} placeholder="Write a message…" className="min-h-12 flex-1 resize-y rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100" />
-                <button type="submit" disabled={!draft.trim() || sending} className="rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{sending ? 'Sending…' : 'Send'}</button>
+                <button type="submit" disabled={(!draft.trim() && !attachment) || sending} className="rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{sending ? 'Sending…' : 'Send'}</button>
               </div>
               <div className="mt-1 flex justify-between text-[11px] text-slate-400"><span>Messages cannot be edited or deleted.</span><span>{draft.length}/4000</span></div>
             </form> : <div className="border-t border-slate-100 bg-amber-50 px-4 py-3 text-sm text-amber-900">This conversation is read-only until an active shared placement resumes.</div>}
