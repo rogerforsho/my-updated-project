@@ -455,12 +455,18 @@ test('auth callback keeps success and failure redirects on the browser-facing ho
     } },
   });
   const { GET } = load('apps/web/app/auth/callback/route.ts');
-  const failure = await GET(new NextRequest('http://127.0.0.1:3000/auth/callback'));
-  assert.equal(failure.headers.get('location'), '/auth/sign-in?error=auth_callback_failed');
+  const fragment = await GET(new NextRequest('http://127.0.0.1:3000/auth/callback?next=%2Fauth%2Fset-password'));
+  assert.equal(fragment.headers.get('location'), '/auth/callback/finish?next=%2Fauth%2Fset-password');
+  const unsafeFragment = await GET(new NextRequest('http://127.0.0.1:3000/auth/callback?next=https%3A%2F%2Fevil.example'));
+  assert.equal(unsafeFragment.headers.get('location'), '/auth/callback/finish?next=%2Fdashboard');
   const success = await GET(new NextRequest('http://127.0.0.1:3000/auth/callback?code=good&next=%2Fstudent%2Fprogress'));
   assert.equal(success.headers.get('location'), '/student/progress');
   const unsafe = await GET(new NextRequest('http://127.0.0.1:3000/auth/callback?code=good&next=https%3A%2F%2Fevil.example'));
   assert.equal(unsafe.headers.get('location'), '/dashboard');
+  const bad = loader({ 'next/server': { NextRequest, NextResponse }, '@/src/lib/supabase/server': { async createClient() {
+    return { auth: { async exchangeCodeForSession() { return { error: { message: 'bad' } }; } } };
+  } } })('apps/web/app/auth/callback/route.ts');
+  assert.equal((await bad.GET(new NextRequest('http://127.0.0.1:3000/auth/callback?code=bad'))).headers.get('location'), '/auth/sign-in?error=auth_callback_failed');
 });
 
 test('forged user metadata cannot grant Admin access, and trusted Admin role still works', async () => {

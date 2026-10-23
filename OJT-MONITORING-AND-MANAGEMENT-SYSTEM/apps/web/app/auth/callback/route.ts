@@ -23,5 +23,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // No code: an implicit-flow link keeps its tokens in the fragment, so let the browser finish it.
+  if (!code) return redirectToPath(`/auth/callback/finish?next=${encodeURIComponent(next)}`);
   return redirectToPath('/auth/sign-in?error=auth_callback_failed');
 }
