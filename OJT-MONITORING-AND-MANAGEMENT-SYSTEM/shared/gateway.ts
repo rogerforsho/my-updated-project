@@ -15,7 +15,15 @@ export const STUDENT_REPORT_TYPES = [
   'Weekly Progress',
   'Accomplishment Report',
   'Incident Report',
+  'final_report',
 ];
+
+export const FINAL_REPORT_TYPE = 'final_report';
+
+/** Coordinator-reviewed: gateway credentials and the final report (clearance reads the latter). */
+export function isCoordinatorReviewType(type: string): boolean {
+  return type?.trim() === FINAL_REPORT_TYPE || GATEWAY_DOCUMENT_SPECS.some(spec => matchesDoc(type, spec.name));
+}
 
 export const SUPERVISOR_REVIEW_REPORT_TYPES = [
   'Daily Journal',

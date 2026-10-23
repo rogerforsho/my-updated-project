@@ -15,7 +15,7 @@ import {
   type GatewayComplianceSummary,
 } from '@/src/services/reports';
 import { getSignedDocumentUrl } from '@/src/services/storage';
-import { GATEWAY_DOCUMENT_SPECS, SUPERVISOR_REVIEW_REPORT_TYPES, matchesDoc } from '@ojt/shared';
+import { isCoordinatorReviewType, SUPERVISOR_REVIEW_REPORT_TYPES } from '@ojt/shared';
 
 export default function CoordinatorSubmissionsPage() {
   // Top-level tab: 'compliance' (Who needs requirements) vs 'feed' (Document review stream)
@@ -660,7 +660,7 @@ export default function CoordinatorSubmissionsPage() {
                           </Badge>
                         </td>
                         <td className="px-5 py-4 text-right">
-                          {GATEWAY_DOCUMENT_SPECS.some(spec => matchesDoc(r.report_type, spec.name)) ? <Button
+                          {isCoordinatorReviewType(r.report_type) ? <Button
                             variant="ghost"
                             onClick={() => {
                               setReviewingReport(r);

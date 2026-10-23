@@ -8,7 +8,7 @@ import { getServiceClient } from '@/src/lib/supabase/service';
 import { recordAuditEvent } from '@/src/lib/audit';
 import { validateUploadedBytes } from '@/src/lib/uploadValidation';
 import { authActionLimit } from '@/src/services/auth/internal';
-import { GATEWAY_DOCUMENT_SPECS, STUDENT_REPORT_TYPES, SUPERVISOR_REVIEW_REPORT_TYPES, matchesDoc } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, isCoordinatorReviewType, STUDENT_REPORT_TYPES, SUPERVISOR_REVIEW_REPORT_TYPES, matchesDoc } from '@ojt/shared';
 import type { AppResult, DbReport } from '@ojt/shared';
 
 
@@ -152,7 +152,7 @@ export async function reviewReport(
     .select('student_id, report_type').eq('report_id', report_id).maybeSingle();
   if (targetError) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load report.' } };
   if (!target) return { data: null, error: { code: 'NOT_FOUND', message: 'Report not found or access denied.' } };
-  if (!GATEWAY_DOCUMENT_SPECS.some(spec => matchesDoc(target.report_type, spec.name)))
+  if (!isCoordinatorReviewType(target.report_type))
     return { data: null, error: { code: 'FORBIDDEN', message: 'Routine accomplishment reports are reviewed by the assigned Supervisor.' } };
   if (!await canManageDepartmentRecord(supabase, user.id, profile.role, 'reports', 'report_id', report_id))
     return { data: null, error: { code: 'FORBIDDEN', message: 'Report is outside your department.' } };
