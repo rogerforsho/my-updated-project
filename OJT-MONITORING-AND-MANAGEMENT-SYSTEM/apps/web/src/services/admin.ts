@@ -129,6 +129,7 @@ export async function createSystemUser(
   try {
     created = await service.auth.admin.createUser({
       email,
+      email_confirm: true, // unconfirmed accounts could be claimed by a public signup with this email
       app_metadata: { role: 'Coordinator' },
       user_metadata: { full_name: fullName },
     });
@@ -138,7 +139,7 @@ export async function createSystemUser(
   const { data: authData, error: createError } = created;
   let authError = createError;
   if (!authError && authData.user) {
-    const { error } = await service.auth.admin.inviteUserByEmail(email, { redirectTo, data: { full_name: fullName } });
+    const { error } = await service.auth.resetPasswordForEmail(email, { redirectTo }); // sends the one-time setup link
     if (error) {
       await service.auth.admin.deleteUser(authData.user.id);
       authError = error;

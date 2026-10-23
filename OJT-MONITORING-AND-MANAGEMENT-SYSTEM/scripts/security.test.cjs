@@ -135,18 +135,10 @@ function workflowFixture(role = 'Admin', options = {}) {
     // Mirrors the auth.users triggers: without app_metadata.role a new user is a Student and needs ID-card paths.
     async createUser(input) {
       // The real BEFORE INSERT trigger only lets staff through when the server registered their email first.
-      if (!(tables.pending_staff_invites || []).some(row => row.email === input.email) || !['Coordinator', 'Supervisor'].includes(input.app_metadata?.role) || Object.hasOwn(input, 'password') || input.email_confirm)
+      if (!(tables.pending_staff_invites || []).some(row => row.email === input.email) || !['Coordinator', 'Supervisor'].includes(input.app_metadata?.role) || Object.hasOwn(input, 'password') || input.email_confirm !== true)
         return { data: { user: null }, error: { message: 'Database error creating new user' } };
       tables.users.push({ user_id: 'new-user', email: input.email, role: input.app_metadata.role, account_status: 'pending' });
       return { data: { user: { id: 'new-user' } }, error: null };
-    },
-    async inviteUserByEmail(email, input) {
-      assert.match(input.redirectTo, /auth\/callback\?next=/);
-      if (options.inviteError) return { data: { user: null }, error: { message: options.inviteError } };
-      const user = tables.users.find(row => row.email === email && row.user_id === 'new-user');
-      if (!user) return { data: { user: null }, error: { message: 'Database error saving new user' } };
-      invites.push(email);
-      return { data: { user: { id: user.user_id } }, error: null };
     },
     async updateUserById() { return { error: null }; },
     async deleteUser(id) {
@@ -154,6 +146,13 @@ function workflowFixture(role = 'Admin', options = {}) {
       for (const table of ['users','students','coordinators','staff_capability_grants','supervisors']) tables[table] = (tables[table] || []).filter(row => row.user_id !== id);
       return { error: null };
     },
+  }, async resetPasswordForEmail(email, input) {
+    assert.match(input.redirectTo, /auth\/callback\?next=/);
+    if (options.inviteError) return { data: null, error: { message: options.inviteError } };
+    const user = tables.users.find(row => row.email === email && row.user_id === 'new-user');
+    if (!user) return { data: null, error: { message: 'User not found' } };
+    invites.push(email);
+    return { data: {}, error: null };
   } } };
   const modules = {};
   function module(name) {
@@ -1152,10 +1151,8 @@ test('supervisor onboarding sends a setup invitation without creating a password
     auth: { admin: {
       async createUser(input) { creation = input; return { data: { user: { id: 'supervisor-1' } }, error: null }; },
       async updateUserById() { return { error: null }; },
-      async updateUserById() { return { error: null }; },
-      async inviteUserByEmail(email, options) { invitation = { email, options }; return { data: { user: { id: 'supervisor-1' } }, error: null }; },
       async deleteUser() { deleted++; return { error: null }; },
-    } },
+    }, async resetPasswordForEmail(email, options) { invitation = { email, options }; return { data: {}, error: null }; } },
     from() {
       return {
         delete() { return this; }, update() { return this; }, eq() { return this; }, like() { return this; },
@@ -1184,6 +1181,7 @@ test('supervisor onboarding sends a setup invitation without creating a password
   assert.equal(Object.hasOwn(creation, 'password'), false);
   assert.match(invitation.options.redirectTo, /auth\/callback/);
   assert.equal(Object.hasOwn(invitation.options, 'password'), false);
+  assert.equal(creation.email_confirm, true);
   assert.equal(deleted, 0);
 });
 
@@ -1193,9 +1191,8 @@ test('supervisor onboarding rolls back only the newly invited account when profi
     auth: { admin: {
       async createUser() { return { data: { user: { id: 'supervisor-2' } }, error: null }; },
       async updateUserById() { return { error: null }; },
-      async inviteUserByEmail() { return { data: { user: { id: 'supervisor-2' } }, error: null }; },
       async deleteUser(id) { deletedId = id; return { error: null }; },
-    } },
+    }, async resetPasswordForEmail() { return { data: {}, error: null }; } },
     from(table) {
       return {
         delete() { return this; }, update() { return this; }, eq() { return this; }, like() { return this; },
