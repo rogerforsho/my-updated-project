@@ -1513,3 +1513,22 @@ test('Docker server Supabase URLs are rewritten to the browser origin for signed
   const externalUrl = 'https://cdn.example.test/report.pdf';
   assert.equal(helper.toPublicSupabaseUrl(externalUrl), externalUrl);
 });
+
+test('HTE geofence radius is limited to 30-50 m for companies and branches', async () => {
+  // No signed-in user: inputs that pass validation stop at FORBIDDEN, rejected ones at VALIDATION_FAILURE.
+  const client = { auth: { async getUser() { return { data: { user: null } }; } } };
+  const companies = load('apps/web/src/services/companies.ts', {
+    '@/src/lib/supabase/server': { createClient: async () => client },
+    '@/src/lib/audit': { recordAuditEvent: async () => {} },
+  });
+  const company = { company_name: 'HTE', address: '1 Road', contact_person: 'Contact', contact_email: 'hte@example.test', contact_number: '0000' };
+  const branch = { company_id: 'company', branch_name: 'Branch', address: '1 Road', latitude: 14, longitude: 121 };
+  for (const [radius, code] of [[29, 'VALIDATION_FAILURE'], [51, 'VALIDATION_FAILURE'], [30, 'FORBIDDEN'], [40, 'FORBIDDEN'], [50, 'FORBIDDEN']]) {
+    const created = await companies.createCompany({ ...company, geofence_radius_meters: radius });
+    assert.equal(created.error.code, code, `company radius ${radius}`);
+    if (code === 'VALIDATION_FAILURE') assert.match(created.error.message, /between 30 and 50 meters/);
+    assert.equal((await companies.createCompanyBranch({ ...branch, geofence_radius_meters: radius })).error.code, code, `branch radius ${radius}`);
+  }
+  // Omitted radius falls back to the 50 m default, which is valid.
+  assert.equal((await companies.createCompanyBranch(branch)).error.code, 'FORBIDDEN');
+});

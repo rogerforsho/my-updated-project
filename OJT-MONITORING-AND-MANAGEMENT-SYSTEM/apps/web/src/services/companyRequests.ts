@@ -34,13 +34,13 @@ export async function decideCompanyRequest(input: {
   if (!input.request_id || (input.decision === 'reject' && !input.feedback?.trim()) ||
       (input.decision === 'approve' && (!Number.isFinite(input.latitude) || !Number.isFinite(input.longitude) ||
         input.latitude! < -90 || input.latitude! > 90 || input.longitude! < -180 || input.longitude! > 180 ||
-        !Number.isInteger(input.radius) || input.radius! < 50 || input.radius! > 5000)))
+        !Number.isInteger(input.radius) || input.radius! < 30 || input.radius! > 50)))
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Provide feedback for rejection or a valid branch location for approval.' } };
   const { data, error } = await supabase.rpc('review_company_request', {
     p_request_id: input.request_id, p_decision: input.decision, p_feedback: input.feedback?.trim() || null,
     p_latitude: input.decision === 'approve' ? input.latitude : null,
     p_longitude: input.decision === 'approve' ? input.longitude : null,
-    p_radius: input.decision === 'approve' ? input.radius : 150,
+    p_radius: input.decision === 'approve' ? input.radius : 50,
   });
   if (error || data !== 'ok') return { data: null, error: { code: data === 'duplicate_company' ? 'DUPLICATE_REQUEST' : 'SERVER_FAILURE', message: data === 'duplicate_company' ? 'An HTE with this name already exists. Match the request to the existing HTE.' : 'The HTE request decision could not be saved.' } };
   return { data: null, error: null };

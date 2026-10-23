@@ -43,7 +43,7 @@ const customPinIcon = L.divIcon({
 export default function LocationPickerMap({
   latitude,
   longitude,
-  radiusMeters = 150,
+  radiusMeters = 50,
   initialSearchQuery = '',
   onLocationChange,
   onRadiusChange,
@@ -230,7 +230,7 @@ export default function LocationPickerMap({
     setSearchQuery(item.display_name.split(',')[0] || item.display_name);
   };
 
-  const presetRadii = [50, 100, 150, 250, 500];
+  const presetRadii = [30, 40, 50];
 
   return (
     <div className="space-y-3">
@@ -338,7 +338,7 @@ export default function LocationPickerMap({
                     : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'
                 }`}
               >
-                {r}m{r === 150 ? ' (Std)' : ''}
+                {r}m{r === 50 ? ' (Std)' : ''}
               </button>
             ))}
           </div>
@@ -347,8 +347,8 @@ export default function LocationPickerMap({
         <input
           type="range"
           min="30"
-          max="500"
-          step="10"
+          max="50"
+          step="5"
           value={radiusMeters}
           onChange={(e) => onRadiusChange(parseInt(e.target.value, 10))}
           className="w-full accent-emerald-600 cursor-pointer"

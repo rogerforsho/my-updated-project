@@ -8,7 +8,7 @@ export default function BranchesPage() {
   const [companies, setCompanies] = useState<CompanyWithSupervisors[]>([]);
   const [companyId, setCompanyId] = useState('');
   const [branches, setBranches] = useState<DbCompanyBranch[]>([]);
-  const [form, setForm] = useState({ branch_name: '', address: '', latitude: '', longitude: '', radius: '150' });
+  const [form, setForm] = useState({ branch_name: '', address: '', latitude: '', longitude: '', radius: '50' });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -28,7 +28,7 @@ export default function BranchesPage() {
     });
     setSaving(false);
     if (result.error) { setError(result.error.message); return; }
-    setForm({ branch_name: '', address: '', latitude: '', longitude: '', radius: '150' });
+    setForm({ branch_name: '', address: '', latitude: '', longitude: '', radius: '50' });
     const refreshed = await listCompanyBranches(companyId);
     if (refreshed.data) setBranches(refreshed.data);
   }
@@ -53,7 +53,7 @@ export default function BranchesPage() {
         <input required maxLength={500} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Street address" className="rounded-lg border p-2.5 sm:col-span-2" />
         <input required type="number" min={-90} max={90} step="any" value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} placeholder="Latitude" className="rounded-lg border p-2.5" />
         <input required type="number" min={-180} max={180} step="any" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} placeholder="Longitude" className="rounded-lg border p-2.5" />
-        <input required type="number" min={50} max={5000} value={form.radius} onChange={(e) => setForm({ ...form, radius: e.target.value })} aria-label="Geofence radius in meters" className="rounded-lg border p-2.5" />
+        <input required type="number" min={30} max={50} value={form.radius} onChange={(e) => setForm({ ...form, radius: e.target.value })} aria-label="Geofence radius in meters" className="rounded-lg border p-2.5" />
       </div>
       <button disabled={saving} className="mt-4 rounded-lg bg-emerald-800 px-4 py-2 font-semibold text-white disabled:opacity-50">{saving ? 'Saving…' : 'Add branch'}</button>
     </form>}

@@ -33,7 +33,7 @@ const EMPTY_FORM: CompanyInput = {
   contact_number: '',
   latitude: null,
   longitude: null,
-  geofence_radius_meters: 150,
+  geofence_radius_meters: 50,
   geofence_enabled: false,
 };
 
@@ -101,7 +101,7 @@ export default function CoordinatorCompaniesPage() {
       contact_number: company.contact_number,
       latitude: company.latitude ?? null,
       longitude: company.longitude ?? null,
-      geofence_radius_meters: company.geofence_radius_meters ?? 150,
+      geofence_radius_meters: company.geofence_radius_meters ?? 50,
       geofence_enabled: company.geofence_enabled ?? false,
     });
     setFormError('');
@@ -352,7 +352,7 @@ export default function CoordinatorCompaniesPage() {
                     <td className="px-3.5 py-3.5 whitespace-nowrap">
                       {c.geofence_enabled && c.latitude != null && c.longitude != null ? (
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          📍 {c.geofence_radius_meters ?? 150}m
+                          📍 {c.geofence_radius_meters ?? 50}m
                         </span>
                       ) : (
                         <span className="text-xs text-slate-400 font-medium" title="GPS Location not configured">—</span>
@@ -478,7 +478,7 @@ export default function CoordinatorCompaniesPage() {
                 <LocationPickerMap
                   latitude={form.latitude}
                   longitude={form.longitude}
-                  radiusMeters={form.geofence_radius_meters || 150}
+                  radiusMeters={form.geofence_radius_meters || 50}
                   initialSearchQuery={form.address}
                   onLocationChange={(lat, lng) => setForm(f => ({ ...f, latitude: lat, longitude: lng }))}
                   onRadiusChange={(radius) => setForm(f => ({ ...f, geofence_radius_meters: radius }))}
