@@ -81,3 +81,15 @@ export async function authActionLimit(
   }
   return ipAllowed ? null : { code: 'RATE_LIMITED', message: 'Too many attempts from this network. Please wait before trying again.' };
 }
+
+// Gives back a login attempt after a successful sign-in so only failures count.
+// Best effort: a failed refund only leaves the counter slightly high.
+export async function releaseAuthActionLimit(action: 'login', email: string, windowSeconds: number): Promise<void> {
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!secret) return;
+  const subjectHash = crypto.createHmac('sha256', secret).update(`email:${email.trim().toLowerCase()}`).digest('hex');
+  const { error } = await serviceClient().rpc('release_auth_rate_limit', {
+    p_action: action, p_subject_hash: subjectHash, p_window_seconds: windowSeconds,
+  });
+  if (error) console.error('[authActionLimit] release_auth_rate_limit RPC failed', { code: error.code });
+}

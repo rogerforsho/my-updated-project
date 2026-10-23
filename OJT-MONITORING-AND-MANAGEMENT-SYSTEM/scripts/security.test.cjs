@@ -1595,3 +1595,130 @@ test('HTE geofence radius is limited to 30-50 m for companies and branches', asy
   // Omitted radius falls back to the 50 m default, which is valid.
   assert.equal((await companies.createCompanyBranch(branch)).error.code, 'FORBIDDEN');
 });
+
+// Batch A: database security migrations. Each migration must exist in both trees.
+function migrationSql(name) {
+  const a = fs.readFileSync(path.join(root, 'database/migrations', name), 'utf8');
+  assert.equal(fs.readFileSync(path.join(root, 'supabase/migrations', name), 'utf8'), a);
+  return a;
+}
+const uid = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+
+test('database refuses final grades and certificates until clearance is met', async () => {
+  const { PGlite } = require('@electric-sql/pglite');
+  const db = new PGlite();
+  await db.exec(`
+    CREATE ROLE anon; CREATE ROLE authenticated; CREATE SCHEMA private;
+    CREATE TABLE public.students(student_id uuid PRIMARY KEY, required_hours numeric DEFAULT 486);
+    CREATE TABLE public.internship_progress(student_id uuid, completed_hours numeric);
+    CREATE TABLE public.reports(student_id uuid, report_type text, status text);
+    CREATE TABLE public.evaluations(evaluation_id uuid PRIMARY KEY, student_id uuid, evaluation_type text,
+      performance_score numeric, evaluation_date date);
+    CREATE TABLE public.evaluation_appeals(evaluation_id uuid, student_id uuid, status text,
+      resolved_score numeric, created_at timestamptz DEFAULT now());
+    CREATE TABLE public.ojt_final_grades(student_id uuid PRIMARY KEY, final_grade numeric);
+    CREATE TABLE public.certificates(student_id uuid PRIMARY KEY);
+    CREATE FUNCTION public.ojt_security_revision() RETURNS integer LANGUAGE sql AS $$ SELECT 44 $$;
+  `);
+  await db.exec(migrationSql('20261024000100_enforce_clearance_in_database.sql'));
+  const s = uid(1);
+  await db.exec(`INSERT INTO students(student_id) VALUES ('${s}');
+    INSERT INTO internship_progress VALUES ('${s}', 486);
+    INSERT INTO reports VALUES ('${s}', 'final_report', 'approved');
+    INSERT INTO evaluations VALUES ('${uid(11)}','${s}','midterm',80,'2026-01-01'),('${uid(12)}','${s}','final',70,'2026-02-01');`);
+  await assert.rejects(db.exec(`INSERT INTO ojt_final_grades VALUES ('${s}', 2.0)`), /clearance/i);
+  await assert.rejects(db.exec(`INSERT INTO certificates VALUES ('${s}')`), /clearance/i);
+  await db.exec(`INSERT INTO evaluation_appeals(evaluation_id, student_id, status) VALUES ('${uid(12)}','${s}','pending')`);
+  await assert.rejects(db.exec(`INSERT INTO ojt_final_grades VALUES ('${s}', 2.0)`), /clearance/i);
+  await db.exec(`UPDATE evaluation_appeals SET status = 'adjusted', resolved_score = 76`);
+  await db.exec(`INSERT INTO ojt_final_grades VALUES ('${s}', 2.0)`);
+  await db.exec(`INSERT INTO certificates VALUES ('${s}')`);
+});
+
+test('Super Admin reads of users and audit logs require MFA (aal2)', async () => {
+  const { PGlite } = require('@electric-sql/pglite');
+  const db = new PGlite();
+  await db.exec(`
+    CREATE ROLE anon; CREATE ROLE authenticated; CREATE SCHEMA auth; CREATE SCHEMA private;
+    CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+    CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
+    CREATE TABLE public.users(user_id uuid PRIMARY KEY, role text);
+    CREATE TABLE public.audit_logs(id serial, action text);
+    CREATE FUNCTION private.get_my_role() RETURNS text LANGUAGE sql STABLE SECURITY DEFINER AS $$ SELECT role FROM public.users WHERE user_id = auth.uid() $$;
+    GRANT USAGE ON SCHEMA auth, private, public TO authenticated;
+    GRANT EXECUTE ON FUNCTION auth.uid(), auth.jwt(), private.get_my_role() TO authenticated;
+    GRANT SELECT ON public.users, public.audit_logs TO authenticated;
+    ALTER TABLE public.users ENABLE ROW LEVEL SECURITY; ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY open_read ON public.users FOR SELECT TO authenticated USING (true);
+    CREATE POLICY open_read ON public.audit_logs FOR SELECT TO authenticated USING (true);
+    INSERT INTO public.users VALUES ('${uid(1)}','Admin'),('${uid(2)}','Student');
+    INSERT INTO public.audit_logs(action) VALUES ('X');
+    CREATE FUNCTION public.ojt_security_revision() RETURNS integer LANGUAGE sql AS $$ SELECT 44 $$;
+  `);
+  await db.exec(migrationSql('20261024000200_require_mfa_for_admin_reads.sql'));
+  const count = async (sub, aal, table) => {
+    await db.exec(`SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub','${sub}',false), set_config('request.jwt.claims','{"aal":"${aal}"}',false)`);
+    try { return (await db.query(`SELECT count(*)::int AS n FROM public.${table}`)).rows[0].n; }
+    finally { await db.exec('RESET ROLE'); }
+  };
+  assert.equal(await count(uid(1), 'aal1', 'audit_logs'), 0);
+  assert.equal(await count(uid(1), 'aal1', 'users'), 1); // own row only
+  assert.equal(await count(uid(1), 'aal2', 'audit_logs'), 1);
+  assert.equal(await count(uid(1), 'aal2', 'users'), 2);
+  assert.equal(await count(uid(2), 'aal1', 'audit_logs'), 1);
+  assert.equal(await count(uid(2), 'aal1', 'users'), 2);
+});
+
+test('coordinators cannot update attendance status directly', async () => {
+  const { PGlite } = require('@electric-sql/pglite');
+  const db = new PGlite();
+  await db.exec(`
+    CREATE ROLE anon; CREATE ROLE authenticated; CREATE SCHEMA auth; CREATE SCHEMA private;
+    CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+    CREATE TABLE public.users(user_id uuid PRIMARY KEY, role text);
+    CREATE TABLE public.attendance(attendance_id int PRIMARY KEY, verification_status text);
+    CREATE FUNCTION public.get_my_role() RETURNS text LANGUAGE sql STABLE SECURITY DEFINER AS $$ SELECT role FROM public.users WHERE user_id = auth.uid() $$;
+    GRANT USAGE ON SCHEMA auth, public TO authenticated;
+    GRANT EXECUTE ON FUNCTION auth.uid(), public.get_my_role() TO authenticated;
+    GRANT SELECT, UPDATE ON public.attendance TO authenticated;
+    ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY read_all ON public.attendance FOR SELECT TO authenticated USING (true);
+    CREATE POLICY coordinator_admin_update_attendance ON public.attendance FOR UPDATE TO authenticated
+      USING (public.get_my_role() IN ('Coordinator', 'Admin')) WITH CHECK (public.get_my_role() IN ('Coordinator', 'Admin'));
+    INSERT INTO public.users VALUES ('${uid(1)}','Coordinator');
+    INSERT INTO public.attendance VALUES (1, 'pending');
+    CREATE FUNCTION public.coordinator_decide_attendance_exception(uuid, text, text) RETURNS uuid LANGUAGE sql AS $$ SELECT $1 $$;
+    CREATE FUNCTION public.ojt_security_revision() RETURNS integer LANGUAGE sql AS $$ SELECT 44 $$;
+  `);
+  const direct = async () => {
+    await db.exec(`SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub','${uid(1)}',false)`);
+    try { return (await db.query(`UPDATE public.attendance SET verification_status = 'verified' RETURNING 1`)).rows.length; }
+    finally { await db.exec('RESET ROLE'); }
+  };
+  assert.equal(await direct(), 1); // the hole this migration closes
+  await db.exec(migrationSql('20261024000300_coordinator_attendance_via_rpc_only.sql'));
+  assert.equal(await direct(), 0);
+});
+
+test('successful logins are refunded from the login rate limit counter', async () => {
+  const { PGlite } = require('@electric-sql/pglite');
+  const db = new PGlite();
+  const hash = 'a'.repeat(64);
+  await db.exec(`
+    CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+    CREATE TABLE public.auth_rate_limits(action text, subject_hash text, window_start timestamptz, attempts integer,
+      PRIMARY KEY (action, subject_hash, window_start));
+    CREATE FUNCTION public.ojt_security_revision() RETURNS integer LANGUAGE sql AS $$ SELECT 44 $$;
+  `);
+  await db.exec(migrationSql('20261024000400_login_limit_counts_failures_only.sql'));
+  const attempts = async () => (await db.query(`SELECT attempts FROM public.auth_rate_limits WHERE action='login'`)).rows[0]?.attempts;
+  const release = () => db.query(`SELECT public.release_auth_rate_limit('login', '${hash}', 900)`);
+  await db.exec(`INSERT INTO public.auth_rate_limits VALUES ('login','${hash}', to_timestamp(floor(extract(epoch FROM now())/900)*900), 3)`);
+  await release();
+  assert.equal(await attempts(), 2);
+  await release(); await release(); await release();
+  assert.equal(await attempts(), 0); // never negative
+  await assert.rejects(db.query(`SELECT public.release_auth_rate_limit('report_submit', '${hash}', 900)`), /Invalid/);
+  const session = fs.readFileSync(path.join(root, 'apps/web/src/services/auth/session.ts'), 'utf8');
+  assert.match(session, /releaseAuthActionLimit\('login'/);
+});

@@ -1,6 +1,6 @@
 import 'server-only';
 import { createClient } from '@/src/lib/supabase/server';
-import { authActionLimit, auditSubjectHash } from './internal';
+import { authActionLimit, auditSubjectHash, releaseAuthActionLimit } from './internal';
 import { redirect } from 'next/navigation';
 import { recordAuditEvent } from '@/src/lib/audit';
 import type { AppResult } from '@ojt/shared';
@@ -57,6 +57,8 @@ export async function signIn(input: SignInInput): Promise<AppResult<{ email: str
 
     return { data: null, error: { code: 'UNAUTHORIZED', message: msg } };
   }
+
+  await releaseAuthActionLimit('login', input.email, 900);
 
   // Check account status — backend authority
   const { data: user } = await supabase
