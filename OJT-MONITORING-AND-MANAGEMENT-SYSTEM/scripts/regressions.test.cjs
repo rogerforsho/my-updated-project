@@ -619,3 +619,18 @@ test('forgotten time-out: open attendance older than 10 hours is auto timed-out 
   assert.equal(updates[0].verification_status, 'pending');
   assert.match(updates[0].time_out_flag_reason, /automatic time-out/i);
 });
+
+test('Supervisor attendance review shows Time In and Time Out errand/justification notes', () => {
+  const page = fs.readFileSync(path.join(root, 'apps/web/app/(dashboard)/supervisor/attendance/page.tsx'), 'utf8');
+  assert.match(page, /selected\.time_out_flag_reason/);
+  assert.match(page, /time_out_location_status/);
+  assert.match(page, /location_unavailable/);
+});
+
+test('Supervisor bulk verify only includes clean logs, never flagged entries', () => {
+  const page = fs.readFileSync(path.join(root, 'apps/web/app/(dashboard)/supervisor/attendance/page.tsx'), 'utf8');
+  assert.match(page, /setBatchIds\(cleanLogs\.map\(/);
+  assert.match(page, /cleanLogs\.length > 0 &&/);
+  assert.doesNotMatch(page, /Verify this page/);
+  assert.match(page, /r\.time_out_flag_reason/);
+});
