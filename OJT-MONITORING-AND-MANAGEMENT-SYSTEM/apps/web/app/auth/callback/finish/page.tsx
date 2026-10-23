@@ -8,7 +8,7 @@ export default function CallbackFinishPage() {
   useEffect(() => {
     const fail = () => window.location.replace('/auth/sign-in?error=auth_callback_failed');
     const requestedNext = new URLSearchParams(window.location.search).get('next') ?? '/dashboard';
-    const next = requestedNext.startsWith('/') && !requestedNext.startsWith('//') && !requestedNext.includes('\')
+    const next = requestedNext.startsWith('/') && !requestedNext.startsWith('//') && !requestedNext.includes('\\')
       ? requestedNext
       : '/dashboard';
     const hash = new URLSearchParams(window.location.hash.slice(1));
