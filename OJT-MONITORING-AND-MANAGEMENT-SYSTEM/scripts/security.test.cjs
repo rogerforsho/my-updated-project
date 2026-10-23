@@ -736,6 +736,31 @@ test('administrator cannot disable their own account or report success for a mis
   assert.equal(fixture.events.length, 0);
 });
 
+test('Super Admin cannot deactivate a Coordinator who still has active students in their department', async () => {
+  const coordinator = (id, department) => [
+    { user_id: id, role: 'Coordinator', account_status: 'active', full_name: id, email: `${id}@example.test` },
+    { user_id: id, capability: 'academic_workflows', department_scope: department, revoked_at: null },
+  ];
+  const [icsUser, icsGrant] = coordinator('co-ics', 'ICS');
+  const [ibeUser, ibeGrant] = coordinator('co-ibe', 'IBE');
+  const fixture = workflowFixture('Admin', { tables: {
+    staff_capability_grants: [icsGrant, ibeGrant],
+    students: [
+      { student_id: 's-ics', course: 'BSIT', student_assignments: { assignment_status: 'active' } },
+      { student_id: 's-ibe', course: 'BSBA', student_assignments: { assignment_status: 'completed' } },
+    ],
+  } });
+  fixture.tables.users.push(icsUser, ibeUser);
+  const admin = fixture.module('admin');
+  for (const result of [await admin.deactivateSystemUser('co-ics'), await admin.updateUserAccountStatus('co-ics', 'inactive')]) {
+    assert.equal(result.error?.code, 'FORBIDDEN');
+    assert.match(result.error.message, /active student/i);
+  }
+  assert.equal(icsUser.account_status, 'active');
+  assert.equal((await admin.deactivateSystemUser('co-ibe')).error, null, 'completed placements do not block');
+  assert.equal(ibeUser.account_status, 'inactive');
+});
+
 test('Super Admin actions require an AAL2 session before service-role access', async () => {
   const fixture = workflowFixture('Admin', { aal: 'aal1' });
   const result = await fixture.module('admin').listAllUsers();
