@@ -163,6 +163,21 @@ async function main() {
   await assert.rejects(() => db.exec(`INSERT INTO public.student_assignments(student_id,company_id,branch_id,supervisor_id,start_date,assignment_status) VALUES ('${ids[2]}','${ids[3]}','${approved.rows[0].branch_id}','${ids[4]}','2026-10-02','active')`), /student_assignments_company_branch_fkey/);
   assert.equal((await db.query(`SELECT count(*)::int AS n FROM public.notifications WHERE receiver_user_id='${ids[0]}'`)).rows[0].n, 1);
   assert.equal((await db.query(`SELECT count(*)::int AS n FROM public.audit_logs WHERE action='HTE_REQUEST_APPROVE'`)).rows[0].n, 1);
+  // Radius 30..50 migration: clamps legacy rows, then enforces the range in the table and the RPC.
+  const radiusMigration = fs.readFileSync(path.join(root, 'database/migrations/20261024000700_limit_geofence_radius_30_50.sql'), 'utf8');
+  assert.equal(fs.readFileSync(path.join(root, 'supabase/migrations/20261024000700_limit_geofence_radius_30_50.sql'), 'utf8'), radiusMigration);
+  await db.exec(`UPDATE public.companies SET geofence_radius_meters = 60 WHERE company_id='${ids[3]}';
+    UPDATE public.company_branches SET geofence_radius_meters = 4000 WHERE company_id='${ids[4]}' AND is_primary;`);
+  await db.exec(radiusMigration);
+  assert.equal((await db.query(`SELECT geofence_radius_meters AS r FROM public.companies WHERE company_id='${ids[3]}'`)).rows[0].r, 50);
+  assert.equal((await db.query(`SELECT geofence_radius_meters AS r FROM public.company_branches WHERE company_id='${ids[4]}' AND is_primary`)).rows[0].r, 50);
+  assert.equal((await db.query(`SELECT count(*)::int AS n FROM public.company_branches WHERE geofence_radius_meters NOT BETWEEN 30 AND 50`)).rows[0].n, 0);
+  for (const bad of [29, 51]) await assert.rejects(() => db.exec(`UPDATE public.company_branches SET geofence_radius_meters = ${bad} WHERE company_id='${ids[4]}'`), /geofence_radius_meters_check/);
+  for (const ok of [30, 40, 50]) await db.exec(`UPDATE public.company_branches SET geofence_radius_meters = ${ok} WHERE company_id='${ids[4]}'`);
+  const defaults = await db.query(`SELECT table_name, column_default FROM information_schema.columns WHERE table_schema='public' AND column_name='geofence_radius_meters' AND table_name IN ('companies','company_branches')`);
+  assert.equal(defaults.rows.length, 2);
+  for (const row of defaults.rows) assert.equal(row.column_default, '50', `${row.table_name} default`);
+  assert.match((await db.query(`SELECT pg_get_functiondef('public.review_company_request(uuid,text,text,numeric,numeric,integer)'::regprocedure) AS d`)).rows[0].d, /p_radius NOT BETWEEN 30 AND 50/);
   await db.close();
   console.log('PASS: HTE branch migration backfills assignments, restricts request decisions to the audited RPC, and keeps student evidence paths owned.');
 }

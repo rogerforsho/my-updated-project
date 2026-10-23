@@ -33,8 +33,8 @@ function validateCompanyInput(input: CompanyInput): string | null {
   if (input.longitude != null && (isNaN(input.longitude) || input.longitude < -180 || input.longitude > 180)) {
     return 'Longitude must be a valid number between -180 and 180.';
   }
-  if (input.geofence_radius_meters != null && (input.geofence_radius_meters < 50 || input.geofence_radius_meters > 5000)) {
-    return 'Workplace perimeter radius must be between 50 and 5,000 meters.';
+  if (input.geofence_radius_meters != null && (input.geofence_radius_meters < 30 || input.geofence_radius_meters > 50)) {
+    return 'Workplace perimeter radius must be between 30 and 50 meters.';
   }
   return null;
 }
@@ -98,15 +98,15 @@ export async function createCompanyBranch(input: {
   if (!input.company_id || !input.branch_name.trim() || !input.address.trim() ||
       !Number.isFinite(input.latitude) || input.latitude < -90 || input.latitude > 90 ||
       !Number.isFinite(input.longitude) || input.longitude < -180 || input.longitude > 180 ||
-      !Number.isInteger(input.geofence_radius_meters ?? 150) || (input.geofence_radius_meters ?? 150) < 50 || (input.geofence_radius_meters ?? 150) > 5000)
-    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Provide a branch name, address, valid map coordinates, and a radius from 50 to 5,000 meters.' } };
+      !Number.isInteger(input.geofence_radius_meters ?? 50) || (input.geofence_radius_meters ?? 50) < 30 || (input.geofence_radius_meters ?? 50) > 50)
+    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Provide a branch name, address, valid map coordinates, and a radius between 30 and 50 meters.' } };
   const { supabase, user, authorized } = await assertCoordinator();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   const { data: company } = await supabase.from('companies').select('company_id').eq('company_id', input.company_id).eq('status', 'active').maybeSingle();
   if (!company) return { data: null, error: { code: 'NOT_FOUND', message: 'Active HTE not found.' } };
   const { data, error } = await supabase.from('company_branches').insert({
     company_id: input.company_id, branch_name: input.branch_name.trim(), address: input.address.trim(),
-    latitude: input.latitude, longitude: input.longitude, geofence_radius_meters: input.geofence_radius_meters ?? 150,
+    latitude: input.latitude, longitude: input.longitude, geofence_radius_meters: input.geofence_radius_meters ?? 50,
     geofence_enabled: true, is_primary: false, status: 'active',
   }).select('branch_id, company_id, branch_name, address, latitude, longitude, geofence_radius_meters, geofence_enabled, is_primary, status').single();
   if (error) return { data: null, error: { code: error.code === '23505' ? 'DUPLICATE_REQUEST' : 'SERVER_FAILURE', message: error.code === '23505' ? 'A branch with this name already exists for the HTE.' : 'Failed to create HTE branch.' } };
@@ -144,7 +144,7 @@ export async function createCompany(input: CompanyInput): Promise<AppResult<DbCo
       contact_number: input.contact_number.trim(),
       latitude: input.latitude ?? null,
       longitude: input.longitude ?? null,
-      geofence_radius_meters: input.geofence_radius_meters ?? 150,
+      geofence_radius_meters: input.geofence_radius_meters ?? 50,
       geofence_enabled: input.geofence_enabled ?? false,
       status: 'active',
     })
@@ -185,7 +185,7 @@ export async function updateCompany(
       contact_number: input.contact_number.trim(),
       latitude: input.latitude ?? null,
       longitude: input.longitude ?? null,
-      geofence_radius_meters: input.geofence_radius_meters ?? 150,
+      geofence_radius_meters: input.geofence_radius_meters ?? 50,
       geofence_enabled: input.geofence_enabled ?? false,
       updated_at: new Date().toISOString(),
     })
@@ -422,7 +422,7 @@ export async function getDeploymentMapData(): Promise<AppResult<{
       ...c,
       latitude: c.latitude != null ? Number(c.latitude) : null,
       longitude: c.longitude != null ? Number(c.longitude) : null,
-      geofence_radius_meters: c.geofence_radius_meters || 150,
+      geofence_radius_meters: c.geofence_radius_meters || 50,
       geofence_enabled: !!c.geofence_enabled,
       assigned_trainees: trainees,
     };

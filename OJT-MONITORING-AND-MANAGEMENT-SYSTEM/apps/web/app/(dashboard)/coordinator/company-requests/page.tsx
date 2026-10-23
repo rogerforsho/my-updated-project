@@ -36,7 +36,7 @@ export default function CompanyRequestsPage() {
     setBusy(true); setError('');
     const result = await decideCompanyRequest({
       request_id: selected.request_id, decision, feedback,
-      latitude: Number(latitude), longitude: Number(longitude), radius: 150,
+      latitude: Number(latitude), longitude: Number(longitude), radius: 50,
     });
     setBusy(false);
     if (result.error) { setError(result.error.message); return; }
