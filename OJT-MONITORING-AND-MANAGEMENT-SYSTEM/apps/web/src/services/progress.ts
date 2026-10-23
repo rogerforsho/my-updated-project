@@ -96,8 +96,9 @@ export async function listCohortProgress(
     .range(from, to);
 
   if (courseFilter && courseFilter !== 'all') query = query.eq('course', courseFilter);
+  // Anti-join other statuses so both missing progress and explicit not_started rows match.
   if (statusFilter === 'not_started')
-    query = query.or('progress_filter.is.null,progress_filter.progress_status.eq.not_started');
+    query = query.neq('progress_filter.progress_status', 'not_started').is('progress_filter', null);
   else if (statusFilter)
     query = query.eq('progress_filter.progress_status', statusFilter).not('progress_filter', 'is', 'null');
   query = restrictDepartment(query, scope.department);
