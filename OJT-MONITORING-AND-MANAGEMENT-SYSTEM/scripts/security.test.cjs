@@ -134,7 +134,8 @@ function workflowFixture(role = 'Admin', options = {}) {
     async getUserById(id) { return { data: { user: { id, email_confirmed_at: options.unconfirmedUsers?.includes(id) ? null : '2026-01-01T00:00:00Z' } }, error: null }; },
     // Mirrors the auth.users triggers: without app_metadata.role a new user is a Student and needs ID-card paths.
     async createUser(input) {
-      if (!['Coordinator', 'Supervisor'].includes(input.app_metadata?.role) || Object.hasOwn(input, 'password') || input.email_confirm)
+      // The real BEFORE INSERT trigger only lets staff through when the server registered their email first.
+      if (!(tables.pending_staff_invites || []).some(row => row.email === input.email) || !['Coordinator', 'Supervisor'].includes(input.app_metadata?.role) || Object.hasOwn(input, 'password') || input.email_confirm)
         return { data: { user: null }, error: { message: 'Database error creating new user' } };
       tables.users.push({ user_id: 'new-user', email: input.email, role: input.app_metadata.role, account_status: 'pending' });
       return { data: { user: { id: 'new-user' } }, error: null };
@@ -748,6 +749,7 @@ test('coordinator invitation rolls back failed profile writes and activates only
       assert.equal(fixture.tables.coordinators.length, 1);
       assert.equal(fixture.tables.staff_capability_grants.length, 2);
       assert.deepEqual(fixture.invites, ['staff@example.invalid']);
+      assert.deepEqual(fixture.tables.pending_staff_invites, [], 'pending staff email is removed after creation');
       assert.equal(fixture.events[0].action, 'OJT_COORDINATOR_INVITED');
     }
   }
@@ -772,6 +774,7 @@ test('Coordinator supervisor onboarding creates a Supervisor account and sends i
   const result = await fixture.module('supervisors').createSupervisor({ full_name: 'Supervisor', email: 'supervisor@example.test', company_id: 'company-1', position: 'Mentor' });
   assert.equal(result.error, null);
   assert.deepEqual(fixture.invites, ['supervisor@example.test']);
+  assert.deepEqual(fixture.tables.pending_staff_invites, []);
   assert.equal(fixture.tables.users.find(row => row.user_id === 'new-user').role, 'Supervisor');
   assert.equal(fixture.tables.supervisors.length, 1);
 });
@@ -1148,12 +1151,15 @@ test('supervisor onboarding sends a setup invitation without creating a password
   const service = {
     auth: { admin: {
       async createUser(input) { creation = input; return { data: { user: { id: 'supervisor-1' } }, error: null }; },
+      async updateUserById() { return { error: null }; },
+      async updateUserById() { return { error: null }; },
       async inviteUserByEmail(email, options) { invitation = { email, options }; return { data: { user: { id: 'supervisor-1' } }, error: null }; },
       async deleteUser() { deleted++; return { error: null }; },
     } },
     from() {
       return {
         delete() { return this; }, update() { return this; }, eq() { return this; }, like() { return this; },
+        upsert() { return Promise.resolve({ error: null }); },
         insert() { return Promise.resolve({ error: null }); },
         then(resolve, reject) { return Promise.resolve({ error: null }).then(resolve, reject); },
       };
@@ -1186,12 +1192,14 @@ test('supervisor onboarding rolls back only the newly invited account when profi
   const service = {
     auth: { admin: {
       async createUser() { return { data: { user: { id: 'supervisor-2' } }, error: null }; },
+      async updateUserById() { return { error: null }; },
       async inviteUserByEmail() { return { data: { user: { id: 'supervisor-2' } }, error: null }; },
       async deleteUser(id) { deletedId = id; return { error: null }; },
     } },
     from(table) {
       return {
         delete() { return this; }, update() { return this; }, eq() { return this; }, like() { return this; },
+        upsert() { return Promise.resolve({ error: null }); },
         insert() { return Promise.resolve({ error: table === 'supervisors' ? { message: 'write failed' } : null }); },
         then(resolve, reject) { return Promise.resolve({ error: null }).then(resolve, reject); },
       };

@@ -122,12 +122,20 @@ export async function createSystemUser(
   if (!siteUrl) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Account invitation is not configured.' } };
   const service = serviceClient();
   const redirectTo = `${siteUrl.replace(/\/$/, '')}/auth/callback?next=${encodeURIComponent('/auth/set-password')}`;
-  // app_metadata is server-only: it marks the account non-Student before the auth triggers run.
-  const { data: authData, error: createError } = await service.auth.admin.createUser({
-    email,
-    app_metadata: { role: 'Coordinator' },
-    user_metadata: { full_name: fullName },
-  });
+  // GoTrue inserts auth.users before app_metadata applies, so register the email for the student-check trigger (service_role only table).
+  const { error: pendingError } = await service.from('pending_staff_invites').upsert({ email, created_at: new Date().toISOString() });
+  if (pendingError) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Account invitation is not available right now.' } };
+  let created;
+  try {
+    created = await service.auth.admin.createUser({
+      email,
+      app_metadata: { role: 'Coordinator' },
+      user_metadata: { full_name: fullName },
+    });
+  } finally {
+    await service.from('pending_staff_invites').delete().eq('email', email);
+  }
+  const { data: authData, error: createError } = created;
   let authError = createError;
   if (!authError && authData.user) {
     const { error } = await service.auth.admin.inviteUserByEmail(email, { redirectTo, data: { full_name: fullName } });
@@ -143,7 +151,13 @@ export async function createSystemUser(
   }
 
   const newUserId = authData.user.id;
-  let setupError: { message: string } | null = null;
+  const { error: metadataError } = await service.auth.admin.updateUserById(newUserId, { app_metadata: { role: 'Coordinator' } });
+  let setupError: { message: string } | null = metadataError;
+  // The AFTER INSERT trigger defaults new accounts to Student; remove only this new account's placeholder row.
+  if (!setupError) {
+    const { error } = await service.from('students').delete().eq('user_id', newUserId).like('student_number', 'PENDING-%');
+    setupError = error;
+  }
   if (!setupError) {
     const { error } = await service.from('users').update({
       full_name: fullName,

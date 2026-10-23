@@ -27,7 +27,7 @@
     "dev:desktop": "concurrently -k \"npm run dev -w apps/web\" \"wait-on http://localhost:3000 && electron apps/desktop\"",
     "build:web": "npm run build -w apps/web",
     "build:desktop": "npm run build -w apps/desktop",
-    "test": "node --test scripts/regressions.test.cjs scripts/security.test.cjs scripts/desktop-connection.test.cjs scripts/mobile-target-safety.test.cjs && node scripts/check-account-collision.cjs && node scripts/check-security-boundaries.cjs && node scripts/check-department-rls.cjs && node scripts/check-registration-resubmission.cjs && node scripts/check-attendance-credit-range.cjs && node scripts/check-supervisor-report-boundary.cjs && node scripts/check-workflow-safety.cjs && node scripts/check-evaluation-appeals.cjs && node scripts/check-hte-branches.cjs && node scripts/check-practicum-review.cjs"
+    "test": "node --test scripts/regressions.test.cjs scripts/security.test.cjs scripts/desktop-connection.test.cjs scripts/mobile-target-safety.test.cjs && node scripts/check-account-collision.cjs && node scripts/check-pending-staff-invites.cjs && node scripts/check-security-boundaries.cjs && node scripts/check-department-rls.cjs && node scripts/check-registration-resubmission.cjs && node scripts/check-attendance-credit-range.cjs && node scripts/check-supervisor-report-boundary.cjs && node scripts/check-workflow-safety.cjs && node scripts/check-evaluation-appeals.cjs && node scripts/check-hte-branches.cjs && node scripts/check-practicum-review.cjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
