@@ -21,6 +21,7 @@ export default function RegisterScreen({ navigation }: Props) {
   const [idCardFront, setIdCardFront] = useState<{ uri: string; name: string; size?: number } | null>(null);
   const [idCardBack, setIdCardBack] = useState<{ uri: string; name: string; size?: number } | null>(null);
   const [dataPrivacyConsent, setDataPrivacyConsent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -215,14 +216,25 @@ export default function RegisterScreen({ navigation }: Props) {
             ] as const).map(({ label, field, placeholder }) => (
               <View key={field} style={s.fieldGroup}>
                 <Text style={s.label}>{label}</Text>
-                <TextInput
-                  style={s.input}
-                  value={form[field]}
-                  onChangeText={(v: string) => set(field, v)}
-                  placeholder={placeholder}
-                  placeholderTextColor="#879687"
-                  secureTextEntry
-                />
+                <View>
+                  <TextInput
+                    style={[s.input, { paddingRight: 40 }]}
+                    value={form[field]}
+                    onChangeText={(v: string) => set(field, v)}
+                    placeholder={placeholder}
+                    placeholderTextColor="#879687"
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(v => !v)}
+                    style={{ position: 'absolute', right: 10, top: 0, bottom: 0, justifyContent: 'center' }}
+                    accessibilityRole="button"
+                    accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color="#526257" />
+                  </TouchableOpacity>
+                </View>
               </View>
             ))}
 

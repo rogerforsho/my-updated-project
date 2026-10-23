@@ -8,7 +8,7 @@ import { getServiceClient } from '@/src/lib/supabase/service';
 import { recordAuditEvent } from '@/src/lib/audit';
 import { validateUploadedBytes } from '@/src/lib/uploadValidation';
 import { authActionLimit } from '@/src/services/auth/internal';
-import { GATEWAY_DOCUMENT_SPECS, isCoordinatorReviewType, STUDENT_REPORT_TYPES, SUPERVISOR_REVIEW_REPORT_TYPES, matchesDoc } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, getGatewayStatus, isCoordinatorReviewType, STUDENT_REPORT_TYPES, SUPERVISOR_REVIEW_REPORT_TYPES, matchesDoc } from '@ojt/shared';
 import type { AppResult, DbReport } from '@ojt/shared';
 
 
@@ -312,23 +312,7 @@ export async function checkStudentGatewayStatus(student_id: string): Promise<{ i
     .eq('student_id', student_id)
     .eq('status', 'approved');
 
-  const approvedReports = reports || [];
-  const approvedSpecs = new Set<string>();
-
-  for (const r of approvedReports) {
-    for (const spec of GATEWAY_DOCUMENT_SPECS) {
-      if (matchesDoc(r.report_type, spec.name)) {
-        approvedSpecs.add(spec.id);
-      }
-    }
-  }
-
-  const missing = GATEWAY_DOCUMENT_SPECS.filter(s => !approvedSpecs.has(s.id)).map(s => s.name);
-  return {
-    isCleared: approvedSpecs.size === GATEWAY_DOCUMENT_SPECS.length,
-    approvedCount: approvedSpecs.size,
-    missing,
-  };
+  return getGatewayStatus(reports || []);
 }
 
 export async function getGatewayComplianceSummary(): Promise<AppResult<GatewayComplianceSummary>> {

@@ -85,6 +85,7 @@ test('EAS preview uses preview environment values and does not inline Supabase c
   assert.equal(easConfig.build.preview.env.EXPO_PUBLIC_APP_ENV, 'preview');
   assert.equal(easConfig.build.preview.env.EXPO_PUBLIC_SUPABASE_URL, undefined);
   assert.equal(easConfig.build.preview.env.EXPO_PUBLIC_SUPABASE_ANON_KEY, undefined);
+  assert.equal(easConfig.build.preview.env.EXPO_PUBLIC_WEB_URL, undefined);
   assert.equal(easConfig.build['appetize-ios'].extends, 'preview');
   assert.equal(easConfig.build.production.environment, 'production');
   assert.equal(easConfig.build.production.env.EXPO_PUBLIC_APP_ENV, 'production');

@@ -11,6 +11,12 @@ const ALLOWED_EXTENSIONS = new Set(['.pdf', '.docx', '.doc', '.jpg', '.jpeg', '.
 export async function POST(request: Request) {
   const auth = await authenticateMobileStudent(request);
   if (auth.error) return mobileBffFailure(auth.error);
+  const { data: completion, error: completionError } = await auth.actor.supabase.from('certificates')
+    .select('certificate_id').eq('student_id', auth.actor.studentId).maybeSingle();
+  if (completionError)
+    return mobileBffFailure({ status: 503, code: 'SERVER_FAILURE', message: 'Could not check OJT completion.' });
+  if (completion)
+    return mobileBffFailure({ status: 409, code: 'FORBIDDEN', message: 'Your OJT is completed. Academic records are read-only.' });
 
   const limitError = await authActionLimit('report_upload', auth.actor.user.id, 10, 3600, 'user');
   if (limitError) return mobileBffFailure({

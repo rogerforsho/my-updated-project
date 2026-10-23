@@ -3,7 +3,10 @@
     "name": "CDM OJT Monitoring",
     "slug": "cdm-ojt-monitoring",
     "scheme": "cdm-ojt-monitoring",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
@@ -26,6 +29,12 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
         "CAMERA",
@@ -57,6 +66,12 @@
         "projectId": "e62cecef-bc8d-4b50-b5a2-c3afa5928642"
       }
     },
-    "owner": "ball01"
+    "owner": "ball01",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e62cecef-bc8d-4b50-b5a2-c3afa5928642"
+    }
   }
 }

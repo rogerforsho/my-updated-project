@@ -88,6 +88,14 @@ async function main() {
     GRANT SELECT ON public.companies, public.student_assignments TO authenticated;
   `);
   await db.exec(migration);
+  const serviceReadMigration = fs.readdirSync(path.join(root, 'supabase/migrations')).find(name => name.endsWith('_attendance_branch_service_read.sql'));
+  assert.ok(serviceReadMigration);
+  const serviceReadSql = fs.readFileSync(path.join(root, 'supabase/migrations', serviceReadMigration), 'utf8');
+  assert.equal(serviceReadSql, fs.readFileSync(path.join(root, 'database/migrations', serviceReadMigration), 'utf8'));
+  await db.exec(serviceReadSql);
+  await db.exec(serviceReadSql);
+  assert.equal((await db.query("SELECT has_table_privilege('service_role', 'public.company_branches', 'SELECT') AS allowed")).rows[0].allowed, true);
+  assert.equal((await db.query("SELECT has_table_privilege('service_role', 'public.company_branches', 'UPDATE') AS allowed")).rows[0].allowed, false);
   assert.equal((await db.query('SELECT count(*)::int AS n FROM public.company_branches')).rows[0].n, 3);
   assert.equal((await db.query('SELECT branch_id IS NOT NULL AS ok FROM public.student_assignments')).rows[0].ok, true);
   await db.exec(`UPDATE public.companies SET address='Updated legacy address', latitude=14.7, longitude=121.1, geofence_enabled=true WHERE company_id='${ids[3]}'`);

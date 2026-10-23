@@ -43,19 +43,21 @@ async function loadAttendancePolicy(
   studentId: string,
   assignmentId: string,
   attendanceDate: string,
-): Promise<AttendancePolicy | null> {
+): Promise<AttendancePolicy | 'unavailable' | null> {
   const assignmentQuery = service.from('student_assignments')
     .select('assignment_id, company_id, branch_id, start_date, end_date')
     .eq('assignment_id', assignmentId)
     .eq('student_id', studentId);
   const { data: assignment, error: assignmentError } = await assignmentQuery.maybeSingle();
-  if (assignmentError || !assignment) return null;
+  if (assignmentError) return 'unavailable';
+  if (!assignment) return null;
   if (assignment.start_date > attendanceDate || (assignment.end_date && assignment.end_date < attendanceDate)) return null;
 
   const { data: company, error: companyError } = await service.from('company_branches')
     .select('latitude, longitude, geofence_radius_meters, geofence_enabled')
     .eq('company_id', assignment.company_id).eq('branch_id', assignment.branch_id).maybeSingle();
-  if (companyError || !company) return null;
+  if (companyError) return 'unavailable';
+  if (!company) return null;
 
   const { data: schedule, error: scheduleError } = await service.from('practicum_schedules')
     .select('work_modality')
@@ -69,7 +71,7 @@ async function loadAttendancePolicy(
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (scheduleError) return null;
+  if (scheduleError) return 'unavailable';
 
   const latitude = company.latitude == null ? null : Number(company.latitude);
   const longitude = company.longitude == null ? null : Number(company.longitude);
@@ -182,6 +184,8 @@ export async function POST(request: Request) {
       return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Upload a valid selfie before recording Time In.' });
 
     const policy = await loadAttendancePolicy(service, studentId, assignmentId, attendanceDate);
+    if (policy === 'unavailable')
+      return mobileBffFailure({ status: 503, code: 'SERVER_FAILURE', message: 'Could not verify the attendance location policy.' });
     if (!policy)
       return mobileBffFailure({ status: 403, code: 'FORBIDDEN', message: 'No company assignment covers this attendance date.' });
     const evidence = deriveLocationEvidence(latitude, longitude, policy, clientReason);
@@ -242,7 +246,7 @@ export async function POST(request: Request) {
       return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Time Out cannot be earlier than Time In.' });
 
     const policy = await loadAttendancePolicy(service, studentId, record.assignment_id, attendanceDate);
-    if (!policy)
+    if (!policy || policy === 'unavailable')
       return mobileBffFailure({ status: 503, code: 'SERVER_FAILURE', message: 'Could not verify the attendance location policy.' });
     const evidence = deriveLocationEvidence(latitude, longitude, policy, clientReason);
     const receivedAt = new Date().toISOString();

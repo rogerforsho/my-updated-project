@@ -8,6 +8,13 @@ export const GATEWAY_DOCUMENT_SPECS: GatewayDocumentSpec[] = [
   { id: 'endorsement', name: 'Endorsement Letter' },
 ];
 
+export function getGatewayStatus(reports: Array<{ report_type: string }>) {
+  const missing = GATEWAY_DOCUMENT_SPECS
+    .filter(spec => !reports.some(report => matchesDoc(report.report_type, spec.name)))
+    .map(spec => spec.name);
+  return { isCleared: missing.length === 0, approvedCount: GATEWAY_DOCUMENT_SPECS.length - missing.length, missing };
+}
+
 export const STUDENT_REPORT_TYPES = [
   'Pre-OJT Orientation Certificate',
   'Endorsement Letter',

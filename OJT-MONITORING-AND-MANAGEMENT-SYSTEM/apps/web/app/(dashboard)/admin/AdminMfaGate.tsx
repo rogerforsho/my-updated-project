@@ -28,7 +28,12 @@ export default function AdminMfaGate() {
       const supabase = createClient();
       const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (assuranceError) throw assuranceError;
-      if (assurance?.currentLevel === 'aal2') { router.refresh(); return; }
+      // The server rendered this gate, so it does not see aal2 even if this browser session does.
+      // Refresh the session once and fall through to the code form instead of spinning forever.
+      if (assurance?.currentLevel === 'aal2') {
+        await supabase.auth.refreshSession();
+        router.refresh();
+      }
       const { data: factors, error: listError } = await supabase.auth.mfa.listFactors();
       if (listError) throw listError;
       const verified = factors.totp.find(factor => factor.status === 'verified');

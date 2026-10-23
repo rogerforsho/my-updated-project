@@ -1,0 +1,109 @@
+// OJT Monitoring and Management System - ERD (core entities)
+// Paste into https://dbdiagram.io/d to render. Built from supabase/migrations;
+// supporting tables (chat, audit logs, rate limits, OTPs, appeals, schedules) are left out.
+
+Project ojt_system {
+  database_type: 'PostgreSQL'
+  Note: 'Colegio de Montalban - ICS and IBE 4th-year OJT'
+}
+
+Table users {
+  user_id uuid [pk]
+  full_name text
+  email text [unique]
+  role text [note: 'Student, Supervisor, Coordinator, Admin']
+  account_status text
+}
+
+Table students {
+  student_id uuid [pk]
+  user_id uuid [unique, ref: - users.user_id]
+  student_number text [unique]
+  course text
+  year_level int
+  required_hours int
+}
+
+Table coordinators {
+  coordinator_id uuid [pk]
+  user_id uuid [unique, ref: - users.user_id]
+  department text [note: 'ICS or IBE']
+}
+
+Table supervisors {
+  supervisor_id uuid [pk]
+  user_id uuid [unique, ref: - users.user_id]
+  company_id uuid [ref: > companies.company_id]
+  position text
+}
+
+Table companies {
+  company_id uuid [pk]
+  company_name text
+  address text
+  contact_person text
+  latitude decimal
+  longitude decimal
+}
+
+Table student_assignments {
+  assignment_id uuid [pk]
+  student_id uuid [ref: > students.student_id]
+  company_id uuid [ref: > companies.company_id]
+  supervisor_id uuid [ref: > supervisors.supervisor_id]
+  start_date date
+  end_date date
+  assignment_status text
+}
+
+Table attendance {
+  attendance_id uuid [pk]
+  student_id uuid [ref: > students.student_id]
+  assignment_id uuid [ref: > student_assignments.assignment_id]
+  attendance_date date
+  time_in timestamptz
+  time_out timestamptz
+  time_in_selfie_path text
+  time_out_selfie_path text
+  verification_status text
+}
+
+Table internship_progress {
+  progress_id uuid [pk]
+  student_id uuid [unique, ref: - students.student_id]
+  completed_hours numeric
+  remaining_hours numeric
+  progress_status text
+}
+
+Table reports {
+  report_id uuid [pk]
+  student_id uuid [ref: > students.student_id]
+  report_type text
+  file_path text
+  status text
+}
+
+Table evaluations {
+  evaluation_id uuid [pk]
+  student_id uuid [ref: > students.student_id]
+  supervisor_id uuid [ref: > supervisors.supervisor_id]
+  evaluation_type text [note: 'midterm or final']
+  performance_score numeric
+  feedback text
+}
+
+Table notifications {
+  notification_id uuid [pk]
+  receiver_user_id uuid [ref: > users.user_id]
+  message text
+  status text
+}
+
+Table announcements {
+  announcement_id uuid [pk]
+  author_user_id uuid [ref: > users.user_id]
+  title text
+  content text
+  target_role text
+}

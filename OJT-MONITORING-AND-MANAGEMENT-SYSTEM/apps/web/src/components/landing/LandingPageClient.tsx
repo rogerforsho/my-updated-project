@@ -1,15 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDesktop } from '@/src/hooks/useDesktop';
-import SoftForestLanding from '@/src/components/landing/SoftForestLanding';
-import AccessPortalModal from '@/src/components/landing/AccessPortalModal';
+import GuidedLanding from '@/src/components/landing/GuidedLanding';
+import GettingStartedPrototype from '@/src/components/landing/GettingStartedPrototype';
 
 export default function LandingPageClient() {
-  const [accessModalOpen, setAccessModalOpen] = useState(false);
   const { isDesktop } = useDesktop();
   const router = useRouter();
+  const [showPrototype, setShowPrototype] = useState(false);
+
+  useEffect(() => {
+    setShowPrototype(process.env.NODE_ENV !== 'production' && new URLSearchParams(window.location.search).get('prototype') === 'onboarding');
+  }, []);
 
   useEffect(() => {
     if (isDesktop) {
@@ -30,11 +34,7 @@ export default function LandingPageClient() {
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] font-sans selection:bg-[#E4DBC4] selection:text-[#092E1D]">
-      <SoftForestLanding onOpenAccessPortal={() => setAccessModalOpen(true)} />
-      <AccessPortalModal
-        isOpen={accessModalOpen}
-        onClose={() => setAccessModalOpen(false)}
-      />
+      {showPrototype ? <GettingStartedPrototype /> : <GuidedLanding />}
     </div>
   );
 }

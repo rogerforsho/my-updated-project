@@ -9,7 +9,7 @@ import type { AppResult } from '@ojt/shared';
 async function assertCoordinator() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { supabase, user: null, role: '', authorized: false };
+  if (!user) return { supabase, user: null, role: '', departments: [] as string[], authorized: false };
   const { data } = await supabase
     .from('users')
     .select('role, account_status')
@@ -20,6 +20,7 @@ async function assertCoordinator() {
     supabase,
     user,
     role: data?.role ?? '',
+    departments: scope.departments,
     authorized: !scope.error && data?.role === 'Coordinator' && data?.account_status === 'active',
   };
 }
@@ -28,8 +29,8 @@ export async function listPendingStudents(
   page = 1,
   pageSize = 20,
   courseFilter?: string
-): Promise<AppResult<{ students: Array<{ user_id: string; full_name: string; email: string; student_number: string; course: string; year_level: number; created_at: string; id_card_path?: string | null; id_card_front_signed_url?: string | null; id_card_back_signed_url?: string | null }>; total: number }>> {
-  const { supabase, authorized } = await assertCoordinator();
+): Promise<AppResult<{ students: Array<{ user_id: string; full_name: string; email: string; student_number: string; course: string; year_level: number; created_at: string; id_card_path?: string | null; id_card_front_signed_url?: string | null; id_card_back_signed_url?: string | null }>; total: number; departments: string[] }>> {
+  const { supabase, departments, authorized } = await assertCoordinator();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
   const from = (page - 1) * pageSize;
@@ -79,7 +80,7 @@ export async function listPendingStudents(
     };
   }));
 
-  return { data: { students, total: count ?? 0 }, error: null };
+  return { data: { students, total: count ?? 0, departments }, error: null };
 }
 
 export async function listActiveStudents(
@@ -134,6 +135,8 @@ export async function updateStudentAccountStatus(
   if (!user_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'User ID is required.' } };
   if (!['active', 'rejected'].includes(status))
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Invalid approval status.' } };
+  if (status === 'rejected' && (reason?.trim().length ?? 0) < 10)
+    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'A rejection reason of at least 10 characters is required.' } };
 
   const { supabase, user, role, authorized } = await assertCoordinator();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };

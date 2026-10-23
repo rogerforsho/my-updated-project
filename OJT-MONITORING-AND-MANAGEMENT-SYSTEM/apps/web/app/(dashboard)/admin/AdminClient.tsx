@@ -66,6 +66,28 @@ const ROLE_TABS = [
   { id: 'Super Admin', label: 'Super Admins' },
 ] as const;
 
+// ACCOUNT_STATUS_ACTIVE -> "Account status active"
+function formatAuditAction(action: string) {
+  const text = action.replace(/_/g, ' ').toLowerCase();
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function formatAuditDetails(details?: Record<string, unknown>) {
+  const entries = Object.entries(details ?? {});
+  if (entries.length === 0) return '—';
+  return entries
+    .map(([key, value]) => `${key.replace(/_/g, ' ')}: ${typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value)}`)
+    .join(' · ');
+}
+
+type AdminTab ='users' | 'announcements' | 'audit';
+
+const ADMIN_TABS: { id: AdminTab; label: string; Icon: typeof Users }[] = [
+  { id: 'users', label: 'Users', Icon: Users },
+  { id: 'announcements', label: 'Announcements', Icon: Megaphone },
+  { id: 'audit', label: 'Audit Log', Icon: Shield },
+];
+
 export default function AdminClient({ initialUsers, totalUsers: initialTotal, overview }: Props) {
   const [users, setUsers] = useState<UserManagementItem[]>(initialUsers);
   const [totalCount, setTotalCount] = useState(initialTotal);
@@ -109,8 +131,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
   const [deleteAnncModalOpen, setDeleteAnncModalOpen] = useState(false);
   const [anncToDelete, setAnncToDelete] = useState<DbAnnouncement | null>(null);
   const [deleteAnncLoading, setDeleteAnncLoading] = useState(false);
-  const [isBroadcastFormOpen, setIsBroadcastFormOpen] = useState(false);
-  const [isActiveBroadcastsOpen, setIsActiveBroadcastsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<AdminTab>('users');
 
   // Audit Logs State
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
@@ -317,8 +338,6 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
     } else {
       setAnncTitle('');
       setAnncContent('');
-      setIsBroadcastFormOpen(false);
-      setIsActiveBroadcastsOpen(true);
       setMsg({
         type: 'success',
         text: anncDeliveryType === 'alert'
@@ -404,26 +423,45 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
           </CardContent>
         </Card>
 
-
-
-
+        {([['OJT Coordinator', 'OJT Coordinators'], ['Supervisor', 'Supervisors']] as const).map(([role, label]) => (
+          <Card key={role} className="group h-full min-h-[104px] border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 hover:-translate-y-0.5 cursor-default bg-white dark:bg-slate-900">
+            <CardContent className="p-4 sm:p-5 flex items-center gap-3.5 h-full">
+              <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105">
+                <Users className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0 flex flex-col justify-center">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</p>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5 leading-tight">{overview.roleBreakdown[role] ?? 0}</h3>
+                <p className="text-xs text-slate-400 mt-0.5 truncate">Registered accounts</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Top Level Segmented Navigation Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-        <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-xs">
-          <span className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-bold text-[#0A3824] dark:text-emerald-400">
-            <Users className="w-4 h-4" /> User Directory
-          </span>
-        </div>
-
-
+      {/* Section tabs: one section is shown at a time */}
+      <div role="tablist" aria-label="Administration sections" className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-xs w-fit max-w-full">
+        {ADMIN_TABS.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === id}
+            onClick={() => setActiveTab(id)}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activeTab === id
+                ? 'bg-white dark:bg-slate-900 text-[#0A3824] dark:text-emerald-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Icon className="w-4 h-4" /> {label}
+          </button>
+        ))}
       </div>
 
       <>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            {/* User Management Section - Distinct Panel Container */}
-          <section className="lg:col-span-2 space-y-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-xs">
+        {activeTab === 'users' && (
+          <section className="space-y-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100 dark:border-slate-800">
               <div>
                 <div className="flex items-center gap-2">
@@ -483,7 +521,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
 
               {/* Un-cropped, Horizontally Spacious Tab Selection Bar with Inline Pagination */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-0.5">
-                <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   {ROLE_TABS.map((tab) => {
                     const isActive = roleFilter === tab.id;
                     return (
@@ -502,37 +540,13 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
                   })}
                 </div>
 
-                {/* Inline Pagination: < 1 of 10 pages > */}
-                <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto text-xs text-slate-600 dark:text-slate-400">
-                  <button
-                    type="button"
-                    disabled={page <= 1 || tableLoading}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="w-6 h-6 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 cursor-pointer transition-colors"
-                    title="Previous Page"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="px-1.5 font-medium whitespace-nowrap">
-                    {page} of {Math.max(1, totalPages)} {Math.max(1, totalPages) === 1 ? 'page' : 'pages'}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={page >= totalPages || tableLoading}
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    className="w-6 h-6 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 cursor-pointer transition-colors"
-                    title="Next Page"
-                  >
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
               </div>
             </div>
 
             {/* Beautifully Balanced Data Table with Spacious Horizontal Margins */}
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left">
+                <table className="w-full min-w-[640px] text-left">
                   <thead className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     <tr>
                       <th className="px-6 py-3.5">USER</th>
@@ -591,15 +605,10 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
                           <tr key={u.user_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
                             {/* USER Column: Name + Inline ID Badge + Email Underneath */}
                             <td className="px-6 py-4">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-slate-900 dark:text-white text-sm">
-                                  {u.full_name}
-                                </span>
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                                  ID: {u.employee_number || u.user_id.slice(0, 8)}
-                                </span>
-                              </div>
-                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                              <p className="font-semibold text-slate-900 dark:text-white text-sm" title={`ID: ${u.employee_number || u.user_id.slice(0, 8)}`}>
+                                {u.full_name}
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 break-all">
                                 {u.email}
                               </p>
                             </td>
@@ -646,7 +655,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
                                 {u.account_status === 'active' && (
                                   <button
                                     type="button"
-                                    onClick={() => handleStatusChange(u.user_id, 'inactive')}
+                                    onClick={() => { setDeleteError(''); setDeleteTarget(u); }}
                                     disabled={loadingId === u.user_id}
                                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
                                   >
@@ -666,15 +675,6 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
                                   </button>
                                 )}
 
-                                {/* Compressed Delete Button */}
-                                <button
-                                  type="button"
-                                  title="Deactivate Account"
-                                  onClick={() => { setDeleteError(''); setDeleteTarget(u); }}
-                                  className="w-7 h-7 inline-flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-all cursor-pointer shrink-0"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
                               </div>
                             </td>
                           </tr>
@@ -720,188 +720,125 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
             )}
           </div>
         </section>
+        )}
 
-        {/* Campus Broadcasts & Announcements (Minimizable Accordions) */}
-        <section className="space-y-3">
-          {/* 1. Minimized Broadcast Form Card */}
-          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden transition-all">
-            <div
-              onClick={() => setIsBroadcastFormOpen(prev => !prev)}
-              className="p-3.5 sm:p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors select-none"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-[#0A3824] dark:text-emerald-400 flex items-center justify-center shrink-0">
+        {/* Announcements tab: compose and sent list side by side on wide screens */}
+        {activeTab === 'announcements' && (
+          <section className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs p-5 sm:p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-[#0A3824] dark:text-emerald-400 flex items-center justify-center shrink-0">
                   <Megaphone className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-sm font-bold text-slate-900 dark:text-white truncate">Broadcast Campus Announcement</h2>
-                    <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/50 hidden sm:inline">
-                      Inbox Dispatch
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                    {isBroadcastFormOpen ? 'Fill in details below to publish to dashboards' : 'Click to compose bulletin or emergency alert to trainee and staff inboxes'}
-                  </p>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">Send Announcement</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Delivered to the dashboards and inboxes of trainees and staff.</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0 ml-3">
-                <span className="text-xs font-bold text-[#0A3824] dark:text-emerald-400">
-                  {isBroadcastFormOpen ? 'Minimize' : '+ New Broadcast'}
-                </span>
-                <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isBroadcastFormOpen ? 'rotate-180' : ''}`} />
+              <form onSubmit={handlePublishAnnouncement} className="space-y-3.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Subject / Title</label>
+                  <Input
+                    placeholder="e.g. Practicum Orientation Schedule"
+                    value={anncTitle}
+                    onChange={(e) => setAnncTitle(e.target.value)}
+                    required
+                  />
                 </div>
-              </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Send to</label>
+                  <select
+                    className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white outline-none focus:border-[#0A3824] focus:ring-1 focus:ring-[#0A3824] transition-all cursor-pointer"
+                    value={anncDept}
+                    onChange={(e) => setAnncDept(e.target.value)}
+                  >
+                    <option value="All">All Departments (Campus-wide)</option>
+                    <option value="ICS">Institute of Computing Studies (ICS)</option>
+                    <option value="IBE">Institute of Business and Entrepreneurship (IBE)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Message</label>
+                  <textarea
+                    className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white outline-none focus:border-[#0A3824] focus:ring-1 focus:ring-[#0A3824] min-h-[110px] transition-all"
+                    placeholder="Write the notice that all system users will receive..."
+                    value={anncContent}
+                    onChange={(e) => setAnncContent(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAnncDeliveryType('announcement')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        anncDeliveryType === 'announcement'
+                          ? 'bg-[#0A3824] text-[var(--cdm-sand)] shadow-xs'
+                          : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      📢 General Notice
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAnncDeliveryType('alert')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        anncDeliveryType === 'alert'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      🚨 Urgent Alert
+                    </button>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="bg-[#0A3824] hover:bg-[#092E1D] text-[var(--cdm-sand)] font-bold text-xs cursor-pointer shadow-xs"
+                    loading={anncLoading}
+                  >
+                    {anncDeliveryType === 'alert' ? 'Send Urgent Alert' : 'Send Announcement'}
+                  </Button>
+                </div>
+              </form>
             </div>
 
-            {isBroadcastFormOpen && (
-              <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40">
-                <form onSubmit={handlePublishAnnouncement} className="space-y-3.5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Subject / Title</label>
-                      <Input
-                        placeholder="e.g. Practicum Orientation Schedule"
-                        value={anncTitle}
-                        onChange={(e) => setAnncTitle(e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Target Institute / Department</label>
-                      <select
-                        className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white outline-none focus:border-[#0A3824] focus:ring-1 focus:ring-[#0A3824] transition-all cursor-pointer"
-                        value={anncDept}
-                        onChange={(e) => setAnncDept(e.target.value)}
-                      >
-                        <option value="All">All Departments (Campus-wide)</option>
-                        <option value="ICS">Institute of Computing Studies (ICS)</option>
-                        <option value="IBE">Institute of Business and Entrepreneurship (IBE)</option>
-                      </select>
-                    </div>
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
+              <div className="p-5 sm:p-6 pb-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 flex items-center justify-center shrink-0">
+                    <Bell className="w-4 h-4" />
                   </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Broadcast Message</label>
-                    <textarea
-                      className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white outline-none focus:border-[#0A3824] focus:ring-1 focus:ring-[#0A3824] min-h-[75px] transition-all"
-                      placeholder="Enter the broadcast notice message for all system users..."
-                      value={anncContent}
-                      onChange={(e) => setAnncContent(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setAnncDeliveryType('announcement')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                          anncDeliveryType === 'announcement'
-                            ? 'bg-[#0A3824] text-[var(--cdm-sand)] shadow-xs'
-                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                        }`}
-                      >
-                        📢 General Notice
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAnncDeliveryType('alert')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                          anncDeliveryType === 'alert'
-                            ? 'bg-amber-600 text-white shadow-xs'
-                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                        }`}
-                      >
-                        🚨 Urgent Alert
-                      </button>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => setIsBroadcastFormOpen(false)}
-                        className="text-xs text-slate-500 hover:text-slate-700"
-                      >
-                        Minimize
-                      </Button>
-                      <Button
-                        type="submit"
-                        className="bg-[#0A3824] hover:bg-[#092E1D] text-[var(--cdm-sand)] font-bold text-xs cursor-pointer shadow-xs h-auto min-h-9 whitespace-normal text-left"
-                        loading={anncLoading}
-                      >
-                        {anncDeliveryType === 'alert' ? 'Publish Urgent Alert (🚨)' : 'Publish Announcement (📢)'}
-                      </Button>
-                    </div>
-                  </div>
-                </form>
-              </div>
-            )}
-          </div>
-
-          {/* 2. Minimized Active Broadcasts Card */}
-          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden transition-all">
-            <div
-              onClick={() => setIsActiveBroadcastsOpen(prev => !prev)}
-              className="p-3.5 sm:p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors select-none"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 flex items-center justify-center shrink-0">
-                  <Bell className="w-4 h-4" />
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Sent Announcements <span className="text-slate-400 font-medium">({announcements.length})</span>
+                  </h3>
                 </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">Active Broadcasts</h3>
-                    <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 text-[10px] font-bold">
-                      {announcements.length} Posted
-                    </Badge>
-                  </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                    {announcements.length === 0
-                      ? 'No active broadcasts currently posted'
-                      : `Latest: "${announcements[0]?.title}" • Click to ${isActiveBroadcastsOpen ? 'minimize' : 'expand'}`}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0 ml-3">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    loadAnnouncements();
-                  }}
-                  className="text-xs font-bold text-[#0A3824] dark:text-emerald-400 hover:underline px-2 py-1 cursor-pointer"
-                >
+                <Button size="sm" variant="outline" onClick={loadAnnouncements} disabled={anncListLoading} className="text-xs h-7 cursor-pointer shrink-0">
                   Refresh
-                </button>
-                <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center">
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isActiveBroadcastsOpen ? 'rotate-180' : ''}`} />
-                </div>
+                </Button>
               </div>
-            </div>
 
-            {isActiveBroadcastsOpen && (
               <div className="border-t border-slate-100 dark:border-slate-800">
                 {anncListLoading ? (
-                  <div className="p-6 text-center text-xs text-slate-400">Loading broadcasts...</div>
+                  <div className="p-8 text-center text-xs text-slate-400">Loading announcements...</div>
                 ) : anncListError ? (
                   <div role="alert" className="p-6 text-sm text-rose-700">
-                    {anncListError} <button type="button" onClick={loadAnnouncements} className="underline font-semibold">Retry</button>
+                    {anncListError} <button type="button" onClick={loadAnnouncements} className="underline font-semibold cursor-pointer">Retry</button>
                   </div>
                 ) : announcements.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-slate-400">
-                    No active broadcasts currently posted.
+                  <div className="p-8 text-center text-xs text-slate-500">
+                    <p className="font-semibold text-slate-700 dark:text-slate-200">No announcements sent yet.</p>
+                    <p className="text-[11px] text-slate-400 mt-1">Announcements you send will be listed here.</p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[300px] overflow-y-auto">
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[480px] overflow-y-auto">
                     {announcements.map((annc) => (
-                      <div key={annc.announcement_id} className="p-3.5 sm:p-4 flex items-start justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                      <div key={annc.announcement_id} className="p-4 sm:p-5 flex items-start justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-[9px] font-extrabold px-2 py-0.5 rounded bg-[#0A3824] text-[var(--cdm-sand)] uppercase tracking-wider">
@@ -929,24 +866,24 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        </section>
-      </div>
+            </div>
+          </section>
+        )}
 
       {/* System Security & Audit Trail */}
+        {activeTab === 'audit' && (
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-[#0A3824]" />
-            <h2 className="text-lg font-bold text-slate-900">System Activity & Security Audit Trail</h2>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">System Activity & Security Audit Trail</h2>
           </div>
           <Button size="sm" variant="outline" onClick={loadAudit} disabled={auditLoading} className="text-xs h-7 cursor-pointer">
             Refresh Log
           </Button>
         </div>
 
-        <Card className="border-slate-200/80 shadow-sm overflow-hidden">
+        <Card className="border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden bg-white dark:bg-slate-900">
           <CardContent className="p-0">
             {auditLoading ? (
               <div className="p-8 text-center text-xs text-slate-400">Loading audit records...</div>
@@ -961,36 +898,37 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 font-semibold text-slate-600 uppercase tracking-wider">
+                <table className="w-full min-w-[720px] text-left text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     <tr>
                       <th className="px-4 py-3">Timestamp</th>
                       <th className="px-4 py-3">Actor</th>
-                      <th className="px-4 py-3">Security Action</th>
-                      <th className="px-4 py-3">Target Entity</th>
+                      <th className="px-4 py-3">Action</th>
+                      <th className="px-4 py-3">Target</th>
                       <th className="px-4 py-3">Details</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 font-mono">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {auditLogs.map((log) => (
-                      <tr key={log.log_id} className="hover:bg-slate-50/50">
-                        <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">
+                      <tr key={log.log_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                        <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 whitespace-nowrap">
                           {new Date(log.created_at).toLocaleString()}
                         </td>
-                        <td className="px-4 py-2.5 font-sans">
-                          <span className="font-semibold text-slate-800">{log.actor_name}</span>
+                        <td className="px-4 py-2.5">
+                          <span className="font-semibold text-slate-800 dark:text-slate-100">{log.actor_name}</span>
                           <span className="text-[10px] text-slate-400 block">{log.actor_role}</span>
                         </td>
                         <td className="px-4 py-2.5">
-                          <span className="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-200 font-bold">
-                            {log.action}
+                          <span className="inline-block px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-semibold">
+                            {formatAuditAction(log.action)}
                           </span>
                         </td>
-                        <td className="px-4 py-2.5 text-slate-600">
-                          {log.entity_type} {log.entity_id ? `(${log.entity_id.slice(0, 8)}...)` : ''}
+                        <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">
+                          <span className="capitalize">{log.entity_type}</span>
+                          {log.entity_id && <span className="block font-mono text-[10px] text-slate-400" title={log.entity_id}>{log.entity_id.slice(0, 8)}…</span>}
                         </td>
-                        <td className="px-4 py-2.5 text-slate-500 font-sans text-[11px]">
-                          {JSON.stringify(log.details)}
+                        <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 text-[11px] break-words">
+                          {formatAuditDetails(log.details)}
                         </td>
                       </tr>
                     ))}
@@ -1001,6 +939,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
           </CardContent>
         </Card>
       </div>
+        )}
       </>
 
       {/* Backup administration remains provider-side; avoid exporting academic data in-app. */}

@@ -17,7 +17,7 @@ export interface SubmitReportInput {
 export async function listStudentReports(
   page = 1,
   pageSize = 20
-): Promise<AppResult<{ reports: DbReport[]; total: number }>> {
+): Promise<AppResult<{ reports: DbReport[]; total: number; isCompleted: boolean }>> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return { data: null, error: { code: 'UNAUTHORIZED', message: 'Not authenticated.' } };
@@ -33,6 +33,11 @@ export async function listStudentReports(
     return { data: null, error: { code: 'NOT_FOUND', message: 'Student profile not found.' } };
   }
 
+  const { data: certificate, error: completionError } = await supabase.from('certificates')
+    .select('certificate_id').eq('student_id', student.student_id).maybeSingle();
+  if (completionError)
+    return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to check your OJT completion.' } };
+
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
@@ -47,7 +52,7 @@ export async function listStudentReports(
     return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load submitted reports.' } };
   }
 
-  return { data: { reports: (data as DbReport[]) ?? [], total: count ?? 0 }, error: null };
+  return { data: { reports: (data as DbReport[]) ?? [], total: count ?? 0, isCompleted: Boolean(certificate) }, error: null };
 }
 
 export async function submitStudentReport(

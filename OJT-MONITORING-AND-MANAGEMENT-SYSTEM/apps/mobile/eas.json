@@ -9,7 +9,8 @@
       "environment": "development",
       "env": {
         "EXPO_PUBLIC_APP_ENV": "development"
-      }
+      },
+      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
@@ -19,13 +20,15 @@
       "env": {
         "EXPO_PUBLIC_APP_ENV": "preview"
       },
-      "environment": "preview"
+      "environment": "preview",
+      "channel": "preview"
     },
     "appetize-ios": {
       "extends": "preview",
       "ios": {
         "simulator": true
-      }
+      },
+      "channel": "appetize-ios"
     },
     "production": {
       "autoIncrement": true,
@@ -34,7 +37,8 @@
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impoc2xmd2N6eGtkaGV4amdzc2pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MTY0NDYsImV4cCI6MjEwMDE5MjQ0Nn0.s4NQZCt3HENiIMlJNmZd3EzOb6e8m7c5S8TyN5bugOQ",
         "EXPO_PUBLIC_APP_ENV": "production"
       },
-      "environment": "production"
+      "environment": "production",
+      "channel": "production"
     }
   },
   "submit": {
