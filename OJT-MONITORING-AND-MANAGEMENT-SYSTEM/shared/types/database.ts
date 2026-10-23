@@ -2,7 +2,7 @@ import type { UserRole, AccountStatus } from './roles';
 
 export type { UserRole, AccountStatus };
 
-export type StudentStatus = 'active' | 'completed' | 'dropped' | 'failed' | 'withdrawn';
+export type StudentStatus = 'active' | 'completed' | 'dropped' | 'inc' | 'terminated' | 'failed' | 'withdrawn';
 export type AssignmentStatus = 'active' | 'completed' | 'terminated' | 'reassigned';
 
 export interface DbUser {

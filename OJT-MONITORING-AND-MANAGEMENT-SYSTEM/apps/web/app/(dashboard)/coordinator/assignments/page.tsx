@@ -7,7 +7,7 @@ import Badge from '@/src/components/ui/Badge';
 import Modal from '@/src/components/ui/Modal';
 import Input from '@/src/components/ui/Input';
 import {
-  listAssignments, createAssignment, updateAssignmentStatus,
+  listAssignments, createAssignment, updateAssignmentStatus, updateStudentStatus,
   listStudentsForAssignment, listSupervisorsForCompany,
   type AssignmentDetail, type StudentAssignmentOption,
 } from '@/src/services/assignments';
@@ -16,7 +16,7 @@ import {
   listPracticumSchedules, reviewPracticumSchedule,
   type ScheduleDetail,
 } from '@/src/services/schedule';
-import type { AssignmentStatus, DbCompanyBranch } from '@ojt/shared';
+import type { AssignmentStatus, DbCompanyBranch, StudentStatus } from '@ojt/shared';
 
 const PAGE_SIZE = 20;
 
@@ -165,6 +165,13 @@ export default function AssignmentsPage() {
 
   async function handleStatusChange(assignment_id: string, status: AssignmentStatus) {
     const result = await updateAssignmentStatus(assignment_id, status);
+    if (result.error) { setError(result.error.message); return; }
+    loadAssignments(page);
+  }
+
+  async function handleStudentStatusChange(student_id: string, status: StudentStatus) {
+    if (!window.confirm(`Set this student's status to ${status.toUpperCase()}?`)) return;
+    const result = await updateStudentStatus(student_id, status);
     if (result.error) { setError(result.error.message); return; }
     loadAssignments(page);
   }
@@ -356,6 +363,20 @@ export default function AssignmentsPage() {
                       <td className="px-5 py-4">
                         <p className="font-medium text-slate-900">{a.students?.users?.full_name}</p>
                         <p className="text-xs text-slate-400">{a.students?.student_number} • {a.students?.course}</p>
+                        <div className="mt-1 flex items-center gap-2">
+                          <Badge status={a.students?.status}>{a.students?.status?.toUpperCase()}</Badge>
+                          <select
+                            aria-label={`Set student status for ${a.students?.users?.full_name ?? 'student'}`}
+                            value=""
+                            onChange={e => e.target.value && handleStudentStatusChange(a.student_id, e.target.value as StudentStatus)}
+                            className="text-xs border border-slate-200 rounded px-1 py-0.5"
+                          >
+                            <option value="">Set status…</option>
+                            <option value="dropped">DROPPED</option>
+                            <option value="inc">INC</option>
+                            <option value="terminated">TERMINATED</option>
+                          </select>
+                        </div>
                       </td>
                       <td className="px-5 py-4 text-slate-700 font-medium">{a.companies?.company_name}<span className="block text-xs font-normal text-slate-500">{a.company_branches?.branch_name || 'Branch unavailable'}</span></td>
                       <td className="px-5 py-4">
