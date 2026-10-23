@@ -1,12 +1,13 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { authCookieOptions } from './src/lib/supabase/auth-cookie';
 
 const PUBLIC_PATHS = ['/auth/sign-in', '/auth/register', '/auth/mobile-only', '/auth/pending', '/auth/reset-password', '/auth/callback'];
 const KNOWN_PATHS = new Set([
   '/', '/admin', '/api/internal/auto-time-out', '/api/internal/process-transactional-email', '/api/mobile/attendance', '/api/mobile/notifications', '/api/mobile/reports', '/api/mobile/registration/resubmit', '/api/mobile/schedule-proposals', '/api/registration/id-card', '/api/registration/submit', '/auth/callback', '/auth/callback/finish', '/auth/pending',
   '/auth/register', '/auth/mobile-only', '/auth/reset-password', '/auth/sign-in',
   '/coordinator/approvals', '/coordinator/assignments', '/coordinator/companies',
-  '/coordinator/progress', '/coordinator/reports', '/coordinator/students', '/coordinator/submissions', '/coordinator/messages', '/coordinator/notifications',
+  '/coordinator/progress', '/coordinator/reports', '/coordinator/students', '/coordinator/import', '/coordinator/incident-reports', '/coordinator/submissions', '/coordinator/messages', '/coordinator/notifications',
   '/coordinator/supervisors', '/dashboard', '/health', '/map', '/program-head',
   '/program-head/reports', '/ready', '/robots.txt', '/settings', '/sitemap.xml',
   '/student/attendance', '/student/certificate', '/student/evaluation-summary',
@@ -112,6 +113,7 @@ export async function middleware(request: NextRequest) {
     supabaseUrl,
     supabaseKey,
     {
+      cookieOptions: authCookieOptions(),
       cookies: {
         getAll() { return request.cookies.getAll(); },
         setAll(cookiesToSet) {

@@ -998,6 +998,16 @@ test('incident review requires a response to close, refuses closed reports and a
   assert.equal(supervisor.tables.incident_reports[0].status, 'submitted');
 });
 
+test('server auth cookie is named after the browser Supabase URL, not the server-side URL', () => {
+  const name = env => load('apps/web/src/lib/supabase/auth-cookie.ts', {}, env).authCookieOptions();
+  assert.equal(name({ NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:57321', SUPABASE_URL: 'http://host.docker.internal:57321' }).name, 'sb-127-auth-token');
+  assert.equal(name({ NEXT_PUBLIC_SUPABASE_URL: 'https://abcd1234.supabase.co' }).name, 'sb-abcd1234-auth-token');
+  assert.equal(name({}), undefined);
+  assert.equal(name({ NEXT_PUBLIC_SUPABASE_URL: 'not a url' }), undefined);
+  for (const file of ['apps/web/src/lib/supabase/server.ts', 'apps/web/src/lib/supabase/middleware.ts', 'apps/web/middleware.ts'])
+    assert.match(fs.readFileSync(path.join(root, file), 'utf8'), /cookieOptions: authCookieOptions\(\)/, file);
+});
+
 test('default student password is the student number, prefixed when shorter than 8 characters', () => {
   const { defaultStudentPassword } = load('apps/web/src/lib/default-password.ts');
   assert.equal(defaultStudentPassword('2021-00123'), '2021-00123');
