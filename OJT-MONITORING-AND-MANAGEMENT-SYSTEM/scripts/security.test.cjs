@@ -1617,3 +1617,26 @@ test('coordinators cannot update attendance status directly', async () => {
   await db.exec(migrationSql('20261024000300_coordinator_attendance_via_rpc_only.sql'));
   assert.equal(await direct(), 0);
 });
+
+test('successful logins are refunded from the login rate limit counter', async () => {
+  const { PGlite } = require('@electric-sql/pglite');
+  const db = new PGlite();
+  const hash = 'a'.repeat(64);
+  await db.exec(`
+    CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+    CREATE TABLE public.auth_rate_limits(action text, subject_hash text, window_start timestamptz, attempts integer,
+      PRIMARY KEY (action, subject_hash, window_start));
+    CREATE FUNCTION public.ojt_security_revision() RETURNS integer LANGUAGE sql AS $$ SELECT 44 $$;
+  `);
+  await db.exec(migrationSql('20261024000400_login_limit_counts_failures_only.sql'));
+  const attempts = async () => (await db.query(`SELECT attempts FROM public.auth_rate_limits WHERE action='login'`)).rows[0]?.attempts;
+  const release = () => db.query(`SELECT public.release_auth_rate_limit('login', '${hash}', 900)`);
+  await db.exec(`INSERT INTO public.auth_rate_limits VALUES ('login','${hash}', to_timestamp(floor(extract(epoch FROM now())/900)*900), 3)`);
+  await release();
+  assert.equal(await attempts(), 2);
+  await release(); await release(); await release();
+  assert.equal(await attempts(), 0); // never negative
+  await assert.rejects(db.query(`SELECT public.release_auth_rate_limit('report_submit', '${hash}', 900)`), /Invalid/);
+  const session = fs.readFileSync(path.join(root, 'apps/web/src/services/auth/session.ts'), 'utf8');
+  assert.match(session, /releaseAuthActionLimit\('login'/);
+});
