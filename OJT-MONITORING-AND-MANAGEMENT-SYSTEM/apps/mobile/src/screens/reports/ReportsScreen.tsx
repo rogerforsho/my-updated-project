@@ -45,6 +45,7 @@ export default function ReportsScreen() {
   const [isOffline, setIsOffline] = useState(false);
   const [companyRequestOpen, setCompanyRequestOpen] = useState(false);
   const [incidentOpen, setIncidentOpen] = useState(false);
+  const [isCompleted, setIsCompleted] = useState<boolean | null>(null);
 
   const load = useCallback(async () => {
     setError('');
@@ -55,6 +56,7 @@ export default function ReportsScreen() {
       setError(result.error.message);
     } else {
       setReports(result.data?.reports || []);
+      setIsCompleted(result.data?.isCompleted ?? null);
     }
     setLoading(false);
     setRefreshing(false);
@@ -155,7 +157,7 @@ export default function ReportsScreen() {
           <Text style={s.title}>Practicum Reports</Text>
           <Text style={s.subtitle}>Gateway documents, journals & incident reports</Text>
         </View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         <TouchableOpacity onPress={() => setIncidentOpen(true)} style={s.btnSubmitHeader} activeOpacity={0.85}
           accessibilityRole="button" accessibilityLabel="Report a confidential concern to your OJT Coordinator">
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -169,17 +171,18 @@ export default function ReportsScreen() {
             <Text style={s.btnSubmitHeaderText}>Request HTE</Text>
           </View>
         </TouchableOpacity>
-        <TouchableOpacity
+        {isCompleted === false && <TouchableOpacity
           onPress={handleOpenModal} style={s.btnSubmitHeader} activeOpacity={0.85}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Ionicons name="add-circle" size={16} color="#E4DBC4" />
             <Text style={s.btnSubmitHeaderText}>Submit</Text>
           </View>
-        </TouchableOpacity>
+        </TouchableOpacity>}
         </View>
       </View>
 
       {/* Alerts */}
+      {isCompleted === true && <Text style={s.subtitle}>Your OJT is completed. Academic records are read-only.</Text>}
       {!!success && (
         <View style={s.alertSuccess}>
           <Ionicons name="checkmark-circle" size={18} color="#0A3824" />
@@ -212,7 +215,7 @@ export default function ReportsScreen() {
             <Ionicons name="document-text-outline" size={44} color="#879687" style={{ marginBottom: 8 }} />
             <Text style={s.emptyTitle}>No reports submitted yet</Text>
             <Text style={s.emptySub}>
-              Tap the Submit button at the top to upload your daily or weekly practicum journal.
+              {isCompleted ? 'Your completed OJT records are read-only.' : 'Tap the Submit button at the top to upload your daily or weekly practicum journal.'}
             </Text>
           </View>
         }
@@ -427,6 +430,8 @@ const s = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 15,
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,

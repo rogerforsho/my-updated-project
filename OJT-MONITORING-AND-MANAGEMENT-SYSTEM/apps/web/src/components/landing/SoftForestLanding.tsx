@@ -28,9 +28,13 @@ function SectionLabel({ children }: { children: ReactNode }) {
 export default function SoftForestLanding({
   onOpenAccessPortal,
   showPrototypeBadge = false,
+  gettingStarted,
+  helpSection,
 }: {
   onOpenAccessPortal?: () => void;
   showPrototypeBadge?: boolean;
+  gettingStarted?: ReactNode;
+  helpSection?: ReactNode;
 }) {
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
@@ -41,6 +45,7 @@ export default function SoftForestLanding({
             <span className="min-w-0"><span className="block truncate text-[9px] font-bold uppercase tracking-[0.13em] text-[var(--text-muted)]">OJT Practicum Portal</span><span className="block truncate text-sm font-extrabold text-[var(--cdm-green)]">Colegio de Montalban</span></span>
           </Link>
           <nav aria-label="Main navigation" className="hidden items-center gap-6 text-xs font-semibold text-[var(--cdm-olive)] md:flex">
+            {gettingStarted && <a href="#start" className="transition-colors hover:text-[var(--cdm-green)]">Get started</a>}
             <a href="#programs" className="transition-colors hover:text-[var(--cdm-green)]">Programs</a>
             <a href="#capabilities" className="transition-colors hover:text-[var(--cdm-green)]">Capabilities</a>
             <a href="#resources" className="transition-colors hover:text-[var(--cdm-green)]">Resources</a>
@@ -58,7 +63,7 @@ export default function SoftForestLanding({
               <p className="mt-5 max-w-xl text-sm leading-7 text-[var(--text-muted)] sm:text-base">GPS-verified attendance, rendered-hour tracking, digital reports, and supervisor evaluations for 4th-year students at Colegio de Montalban.</p>
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                 {onOpenAccessPortal ? <button type="button" onClick={onOpenAccessPortal} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--cdm-green)] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[var(--cdm-green-light)] active:scale-[0.98]">Access your portal <span aria-hidden="true">→</span></button> : <Link href="/auth/sign-in" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--cdm-green)] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[var(--cdm-green-light)] active:scale-[0.98]">Access your portal <span aria-hidden="true">→</span></Link>}
-                <a href="#resources" className="inline-flex items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-[var(--cdm-olive)] transition-colors hover:bg-[var(--surface-muted)]">View system resources</a>
+                <a href={gettingStarted ? '#start' : '#resources'} className="inline-flex items-center justify-center rounded-xl border border-[var(--line)] bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-[var(--cdm-olive)] transition-colors hover:bg-[var(--surface-muted)]">{gettingStarted ? 'New here? Get started' : 'View system resources'}</a>
               </div>
               <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[var(--line)] pt-5 text-xs font-medium text-[var(--text-muted)]">
                 <span className="inline-flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-[#45644A]" />4th-year ICS students</span>
@@ -87,6 +92,8 @@ export default function SoftForestLanding({
           </div>
         </section>
 
+        {gettingStarted}
+
         <section id="programs" className="border-b border-[var(--line)] bg-[var(--surface)] py-14 sm:py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -112,10 +119,12 @@ export default function SoftForestLanding({
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <SectionLabel>Official tools and verification</SectionLabel><h2 className="mt-2 max-w-2xl text-2xl font-extrabold tracking-tight text-[var(--foreground)] sm:text-3xl">System resources</h2>
             <div className="mt-7 grid gap-4 md:grid-cols-3">
-              {resources.map((resource) => <article key={resource.title} className="flex flex-col rounded-2xl border border-[var(--line)] bg-[var(--surface-muted)] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--cdm-olive)]">{resource.label}</p><h3 className="mt-3 text-sm font-bold text-[var(--foreground)]">{resource.title}</h3><p className="mt-2 flex-1 text-xs leading-5 text-[var(--text-muted)]">{resource.copy}</p><Link href={resource.href} className="mt-5 inline-flex items-center justify-between border-t border-[var(--line)] pt-4 text-xs font-bold text-[var(--cdm-green)]">{resource.action}<span aria-hidden="true">→</span></Link></article>)}
+              {resources.map((resource) => <article key={resource.title} className="flex flex-col rounded-2xl border border-[var(--line)] bg-[var(--surface-muted)] p-5"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--cdm-olive)]">{resource.label}</p><h3 className="mt-3 text-sm font-bold text-[var(--foreground)]">{resource.title}</h3><p className="mt-2 flex-1 text-xs leading-5 text-[var(--text-muted)]">{resource.copy}</p><Link href={gettingStarted && resource.label === 'Student mobile app' ? '#start' : resource.href} className="mt-5 inline-flex items-center justify-between border-t border-[var(--line)] pt-4 text-xs font-bold text-[var(--cdm-green)]">{gettingStarted && resource.label === 'Student mobile app' ? 'View installation guide' : resource.action}<span aria-hidden="true">→</span></Link></article>)}
             </div>
           </div>
         </section>
+
+        {helpSection}
 
         <section className="bg-[var(--background)] py-12 sm:py-14">
           <div className="mx-auto flex max-w-7xl flex-col gap-5 rounded-[1.75rem] border border-[var(--line)] bg-[var(--surface)] px-5 py-7 sm:px-8 sm:py-9 lg:flex-row lg:items-center lg:justify-between lg:px-10">

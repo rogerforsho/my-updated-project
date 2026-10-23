@@ -24,7 +24,7 @@ export function Button({ loading, variant = 'primary', size = 'default', childre
   };
 
   return (
-    <button className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} disabled={loading || props.disabled} {...props}>
+    <button className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} {...props} disabled={loading || props.disabled}>
       {loading && (
         <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

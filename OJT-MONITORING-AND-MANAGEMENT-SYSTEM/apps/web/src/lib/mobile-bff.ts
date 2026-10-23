@@ -41,6 +41,7 @@ type MobileAttendanceRow = {
 interface MobileBffDatabase {
   public: {
     Tables: {
+      certificates: BffTable<{ certificate_id: string; student_id: string }>;
       users: BffTable<{ user_id: string; role: string; account_status: string }>;
       students: BffTable<{ student_id: string; user_id: string }>;
       student_assignments: BffTable<{

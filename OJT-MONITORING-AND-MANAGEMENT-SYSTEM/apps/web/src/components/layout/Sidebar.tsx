@@ -26,12 +26,20 @@ import {
   MessagesSquare,
   type IconProps,
   FileSpreadsheet,
+  Briefcase,
+  Building,
+  User,
+  TrendingUp,
+  Compass,
+  RotateCcw,
+  ShieldAlert,
 } from '@/src/components/ui/Icons';
 
 interface NavItem {
   label: string;
   href: string;
   icon: React.ComponentType<IconProps>;
+  section?: string;
 }
 
 const NAV_ITEMS: Record<string, NavItem[]> = {
@@ -46,25 +54,25 @@ const NAV_ITEMS: Record<string, NavItem[]> = {
   ],
   Coordinator: [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Approvals', href: '/coordinator/approvals', icon: UserCheck },
-    { label: 'Students', href: '/coordinator/students', icon: Users },
-    { label: 'Import Students', href: '/coordinator/import', icon: FileSpreadsheet },
-    { label: 'Companies', href: '/coordinator/companies', icon: Building2 },
-    { label: 'HTE Requests', href: '/coordinator/company-requests', icon: Building2 },
-    { label: 'HTE Branches', href: '/coordinator/branches', icon: MapPin },
-    { label: 'Deployment Map', href: '/map', icon: MapPin },
-    { label: 'Supervisors', href: '/coordinator/supervisors', icon: UserCheck },
-    { label: 'Assignments', href: '/coordinator/assignments', icon: FileSignature },
-    { label: 'Submissions', href: '/coordinator/submissions', icon: ClipboardCheck },
-    { label: 'Attendance exceptions', href: '/coordinator/attendance', icon: Clock },
-    { label: 'Progress', href: '/coordinator/progress', icon: BarChart3 },
-    { label: 'What-if analysis', href: '/coordinator/what-if', icon: BarChart3 },
-    { label: 'Supervisor Evaluations', href: '/coordinator/supervisor-evaluations', icon: Star },
-    { label: 'Evaluation Appeals', href: '/coordinator/evaluations', icon: Star },
-    { label: 'Incident Reports', href: '/coordinator/incident-reports', icon: ClipboardCheck },
-    { label: 'Department Reports', href: '/coordinator/reports', icon: BarChart3 },
-    { label: 'Messages', href: '/coordinator/messages', icon: MessagesSquare },
-    { label: 'Notifications', href: '/coordinator/notifications', icon: Bell },
+    { label: 'Approvals', href: '/coordinator/approvals', icon: UserCheck, section: 'Students' },
+    { label: 'Students', href: '/coordinator/students', icon: Users, section: 'Students' },
+    { label: 'Import Students', href: '/coordinator/import', icon: FileSpreadsheet, section: 'Students' },
+    { label: 'Companies', href: '/coordinator/companies', icon: Building2, section: 'Partners' },
+    { label: 'HTE Requests', href: '/coordinator/company-requests', icon: Briefcase, section: 'Partners' },
+    { label: 'HTE Branches', href: '/coordinator/branches', icon: Building, section: 'Partners' },
+    { label: 'Deployment Map', href: '/map', icon: MapPin, section: 'Partners' },
+    { label: 'Supervisors', href: '/coordinator/supervisors', icon: User, section: 'Partners' },
+    { label: 'Assignments', href: '/coordinator/assignments', icon: FileSignature, section: 'Monitoring' },
+    { label: 'Submissions', href: '/coordinator/submissions', icon: ClipboardCheck, section: 'Monitoring' },
+    { label: 'Attendance Exceptions', href: '/coordinator/attendance', icon: Clock, section: 'Monitoring' },
+    { label: 'Progress', href: '/coordinator/progress', icon: TrendingUp, section: 'Monitoring' },
+    { label: 'What-if Analysis', href: '/coordinator/what-if', icon: Compass, section: 'Monitoring' },
+    { label: 'Incident Reports', href: '/coordinator/incident-reports', icon: ShieldAlert, section: 'Monitoring' },
+    { label: 'Supervisor Evaluations', href: '/coordinator/supervisor-evaluations', icon: Star, section: 'Evaluation' },
+    { label: 'Evaluation Appeals', href: '/coordinator/evaluations', icon: RotateCcw, section: 'Evaluation' },
+    { label: 'Department Reports', href: '/coordinator/reports', icon: BarChart3, section: 'Evaluation' },
+    { label: 'Messages', href: '/coordinator/messages', icon: MessagesSquare, section: 'Inbox' },
+    { label: 'Notifications', href: '/coordinator/notifications', icon: Bell, section: 'Inbox' },
   ],
   Supervisor: [
     { label: 'My Students', href: '/supervisor/students', icon: Users },
@@ -177,19 +185,23 @@ export default function Sidebar({ user, isOpen = false, onClose }: Props) {
               className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
               aria-label="Close sidebar"
             >
-              âœ•
+              ✕
             </button>
           )}
         </div>
 
         {/* Navigation Items */}
         <nav aria-label="Main navigation" className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
-          {items.map((item) => {
+          {items.map((item, index) => {
             const IconComponent = item.icon;
             const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+            const startsSection = item.section && item.section !== items[index - 1]?.section;
             return (
+              <React.Fragment key={item.href}>
+              {startsSection && (
+                <p className="px-3 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#E4DBC4]/70">{item.section}</p>
+              )}
               <Link
-                key={item.href}
                 href={item.href}
                 onClick={onClose}
                 aria-current={active ? 'page' : undefined}
@@ -202,6 +214,7 @@ export default function Sidebar({ user, isOpen = false, onClose }: Props) {
                 <IconComponent className={`w-4 h-4 shrink-0 transition-colors ${active ? 'text-[#E4DBC4]' : 'text-slate-400 group-hover:text-slate-200'}`} />
                 <span className="truncate">{item.label}</span>
               </Link>
+              </React.Fragment>
             );
           })}
         </nav>

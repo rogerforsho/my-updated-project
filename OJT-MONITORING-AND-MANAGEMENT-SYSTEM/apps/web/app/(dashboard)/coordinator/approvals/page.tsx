@@ -6,6 +6,15 @@ import Button from '@/src/components/ui/Button';
 import { Badge } from '@/src/components/ui/Badge';
 import Modal from '@/src/components/ui/Modal';
 import { listPendingStudents, updateStudentAccountStatus } from '@/src/services/auth';
+import { COURSE_DEPARTMENT, STUDENT_REGISTRATION_COURSES } from '@ojt/shared';
+
+const MIN_REJECTION_REASON = 10;
+
+function yearLabel(year: number) {
+  if (!year) return '—';
+  const suffix = year === 1 ? 'st' : year === 2 ? 'nd' : year === 3 ? 'rd' : 'th';
+  return `${year}${suffix} Year`;
+}
 
 type PendingStudent = {
   user_id: string;
@@ -33,8 +42,9 @@ export default function CoordinatorApprovalsPage() {
   const [batchLoading, setBatchLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [courseFilter, setCourseFilter] = useState('All');
+  const [departments, setDepartments] = useState<string[]>([]);
   const requestRef = useRef(0);
-  const [viewingId, setViewingId] = useState<{ frontUrl: string; backUrl?: string; name: string; number: string; course: string } | null>(null);
+  const [viewingId, setViewingId] = useState<{ frontUrl: string; backUrl?: string; name: string; number: string; course: string; yearLevel: number } | null>(null);
 
   // Rejection modal state
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
@@ -53,6 +63,7 @@ export default function CoordinatorApprovalsPage() {
       if (result.error) { setError(result.error.message); return; }
       setStudents(result.data?.students ?? []);
       setTotal(result.data?.total ?? 0);
+      setDepartments(result.data?.departments ?? []);
     } catch {
       if (requestId === requestRef.current) setError('Unable to load registrations. Please retry.');
     } finally {
@@ -98,7 +109,7 @@ export default function CoordinatorApprovalsPage() {
   }
 
   async function confirmReject() {
-    if (!rejectTarget) return;
+    if (!rejectTarget || rejectionReason.trim().length < MIN_REJECTION_REASON) return;
     setRejectSubmitting(true);
     setError('');
     setSuccess('');
@@ -106,7 +117,7 @@ export default function CoordinatorApprovalsPage() {
     const result = await updateStudentAccountStatus(
       rejectTarget.user_id,
       'rejected',
-      rejectionReason.trim() || undefined
+      rejectionReason.trim()
     );
     setRejectSubmitting(false);
 
@@ -122,7 +133,8 @@ export default function CoordinatorApprovalsPage() {
 
   async function handleBatchApprove() {
     const visibleIds = students.map(s => s.user_id);
-    const targetIds = selectedIds.length > 0 ? selectedIds.filter(id => visibleIds.includes(id)) : visibleIds;
+    // Only explicitly selected rows, so nobody bulk-approves IDs they never looked at.
+    const targetIds = selectedIds.filter(id => visibleIds.includes(id));
     if (targetIds.length === 0) return;
 
     if (!confirm(`Are you sure you want to approve ${targetIds.length} pending student(s)?`)) return;
@@ -160,7 +172,7 @@ export default function CoordinatorApprovalsPage() {
     );
   };
 
-  const courses = ['All', 'BSIT', 'BS-CPE', 'BSBA-HRM', 'BSENTREP'];
+  const courses = ['All', ...STUDENT_REGISTRATION_COURSES.filter(c => departments.includes(COURSE_DEPARTMENT[c]))];
   const filteredStudents = students;
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -177,10 +189,11 @@ export default function CoordinatorApprovalsPage() {
             <Button
               onClick={handleBatchApprove}
               loading={batchLoading}
-              disabled={loading || !!actionLoading || rejectSubmitting || !!error}
+              disabled={loading || !!actionLoading || rejectSubmitting || !!error || selectedIds.length === 0}
+              title={selectedIds.length === 0 ? 'Tick the registrations you have verified first' : undefined}
               className="bg-[#0A3824] hover:bg-[#092E1D] text-white shadow-sm font-medium text-xs sm:text-sm px-4 py-2"
             >
-              Approve {selectedIds.length > 0 ? `Selected (${selectedIds.length})` : `This Page (${students.length})`}
+              Approve Selected ({selectedIds.length})
             </Button>
           </div>
         )}
@@ -263,7 +276,7 @@ export default function CoordinatorApprovalsPage() {
                           {student.course}
                         </Badge>
                       </td>
-                      <td className="px-5 py-4 text-slate-700 font-medium">4th Year</td>
+                      <td className="px-5 py-4 text-slate-700 font-medium">{yearLabel(student.year_level)}</td>
                       <td className="px-5 py-4">
                         {student.id_card_front_signed_url ? (
                           <button
@@ -274,6 +287,7 @@ export default function CoordinatorApprovalsPage() {
                               name: student.full_name,
                               number: student.student_number,
                               course: student.course,
+                              yearLevel: student.year_level,
                             })}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
                           >
@@ -321,7 +335,7 @@ export default function CoordinatorApprovalsPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between text-xs text-slate-600 pb-2 border-b border-slate-100">
               <span className="font-mono font-semibold">Student No: {viewingId.number}</span>
-              <span className="font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">{viewingId.course} • 4th Year</span>
+              <span className="font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">{viewingId.course} • {yearLabel(viewingId.yearLevel)}</span>
             </div>
 
             <div className="w-full max-h-[70vh] overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-2">
@@ -366,7 +380,7 @@ export default function CoordinatorApprovalsPage() {
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs space-y-1">
               <p className="font-bold text-rose-900 text-sm">{rejectTarget.full_name}</p>
               <p className="text-rose-700">
-                {rejectTarget.student_number} • {rejectTarget.course} • 4th Year
+                {rejectTarget.student_number} • {rejectTarget.course} • {yearLabel(rejectTarget.year_level)}
               </p>
               <p className="text-rose-600 text-[11px] pt-1">
                 Rejecting this registration will notify the student at <strong className="font-semibold">{rejectTarget.email}</strong>.
@@ -374,10 +388,13 @@ export default function CoordinatorApprovalsPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              <label htmlFor="rejection-reason" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                 Reason for Rejection / Correction Instructions
               </label>
               <textarea
+                id="rejection-reason"
+                minLength={MIN_REJECTION_REASON}
+                maxLength={1000}
                 value={rejectionReason}
                 onChange={e => setRejectionReason(e.target.value)}
                 placeholder="e.g., Unclear student ID photo, student number mismatch, or unverified enrollment. Please re-register with a clear copy of your CdM ID."
@@ -385,6 +402,7 @@ export default function CoordinatorApprovalsPage() {
                 className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-[#0A3824]"
                 required
               />
+              <p className="text-xs text-slate-500">At least {MIN_REJECTION_REASON} characters. The student receives this so they know what to fix.</p>
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
@@ -399,6 +417,7 @@ export default function CoordinatorApprovalsPage() {
               <Button
                 type="button"
                 loading={rejectSubmitting}
+                disabled={rejectionReason.trim().length < MIN_REJECTION_REASON}
                 onClick={confirmReject}
                 className="bg-rose-600 hover:bg-rose-700 text-white"
               >

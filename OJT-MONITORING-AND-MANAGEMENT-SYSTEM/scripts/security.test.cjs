@@ -229,6 +229,88 @@ function workflowFixture(role = 'Admin', options = {}) {
 
 const attendanceId = number => `00000000-0000-4000-8000-${String(number).padStart(12, '0')}`;
 
+test('mobile schedules require both approved gateway documents before saving a proposal', async () => {
+  const fixture = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }], reports: [] } });
+  const route = load('apps/web/app/api/mobile/schedule-proposals/route.ts', {
+    '@supabase/supabase-js': { createClient: () => fixture.client },
+    '@ojt/shared': { ...load('shared/schedulePolicy.ts'), ...load('shared/gateway.ts') },
+  }, { NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test' });
+  const request = () => new Request('https://portal.test/api/mobile/schedule-proposals', {
+    method: 'POST', headers: { authorization: 'Bearer test', 'content-type': 'application/json' },
+    body: JSON.stringify({ work_modality: 'on_site', work_days: [1,2,3,4,5], time_in: '08:00', time_out: '17:00',
+      lunch_break_minutes: 60, lunch_break_start: '12:00', start_date: '2026-10-26' }),
+  });
+  for (const report_type of ['Pre-OJT Orientation Certificate', 'Endorsement Letter']) {
+    const response = await route.POST(request());
+    assert.equal(response.status, 400);
+    assert.equal(fixture.writes.length, 0);
+    (fixture.tables.reports ||= []).push({ student_id: 'student', report_type, status: 'approved' });
+  }
+  const response = await route.POST(request());
+  assert.equal(response.status, 200);
+  assert.equal(fixture.tables.practicum_schedules.length, 1);
+});
+
+test('completed students get a closed-record response before report upload or submission touches evidence', async () => {
+  const fixture = workflowFixture('Student', { tables: { certificates: [{ student_id: 'student', certificate_id: 'certificate' }] } });
+  for (const filename of ['reports/route.ts', 'reports/upload/route.ts']) {
+    const route = load('apps/web/app/api/mobile/' + filename, {
+      '@/src/lib/mobile-bff': {
+        async authenticateMobileStudent() { return { actor: { user: { id: 'actor' }, studentId: 'student', supabase: fixture.client }, error: null }; },
+        mobileBffFailure(error) { return Response.json({ error }, { status: error.status }); },
+      },
+      '@/src/lib/supabase/service': { getServiceClient: () => fixture.service },
+      '@/src/services/auth/internal': { async authActionLimit() { return null; } },
+      '@/src/lib/uploadValidation': { validateUploadedBytes: () => ({ data: true, error: null }) },
+      '@/src/lib/audit': { async recordAuditEvent() {} },
+      '@ojt/shared': load('shared/gateway.ts'),
+    });
+    const response = await route.POST(new Request('https://portal.test/api/mobile/reports', { method: 'POST', body: '{}' }));
+    assert.equal(response.status, 409);
+    assert.match((await response.json()).error.message, /completed|read.only/i);
+    assert.equal(fixture.storageOps.length, 0);
+    assert.equal(fixture.writes.length, 0);
+  }
+});
+
+test('attendance policy query failures report service unavailability rather than a missing placement', async () => {
+  const fixture = workflowFixture('Student', {
+    tables: { student_assignments: [{ assignment_id: 'assignment', student_id: 'student', company_id: 'company', branch_id: 'branch', start_date: '2026-01-01', end_date: '2027-01-01' }] },
+    fail: table => table === 'company_branches' ? 'permission denied' : null,
+  });
+  const route = load('apps/web/app/api/mobile/attendance/route.ts', {
+    '@ojt/shared': { getAttendanceDate: () => '2026-10-19', getPhilippineClock: () => new Date('2026-10-19T08:00:00Z') },
+    '@/src/lib/mobile-bff': {
+      async authenticateMobileStudent() { return { actor: { user: { id: 'actor' }, studentId: 'student', supabase: fixture.client }, error: null }; },
+      mobileBffFailure(error) { return Response.json({ error }, { status: error.status }); },
+    },
+    '@/src/lib/supabase/service': { getServiceClient: () => ({ ...fixture.service, storage: { from: () => ({
+      async info() { return { data: { size: 1, contentType: 'image/jpeg' }, error: null }; },
+      async download() { return { data: new Blob(['x'], { type: 'image/jpeg' }), error: null }; },
+    }) } }) },
+    '@/src/services/auth/internal': { async authActionLimit() { return null; } },
+    '@/src/lib/uploadValidation': { validateUploadedBytes: () => ({ data: true, error: null }) },
+  });
+  const response = await route.POST(new Request('https://portal.test/api/mobile/attendance', { method: 'POST', body: JSON.stringify({
+    action: 'time_in', assignment_id: 'assignment', attendance_date: '2026-10-19', time_in: '2026-10-19T08:00:00+08:00',
+    time_in_selfie_path: 'student/time_in_test.jpg', latitude: 14, longitude: 121,
+  }) }));
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error.code, 'SERVER_FAILURE');
+  assert.equal(fixture.writes.length, 0);
+});
+
+test('mobile report listing exposes certificate completion so completed students cannot open the submission UI', async () => {
+  const fixture = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }], certificates: [{ student_id: 'student', certificate_id: 'certificate' }] } });
+  const reports = load('apps/mobile/src/services/reports.ts', {
+    '../lib/supabase': { supabase: fixture.client },
+    '../lib/storage': {}, '../lib/webBff': {},
+  });
+  const response = await reports.listStudentReports();
+  assert.equal(response.error, null);
+  assert.equal(response.data.isCompleted, true);
+});
+
 test('cohort progress status filters run before pagination and count matching students', async () => {
   const fixture = workflowFixture('Coordinator', { tables: { students: [
     { student_id: 'zero', student_number: '001', course: 'BSIT', users: { account_status: 'active', full_name: 'Zero' }, internship_progress: null },
@@ -754,7 +836,9 @@ test('student approval cannot change staff accounts or overwrite an earlier deci
   const approval = await auth.updateStudentAccountStatus('student-target', 'active');
   assert.equal(approval.error, null);
   assert.equal(approval.data.emailQueued, true);
-  assert.equal((await auth.updateStudentAccountStatus('student-target', 'rejected')).error.code, 'NOT_FOUND');
+  assert.equal((await auth.updateStudentAccountStatus('student-target', 'rejected')).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await auth.updateStudentAccountStatus('student-target', 'rejected', 'too short')).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await auth.updateStudentAccountStatus('student-target', 'rejected', 'Student ID photo is unreadable.')).error.code, 'NOT_FOUND');
   assert.equal(fixture.tables.users[2].account_status, 'active');
   assert.equal(fixture.emailCount, 0);
   assert.equal((await auth.updateStudentAccountStatus('student-target', 'inactive')).error.code, 'VALIDATION_FAILURE');

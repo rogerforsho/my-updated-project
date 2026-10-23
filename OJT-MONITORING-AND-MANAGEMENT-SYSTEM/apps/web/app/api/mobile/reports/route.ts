@@ -19,6 +19,12 @@ function isHttpsUrl(value: string) {
 export async function POST(request: Request) {
   const auth = await authenticateMobileStudent(request);
   if (auth.error) return mobileBffFailure(auth.error);
+  const { data: completion, error: completionError } = await auth.actor.supabase.from('certificates')
+    .select('certificate_id').eq('student_id', auth.actor.studentId).maybeSingle();
+  if (completionError)
+    return mobileBffFailure({ status: 503, code: 'SERVER_FAILURE', message: 'Could not check OJT completion.' });
+  if (completion)
+    return mobileBffFailure({ status: 409, code: 'FORBIDDEN', message: 'Your OJT is completed. Academic records are read-only.' });
   const rateLimitError = await authActionLimit('report_submit', auth.actor.user.id, 10, 3600, 'user');
   if (rateLimitError) return mobileBffFailure({
     status: rateLimitError.code === 'RATE_LIMITED' ? 429 : 503,

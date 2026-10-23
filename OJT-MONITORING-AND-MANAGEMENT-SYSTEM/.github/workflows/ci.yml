@@ -51,6 +51,15 @@ jobs:
           EXPO_PUBLIC_WEB_URL: https://ci.invalid
         run: npx expo export --platform android --output-dir "${{ runner.temp }}/expo-android-export"
 
+      - name: Export mobile iOS bundle
+        working-directory: apps/mobile
+        env:
+          EXPO_PUBLIC_APP_ENV: ci
+          EXPO_PUBLIC_SUPABASE_URL: https://ci.invalid
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ci-build-only
+          EXPO_PUBLIC_WEB_URL: https://ci.invalid
+        run: npx expo export --platform ios --output-dir "${{ runner.temp }}/expo-ios-export"
+
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
