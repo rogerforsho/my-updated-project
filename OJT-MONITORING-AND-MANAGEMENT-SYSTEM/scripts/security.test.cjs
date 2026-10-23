@@ -262,6 +262,20 @@ test('dual-department OJT Coordinator announcements reach the selected departmen
   assert.equal((await announcements.createAnnouncement({ title: 'Update', content: 'News' })).error.code, 'VALIDATION_FAILURE');
 });
 
+test('OJT Coordinator and Super Admin announcement writes go through the service role after role checks', async () => {
+  const fail = (table, op, serviceOnly) => table === 'announcements' && op !== 'select' && !serviceOnly ? 'permission denied' : null;
+  const coordinator = workflowFixture('Coordinator', { fail, tables: {
+    announcements: [{ announcement_id: 'own', target_department: 'ICS' }, { announcement_id: 'other', target_department: 'IBE' }],
+    staff_capability_grants: [{ user_id: 'actor', capability: 'academic_workflows', department_scope: 'ICS', revoked_at: null }],
+  } });
+  const annc = coordinator.module('announcements');
+  assert.equal((await annc.createAnnouncement({ title: 'Update', content: 'News' })).error, null);
+  assert.equal((await annc.deleteAnnouncement('own')).error, null);
+  assert.equal((await annc.deleteAnnouncement('other')).error.code, 'FORBIDDEN');
+  const admin = workflowFixture('Admin', { fail, tables: { announcements: [{ announcement_id: 'x', target_department: 'IBE' }] } });
+  assert.equal((await admin.module('announcements').deleteAnnouncement('x')).error, null);
+});
+
 test('OJT Coordinator without an active department grant cannot provision supervisors', async () => {
   const fixture = workflowFixture('Coordinator', { tables: { staff_capability_grants: [] } });
   const result = await fixture.module('supervisors').createSupervisor({

@@ -57,7 +57,9 @@ export async function createAnnouncement(input: AnnouncementInput): Promise<AppR
     targetDept = targetDept === 'All' ? scope.department! : targetDept;
   }
 
-  const { data, error } = await supabase
+  // Writes use the service role (table write grant removed in migration 033); role, MFA and department were checked above.
+  const service = serviceClient();
+  const { data, error } = await service
     .from('announcements')
     .insert({
       author_user_id: user.id,
@@ -72,7 +74,6 @@ export async function createAnnouncement(input: AnnouncementInput): Promise<AppR
   if (error)
     return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to publish announcement.' } };
 
-  const service = serviceClient();
   // Fan out notification alerts to active recipients with the selected symbol/mode
   try {
     const isUrgent = input.delivery_type === 'alert' || input.dispatch_alert === true;
@@ -141,7 +142,14 @@ export async function deleteAnnouncement(announcement_id: string): Promise<AppRe
   if (!user || !['Coordinator', 'Admin'].includes(profile?.role ?? '') || profile?.account_status !== 'active')
     return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
-  const { error } = await supabase
+  const service = serviceClient();
+  if (profile.role === 'Coordinator') {
+    const { data: target } = await service.from('announcements').select('target_department').eq('announcement_id', announcement_id).maybeSingle();
+    const scope = await departmentScope(supabase, user.id, profile.role);
+    if (!target || scope.error || !scope.departments.includes(target.target_department))
+      return { data: null, error: { code: 'FORBIDDEN', message: 'Announcement is outside your department.' } };
+  }
+  const { error } = await service
     .from('announcements')
     .delete()
     .eq('announcement_id', announcement_id);

@@ -821,7 +821,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-2 justify-end">
+                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                       <Button
                         type="button"
                         variant="ghost"
@@ -832,7 +832,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
                       </Button>
                       <Button
                         type="submit"
-                        className="bg-[#0A3824] hover:bg-[#092E1D] text-[var(--cdm-sand)] font-bold text-xs cursor-pointer shadow-xs"
+                        className="bg-[#0A3824] hover:bg-[#092E1D] text-[var(--cdm-sand)] font-bold text-xs cursor-pointer shadow-xs h-auto min-h-9 whitespace-normal text-left"
                         loading={anncLoading}
                       >
                         {anncDeliveryType === 'alert' ? 'Publish Urgent Alert (🚨)' : 'Publish Announcement (📢)'}
