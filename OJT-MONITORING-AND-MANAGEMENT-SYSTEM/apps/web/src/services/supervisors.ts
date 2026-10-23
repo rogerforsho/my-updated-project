@@ -112,10 +112,20 @@ export async function createSupervisor(input: SupervisorInput): Promise<AppResul
   const email = input.email.trim().toLowerCase();
   const employeeNumber = `SUP-${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
   const redirectTo = `${siteUrl.replace(/\/$/, '')}/auth/callback?next=${encodeURIComponent('/auth/set-password')}`;
-  const { data: authData, error: authError } = await service.auth.admin.inviteUserByEmail(email, {
-    redirectTo,
-    data: { full_name: fullName, role: 'Supervisor' },
+  // app_metadata is server-only: it marks the account non-Student before the auth triggers run.
+  const { data: authData, error: createError } = await service.auth.admin.createUser({
+    email,
+    app_metadata: { role: 'Supervisor' },
+    user_metadata: { full_name: fullName },
   });
+  let authError = createError;
+  if (!authError && authData.user) {
+    const { error } = await service.auth.admin.inviteUserByEmail(email, { redirectTo, data: { full_name: fullName } });
+    if (error) {
+      await service.auth.admin.deleteUser(authData.user.id);
+      authError = error;
+    }
+  }
 
   if (authError || !authData.user) {
     if (/already|exists|unique/i.test(authError?.message ?? ''))
@@ -124,15 +134,7 @@ export async function createSupervisor(input: SupervisorInput): Promise<AppResul
   }
 
   const userId = authData.user.id;
-  const { error: metadataError } = await service.auth.admin.updateUserById(userId, {
-    app_metadata: { role: 'Supervisor' },
-  });
-  let setupError: { message: string } | null = metadataError;
-  // The auth trigger defaults invitees to Student; remove only this new invite's placeholder row.
-  if (!setupError) {
-    const { error } = await service.from('students').delete().eq('user_id', userId).like('student_number', 'PENDING-%');
-    setupError = error;
-  }
+  let setupError: { message: string } | null = null;
   if (!setupError) {
     const { error } = await service.from('users').update({
       full_name: fullName,

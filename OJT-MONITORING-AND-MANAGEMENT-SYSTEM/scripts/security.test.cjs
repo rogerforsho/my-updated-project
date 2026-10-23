@@ -25,6 +25,7 @@ function workflowFixture(role = 'Admin', options = {}) {
   let serviceCalls = 0;
   let emailCount = 0;
   let deleted = 0;
+  const invites = [];
   const field = (row, key) => key.split('.').reduce((value, part) => {
     const fieldName = part === 'progress_filter' ? 'internship_progress' : part;
     return value?.[fieldName];
@@ -131,12 +132,20 @@ function workflowFixture(role = 'Admin', options = {}) {
     async download() { return { data: file('student-id.jpg', 'image/jpeg', Buffer.from([0xff, 0xd8, 0xff, 0x00])), error: null }; },
   }; } }, async rpc() { return { data: true, error: null }; }, auth: { admin: {
     async getUserById(id) { return { data: { user: { id, email_confirmed_at: options.unconfirmedUsers?.includes(id) ? null : '2026-01-01T00:00:00Z' } }, error: null }; },
-    async inviteUserByEmail(_email, input) {
-      assert.match(input.redirectTo, /auth\/callback\?next=/);
-      tables.users.push({ user_id: 'new-user', role: 'Student', account_status: 'pending' });
-      tables.students ||= [];
-      tables.students.push({ user_id: 'new-user', student_number: 'PENDING-new-user' });
+    // Mirrors the auth.users triggers: without app_metadata.role a new user is a Student and needs ID-card paths.
+    async createUser(input) {
+      if (!['Coordinator', 'Supervisor'].includes(input.app_metadata?.role) || Object.hasOwn(input, 'password') || input.email_confirm)
+        return { data: { user: null }, error: { message: 'Database error creating new user' } };
+      tables.users.push({ user_id: 'new-user', email: input.email, role: input.app_metadata.role, account_status: 'pending' });
       return { data: { user: { id: 'new-user' } }, error: null };
+    },
+    async inviteUserByEmail(email, input) {
+      assert.match(input.redirectTo, /auth\/callback\?next=/);
+      if (options.inviteError) return { data: { user: null }, error: { message: options.inviteError } };
+      const user = tables.users.find(row => row.email === email && row.user_id === 'new-user');
+      if (!user) return { data: { user: null }, error: { message: 'Database error saving new user' } };
+      invites.push(email);
+      return { data: { user: { id: user.user_id } }, error: null };
     },
     async updateUserById() { return { error: null }; },
     async deleteUser(id) {
@@ -174,7 +183,7 @@ function workflowFixture(role = 'Admin', options = {}) {
       'next/navigation': { redirect() {} },
     }, { NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'unit-test-hmac-key', NEXT_PUBLIC_APP_URL: 'https://portal.test' });
   }
-  return { tables, writes, events, module, client, service, get deleted() { return deleted; }, get emailCount() { return emailCount; }, get serviceCalls() { return serviceCalls; } };
+  return { tables, writes, events, invites, module, client, service, get deleted() { return deleted; }, get emailCount() { return emailCount; }, get serviceCalls() { return serviceCalls; } };
 }
 
 const attendanceId = number => `00000000-0000-4000-8000-${String(number).padStart(12, '0')}`;
@@ -724,8 +733,33 @@ test('coordinator invitation rolls back failed profile writes and activates only
       assert.equal(fixture.tables.users.find(row => row.user_id === 'new-user').account_status, 'active');
       assert.equal(fixture.tables.coordinators.length, 1);
       assert.equal(fixture.tables.staff_capability_grants.length, 2);
+      assert.deepEqual(fixture.invites, ['staff@example.invalid']);
+      assert.equal(fixture.events[0].action, 'OJT_COORDINATOR_INVITED');
     }
   }
+});
+
+test('staff invitations roll back the created account when the setup email cannot be sent', async () => {
+  for (const [name, call] of [
+    ['admin', service => service.createSystemUser({ full_name: 'Test Coordinator', email: 'staff@example.invalid', role: 'OJT Coordinator', department_scopes: ['ICS'] })],
+    ['supervisors', service => service.createSupervisor({ full_name: 'Supervisor', email: 'supervisor@example.test', company_id: 'company-1', position: 'Mentor' })],
+  ]) {
+    const fixture = workflowFixture(name === 'admin' ? 'Admin' : 'Coordinator', { inviteError: 'smtp down' });
+    const result = await call(fixture.module(name));
+    assert.equal(result.error.code, 'SERVER_FAILURE');
+    assert.equal(fixture.deleted, 1);
+    assert.equal(fixture.tables.users.some(row => row.user_id === 'new-user'), false);
+    assert.equal(fixture.events.length, 0);
+  }
+});
+
+test('Coordinator supervisor onboarding creates a Supervisor account and sends its setup invitation', async () => {
+  const fixture = workflowFixture('Coordinator');
+  const result = await fixture.module('supervisors').createSupervisor({ full_name: 'Supervisor', email: 'supervisor@example.test', company_id: 'company-1', position: 'Mentor' });
+  assert.equal(result.error, null);
+  assert.deepEqual(fixture.invites, ['supervisor@example.test']);
+  assert.equal(fixture.tables.users.find(row => row.user_id === 'new-user').role, 'Supervisor');
+  assert.equal(fixture.tables.supervisors.length, 1);
 });
 
 test('administrator cannot disable their own account or report success for a missing user', async () => {
@@ -1081,12 +1115,12 @@ test('mobile recovery accepts only its exact recovery deep link and supports PKC
 });
 
 test('supervisor onboarding sends a setup invitation without creating a password', async () => {
-  let invitation;
+  let invitation, creation;
   let deleted = 0;
   const service = {
     auth: { admin: {
+      async createUser(input) { creation = input; return { data: { user: { id: 'supervisor-1' } }, error: null }; },
       async inviteUserByEmail(email, options) { invitation = { email, options }; return { data: { user: { id: 'supervisor-1' } }, error: null }; },
-      async updateUserById() { return { error: null }; },
       async deleteUser() { deleted++; return { error: null }; },
     } },
     from() {
@@ -1112,7 +1146,8 @@ test('supervisor onboarding sends a setup invitation without creating a password
   });
   assert.equal(result.error, null);
   assert.equal(invitation.email, 'supervisor@example.test');
-  assert.equal(invitation.options.data.role, 'Supervisor');
+  assert.equal(creation.app_metadata.role, 'Supervisor');
+  assert.equal(Object.hasOwn(creation, 'password'), false);
   assert.match(invitation.options.redirectTo, /auth\/callback/);
   assert.equal(Object.hasOwn(invitation.options, 'password'), false);
   assert.equal(deleted, 0);
@@ -1122,8 +1157,8 @@ test('supervisor onboarding rolls back only the newly invited account when profi
   let deletedId = '';
   const service = {
     auth: { admin: {
+      async createUser() { return { data: { user: { id: 'supervisor-2' } }, error: null }; },
       async inviteUserByEmail() { return { data: { user: { id: 'supervisor-2' } }, error: null }; },
-      async updateUserById() { return { error: null }; },
       async deleteUser(id) { deletedId = id; return { error: null }; },
     } },
     from(table) {
