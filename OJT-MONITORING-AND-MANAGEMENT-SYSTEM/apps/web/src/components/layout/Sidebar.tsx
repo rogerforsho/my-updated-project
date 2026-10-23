@@ -25,6 +25,7 @@ import {
   MapPin,
   MessagesSquare,
   type IconProps,
+  FileSpreadsheet,
 } from '@/src/components/ui/Icons';
 
 interface NavItem {
@@ -47,6 +48,7 @@ const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Approvals', href: '/coordinator/approvals', icon: UserCheck },
     { label: 'Students', href: '/coordinator/students', icon: Users },
+    { label: 'Import Students', href: '/coordinator/import', icon: FileSpreadsheet },
     { label: 'Companies', href: '/coordinator/companies', icon: Building2 },
     { label: 'HTE Requests', href: '/coordinator/company-requests', icon: Building2 },
     { label: 'HTE Branches', href: '/coordinator/branches', icon: MapPin },

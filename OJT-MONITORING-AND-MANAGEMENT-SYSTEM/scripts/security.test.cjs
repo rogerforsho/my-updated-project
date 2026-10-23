@@ -27,6 +27,8 @@ function workflowFixture(role = 'Admin', options = {}) {
   let deleted = 0;
   const invites = [];
   const authUpdates = [];
+  const importedPasswords = [];
+  let importedCount = 0;
   const field = (row, key) => key.split('.').reduce((value, part) => {
     const fieldName = part === 'progress_filter' ? 'internship_progress' : part;
     return value?.[fieldName];
@@ -34,6 +36,7 @@ function workflowFixture(role = 'Admin', options = {}) {
   function from(table, serviceOnly = false) {
     let op = 'select', values, head = false, start = 0, end = Infinity;
     const filters = [];
+    const embeddedFilters = new Map();
     function execute(single = false) {
       const error = options.fail?.(table, op, serviceOnly);
       if (error) return { data: null, error: { message: error }, count: null };
@@ -58,7 +61,17 @@ function workflowFixture(role = 'Admin', options = {}) {
     return {
       select(_columns, config) { head = config?.head || false; return this; },
       eq(key, value) { filters.push(row => field(row, key) === value); return this; },
-      is(key, value) { filters.push(row => value === null && field(row, key) == null); return this; },
+      neq(key, value) {
+        const [embed, column] = key.split('.');
+        assert.equal(embed, 'progress_filter');
+        embeddedFilters.set(embed, progress => progress?.[column] != null && progress[column] !== value);
+        return this;
+      },
+      is(key, value) {
+        filters.push(row => value === null && (field(row, key) == null ||
+          (embeddedFilters.has(key) && !embeddedFilters.get(key)(field(row, key)))));
+        return this;
+      },
       in(key, values) { filters.push(row => values.includes(field(row, key))); return this; },
       like(key, pattern) { const prefix = pattern.replace(/%$/, ''); filters.push(row => String(field(row, key) || '').startsWith(prefix)); return this; },
       not(key, operator, value) {
@@ -69,6 +82,8 @@ function workflowFixture(role = 'Admin', options = {}) {
       },
       or(expression) {
         const terms = expression.split(',');
+        // PostgREST root OR accepts embed null checks, not embedded column comparisons.
+        assert.equal(terms.some(term => /^[^.]+\.[^.]+\.eq\./.test(term)), false, 'Invalid embedded comparison in root OR');
         filters.push(row => terms.some(term => {
           const isNull = /^(.+)\.is\.null$/.exec(term);
           if (isNull) return field(row, isNull[1]) == null;
@@ -136,8 +151,20 @@ function workflowFixture(role = 'Admin', options = {}) {
     // Mirrors the auth.users triggers: without app_metadata.role a new user is a Student and needs ID-card paths.
     async createUser(input) {
       // The real BEFORE INSERT trigger only lets staff through when the server registered their email first.
-      if (!(tables.pending_staff_invites || []).some(row => row.email === input.email) || !['Coordinator', 'Supervisor'].includes(input.app_metadata?.role) || Object.hasOwn(input, 'password') || input.email_confirm !== true)
+      const invite = (tables.pending_staff_invites || []).find(row => row.email === input.email);
+      const staffOk = invite && ['Coordinator', 'Supervisor'].includes(input.app_metadata?.role) && !Object.hasOwn(input, 'password') && input.email_confirm === true;
+      // student_import invites skip only the ID-card check; year 4 and an approved course are still required.
+      const importOk = invite?.kind === 'student_import' && input.app_metadata?.role === 'Student' && typeof input.password === 'string' &&
+        input.email_confirm === true && input.user_metadata?.year_level === 4 && ['BSIT', 'BS-CPE', 'BSBA-HRM', 'BSENTREP'].includes(input.user_metadata?.course);
+      if ((!staffOk && !importOk) || options.createUserFails?.(input))
         return { data: { user: null }, error: { message: 'Database error creating new user' } };
+      if (importOk) {
+        const id = `imported-${++importedCount}`;
+        tables.users.push({ user_id: id, email: input.email, role: 'Student', account_status: 'pending', must_change_password: false });
+        (tables.students ||= []).push({ student_id: `s-${id}`, user_id: id, student_number: input.user_metadata.student_number, course: input.user_metadata.course });
+        importedPasswords.push(input.password);
+        return { data: { user: { id } }, error: null };
+      }
       tables.users.push({ user_id: 'new-user', email: input.email, role: input.app_metadata.role, account_status: 'pending' });
       return { data: { user: { id: 'new-user' } }, error: null };
     },
@@ -184,7 +211,7 @@ function workflowFixture(role = 'Admin', options = {}) {
       'next/navigation': { redirect() {} },
     }, { NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'unit-test-hmac-key', NEXT_PUBLIC_APP_URL: 'https://portal.test' });
   }
-  return { tables, writes, events, invites, authUpdates, module, client, service, get deleted() { return deleted; }, get emailCount() { return emailCount; }, get serviceCalls() { return serviceCalls; } };
+  return { tables, writes, events, invites, authUpdates, importedPasswords, module, client, service, get deleted() { return deleted; }, get emailCount() { return emailCount; }, get serviceCalls() { return serviceCalls; } };
 }
 
 const attendanceId = number => `00000000-0000-4000-8000-${String(number).padStart(12, '0')}`;
@@ -203,6 +230,13 @@ test('cohort progress status filters run before pagination and count matching st
   const notStarted = await service.listCohortProgress(1, 1, 'all', 'not_started');
   assert.equal(notStarted.data.total, 2);
   assert.equal(notStarted.data.students[0].student_id, 'zero');
+  const second = await service.listCohortProgress(2, 1, 'all', 'not_started');
+  assert.equal(second.data.total, 2);
+  assert.equal(second.data.students[0].student_id, 'new');
+  assert.equal(second.data.students[0].progress_status, 'not_started');
+  const completed = await service.listCohortProgress(1, 20, 'all', 'completed');
+  assert.equal(completed.data.total, 1);
+  assert.equal(completed.data.students[0].student_id, 'done');
   assert.equal((await service.listCohortProgress(1, 20, 'all', 'unexpected')).error.code, 'VALIDATION_FAILURE');
 });
 
@@ -746,6 +780,97 @@ test('coordinator cannot reset a student outside the granted department or one w
   assert.equal((await auth.resetStudentPasswordToDefault('pending-student')).error.code, 'NOT_FOUND');
   assert.equal(fixture.authUpdates.length, 0);
   assert.equal(fixture.tables.users.some(row => row.must_change_password), false);
+});
+
+const importHeader = 'full_name,email,student_number,course\n';
+
+test('CSV parser handles quotes, embedded commas and newlines, CRLF and blank lines', () => {
+  const { parseCsv } = load('apps/web/src/lib/csv.ts');
+  // Arrays built inside the vm context have another prototype, so compare as JSON.
+  assert.equal(JSON.stringify(parseCsv('﻿a,b\r\n"x, ""y""",z\n\n"line\nbreak",\n')),
+    JSON.stringify([['a', 'b'], ['x, "y"', 'z'], ['line\nbreak', '']]));
+});
+
+test('import preview flags duplicates, existing accounts and courses outside the department', async () => {
+  const fixture = workflowFixture('Coordinator');
+  fixture.tables.users.push({ user_id: 'old', email: 'taken@example.test', role: 'Student' });
+  const csv = importHeader + [
+    'Ana Cruz,ana@example.test,2021-0001,bsit',
+    'Ben Lee,ANA@example.test,2021-0002,BSIT',
+    'Cy Dee,cy@example.test,2021-0003,BSBA-HRM',
+    'Di Eve,taken@example.test,2021-0004,BSIT',
+    'Ed Fox,ed@example.test,2021-0001,BSIT',
+    ',bad,,BSN',
+  ].join('\n');
+  const result = await fixture.module('studentImport').previewStudentImport(csv);
+  assert.equal(result.error, null);
+  const [ana, ben, cy, di, ed, bad] = result.data.rows;
+  assert.equal(ana.errors.length, 0);
+  assert.equal(ana.course, 'BSIT');
+  assert.match(ben.errors.join(' '), /Email appears more than once/);
+  assert.match(cy.errors.join(' '), /outside your department/);
+  assert.match(di.errors.join(' '), /email already exists/);
+  assert.match(ed.errors.join(' '), /Student number appears more than once/);
+  assert.equal(bad.errors.length, 4);
+  assert.equal(result.data.errorCount, 5);
+  assert.equal(fixture.tables.users.length, 2);
+});
+
+test('import rejects a wrong header, oversize files and non-coordinators', async () => {
+  const fixture = workflowFixture('Coordinator');
+  const service = fixture.module('studentImport');
+  assert.equal((await service.previewStudentImport('name,email\nA,a@example.test')).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await service.previewStudentImport(importHeader)).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await service.previewStudentImport('x'.repeat(1_000_001))).error.code, 'VALIDATION_FAILURE');
+  const tooMany = importHeader + Array.from({ length: 501 }, (_, i) => `N${i},n${i}@example.test,S${i},BSIT`).join('\n');
+  assert.equal((await service.previewStudentImport(tooMany)).error.code, 'VALIDATION_FAILURE');
+  const admin = workflowFixture('Admin');
+  assert.equal((await admin.module('studentImport').previewStudentImport(importHeader + 'A,a@example.test,1,BSIT')).error.code, 'FORBIDDEN');
+  assert.equal((await admin.module('studentImport').commitStudentImport(importHeader + 'A,a@example.test,1,BSIT')).error.code, 'FORBIDDEN');
+});
+
+test('import commit creates active students with the default password and a forced change', async () => {
+  const fixture = workflowFixture('Coordinator');
+  const csv = importHeader + 'Ana Cruz,ana@example.test,2021-00001,BSIT\nBen Lee,ben@example.test,123,BS-CPE\n';
+  const result = await fixture.module('studentImport').commitStudentImport(csv);
+  assert.equal(result.error, null);
+  assert.equal(result.data.imported, 2);
+  const imported = fixture.tables.users.filter(row => row.role === 'Student');
+  assert.equal(imported.length, 2);
+  assert.ok(imported.every(row => row.account_status === 'active' && row.must_change_password === true));
+  assert.deepEqual(fixture.importedPasswords, ['2021-00001', 'cdm-123']);
+  assert.equal((fixture.tables.pending_staff_invites || []).length, 0);
+  assert.equal(fixture.events.at(-1).action, 'STUDENT_IMPORTED');
+  assert.equal(fixture.events.at(-1).details.count, 2);
+  assert.doesNotMatch(JSON.stringify(fixture.events), /2021-00001|cdm-123/);
+});
+
+test('import commit writes nothing when any row has an error', async () => {
+  const fixture = workflowFixture('Coordinator');
+  const csv = importHeader + 'Ana Cruz,ana@example.test,2021-0001,BSIT\nBad Row,not-an-email,2021-0002,BSIT\n';
+  const result = await fixture.module('studentImport').commitStudentImport(csv);
+  assert.equal(result.error.code, 'VALIDATION_FAILURE');
+  assert.equal(fixture.tables.users.filter(row => row.role === 'Student').length, 0);
+  assert.equal(fixture.importedPasswords.length, 0);
+});
+
+test('import commit removes every account it created when a later row fails', async () => {
+  const fixture = workflowFixture('Coordinator', { createUserFails: input => input.email === 'cy@example.test' });
+  const csv = importHeader + [
+    'Ana Cruz,ana@example.test,2021-0001,BSIT',
+    'Ben Lee,ben@example.test,2021-0002,BSIT',
+    'Cy Dee,cy@example.test,2021-0003,BSIT',
+  ].join('\n');
+  const result = await fixture.module('studentImport').commitStudentImport(csv);
+  assert.equal(result.error.code, 'SERVER_FAILURE');
+  assert.match(result.error.message, /Line 4/);
+  assert.match(result.error.message, /Nothing was imported/);
+  assert.equal(fixture.tables.users.filter(row => row.role === 'Student').length, 0);
+  assert.equal((fixture.tables.students || []).length, 0);
+  assert.equal(fixture.deleted, 2);
+  assert.equal((fixture.tables.pending_staff_invites || []).length, 0);
+  assert.equal(fixture.events.at(-1).action, 'STUDENT_IMPORT_FAILED');
+  assert.equal(fixture.events.at(-1).details.rolled_back, 2);
 });
 
 test('default student password is the student number, prefixed when shorter than 8 characters', () => {
