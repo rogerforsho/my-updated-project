@@ -10,3 +10,13 @@ OJT-MONITORING-AND-MANAGEMENT-SYSTEM/apps/mobile/.env
 
 # Personal Claude Code settings
 .claude/settings.local.json
+
+# Private local panel demo credentials and document
+artifacts/panel-local/
+artifacts/OJT Panel Demonstration Guide.docx
+artifacts/panel-guide-qa/
+artifacts/panel-audit/actors.private.json
+
+# Local audit/demo scripts and fixtures (contain demo credentials)
+artifacts/
+.claude/
