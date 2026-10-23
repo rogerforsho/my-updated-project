@@ -575,6 +575,47 @@ test('a concurrent attendance decision cannot be overwritten by a stale verifica
   assert.equal(fixture.tables.attendance[0].verification_status, 'rejected');
 });
 
+test('only the assigned active supervisor can mark attendance verified or disputed', async () => {
+  const tables = () => ({
+    supervisors: [{ user_id: 'actor', supervisor_id: 'supervisor' }],
+    student_assignments: [
+      { assignment_id: 'a1', student_id: 'own', supervisor_id: 'supervisor', assignment_status: 'active' },
+      { assignment_id: 'a2', student_id: 'past', supervisor_id: 'supervisor', assignment_status: 'completed' },
+    ],
+    attendance: [
+      { attendance_id: attendanceId(1), student_id: 'own', verification_status: 'pending' },
+      { attendance_id: attendanceId(2), student_id: 'own', verification_status: 'pending' },
+      { attendance_id: attendanceId(3), student_id: 'other', verification_status: 'pending' },
+      { attendance_id: attendanceId(4), student_id: 'past', verification_status: 'pending' },
+    ],
+  });
+  const fixture = workflowFixture('Supervisor', { tables: tables() });
+  const service = fixture.module('attendance');
+  assert.equal((await service.verifyAttendance(attendanceId(1), 'verified')).error, null);
+  // DISPUTED in the spec is stored as verification_status 'rejected'.
+  assert.equal((await service.verifyAttendance(attendanceId(2), 'rejected')).error, null);
+  assert.equal((await service.verifyAttendance(attendanceId(3), 'rejected')).error.code, 'FORBIDDEN');
+  assert.equal((await service.verifyAttendance(attendanceId(4), 'verified')).error.code, 'FORBIDDEN');
+  assert.equal((await service.verifyAttendance(attendanceId(1), 'rejected')).error.code, 'DUPLICATE_REQUEST');
+  assert.equal((await service.verifyAttendance(attendanceId(3), 'approved')).error.code, 'VALIDATION_FAILURE');
+  assert.deepEqual(fixture.tables.attendance.map(row => row.verification_status), ['verified', 'rejected', 'pending', 'pending']);
+
+  const inactive = workflowFixture('Supervisor', { status: 'inactive', tables: tables() });
+  assert.equal((await inactive.module('attendance').verifyAttendance(attendanceId(1), 'verified')).error.code, 'FORBIDDEN');
+  assert.equal(inactive.tables.attendance[0].verification_status, 'pending');
+  const coordinator = workflowFixture('Coordinator', { tables: tables() });
+  assert.equal((await coordinator.module('attendance').verifyAttendance(attendanceId(1), 'verified')).error.code, 'FORBIDDEN');
+});
+
+test('supervisor disputes via "Mark Disputed" but the stored rejected status keeps its Rejected label', () => {
+  // 'rejected' is also a Coordinator exception rejection, so only the Supervisor action says Disputed.
+  const page = fs.readFileSync(path.join(root, 'apps/web/app/(dashboard)/supervisor/attendance/page.tsx'), 'utf8');
+  assert.match(page, /onClick=\{\(\) => handleVerify\('rejected'\)\}[\s\S]{0,300}Mark Disputed/);
+  assert.match(page, /label: 'Rejected', value: 'rejected'/);
+  assert.doesNotMatch(page, /'Disputed'|Reject Record/);
+  assert.doesNotMatch(page, /<Badge status=\{[^}]*verification_status\}>/);
+});
+
 test('Coordinator attendance exceptions use one audited database decision', async () => {
   let call = null;
   const fixture = workflowFixture('Coordinator', { rpc(name, args) {

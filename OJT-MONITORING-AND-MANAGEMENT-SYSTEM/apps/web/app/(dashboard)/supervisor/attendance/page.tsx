@@ -496,7 +496,7 @@ export default function SupervisorAttendancePage() {
                   variant="ghost"
                   className="flex-1 text-red-600 hover:bg-red-50 border border-red-200 py-2 font-medium"
                 >
-                  ✕ Reject Record
+                  ✕ Mark Disputed
                 </Button>
               </div>
             ) : (
