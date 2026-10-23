@@ -35,6 +35,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/coordinator/notifications': 'Notifications',
   '/coordinator/reports': 'Department Reports',
   '/coordinator/students': 'Trainee Roster',
+  '/coordinator/import': 'Import Students',
+  '/coordinator/incident-reports': 'Incident Reports',
   '/coordinator/companies': 'Partner Companies (HTEs)',
   '/coordinator/supervisors': 'Company Supervisors',
   '/coordinator/assignments': 'Student Placement',
