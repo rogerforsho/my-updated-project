@@ -1552,3 +1552,37 @@ test('database refuses final grades and certificates until clearance is met', as
   await db.exec(`INSERT INTO ojt_final_grades VALUES ('${s}', 2.0)`);
   await db.exec(`INSERT INTO certificates VALUES ('${s}')`);
 });
+
+test('Super Admin reads of users and audit logs require MFA (aal2)', async () => {
+  const { PGlite } = require('@electric-sql/pglite');
+  const db = new PGlite();
+  await db.exec(`
+    CREATE ROLE anon; CREATE ROLE authenticated; CREATE SCHEMA auth; CREATE SCHEMA private;
+    CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+    CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
+    CREATE TABLE public.users(user_id uuid PRIMARY KEY, role text);
+    CREATE TABLE public.audit_logs(id serial, action text);
+    CREATE FUNCTION private.get_my_role() RETURNS text LANGUAGE sql STABLE SECURITY DEFINER AS $$ SELECT role FROM public.users WHERE user_id = auth.uid() $$;
+    GRANT USAGE ON SCHEMA auth, private, public TO authenticated;
+    GRANT EXECUTE ON FUNCTION auth.uid(), auth.jwt(), private.get_my_role() TO authenticated;
+    GRANT SELECT ON public.users, public.audit_logs TO authenticated;
+    ALTER TABLE public.users ENABLE ROW LEVEL SECURITY; ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY open_read ON public.users FOR SELECT TO authenticated USING (true);
+    CREATE POLICY open_read ON public.audit_logs FOR SELECT TO authenticated USING (true);
+    INSERT INTO public.users VALUES ('${uid(1)}','Admin'),('${uid(2)}','Student');
+    INSERT INTO public.audit_logs(action) VALUES ('X');
+    CREATE FUNCTION public.ojt_security_revision() RETURNS integer LANGUAGE sql AS $$ SELECT 44 $$;
+  `);
+  await db.exec(migrationSql('20261024000200_require_mfa_for_admin_reads.sql'));
+  const count = async (sub, aal, table) => {
+    await db.exec(`SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub','${sub}',false), set_config('request.jwt.claims','{"aal":"${aal}"}',false)`);
+    try { return (await db.query(`SELECT count(*)::int AS n FROM public.${table}`)).rows[0].n; }
+    finally { await db.exec('RESET ROLE'); }
+  };
+  assert.equal(await count(uid(1), 'aal1', 'audit_logs'), 0);
+  assert.equal(await count(uid(1), 'aal1', 'users'), 1); // own row only
+  assert.equal(await count(uid(1), 'aal2', 'audit_logs'), 1);
+  assert.equal(await count(uid(1), 'aal2', 'users'), 2);
+  assert.equal(await count(uid(2), 'aal1', 'audit_logs'), 1);
+  assert.equal(await count(uid(2), 'aal1', 'users'), 2);
+});
