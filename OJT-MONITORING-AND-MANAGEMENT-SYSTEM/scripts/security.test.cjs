@@ -1513,3 +1513,42 @@ test('Docker server Supabase URLs are rewritten to the browser origin for signed
   const externalUrl = 'https://cdn.example.test/report.pdf';
   assert.equal(helper.toPublicSupabaseUrl(externalUrl), externalUrl);
 });
+
+// Batch A: database security migrations. Each migration must exist in both trees.
+function migrationSql(name) {
+  const a = fs.readFileSync(path.join(root, 'database/migrations', name), 'utf8');
+  assert.equal(fs.readFileSync(path.join(root, 'supabase/migrations', name), 'utf8'), a);
+  return a;
+}
+const uid = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+
+test('database refuses final grades and certificates until clearance is met', async () => {
+  const { PGlite } = require('@electric-sql/pglite');
+  const db = new PGlite();
+  await db.exec(`
+    CREATE ROLE anon; CREATE ROLE authenticated; CREATE SCHEMA private;
+    CREATE TABLE public.students(student_id uuid PRIMARY KEY, required_hours numeric DEFAULT 486);
+    CREATE TABLE public.internship_progress(student_id uuid, completed_hours numeric);
+    CREATE TABLE public.reports(student_id uuid, report_type text, status text);
+    CREATE TABLE public.evaluations(evaluation_id uuid PRIMARY KEY, student_id uuid, evaluation_type text,
+      performance_score numeric, evaluation_date date);
+    CREATE TABLE public.evaluation_appeals(evaluation_id uuid, student_id uuid, status text,
+      resolved_score numeric, created_at timestamptz DEFAULT now());
+    CREATE TABLE public.ojt_final_grades(student_id uuid PRIMARY KEY, final_grade numeric);
+    CREATE TABLE public.certificates(student_id uuid PRIMARY KEY);
+    CREATE FUNCTION public.ojt_security_revision() RETURNS integer LANGUAGE sql AS $$ SELECT 44 $$;
+  `);
+  await db.exec(migrationSql('20261024000100_enforce_clearance_in_database.sql'));
+  const s = uid(1);
+  await db.exec(`INSERT INTO students(student_id) VALUES ('${s}');
+    INSERT INTO internship_progress VALUES ('${s}', 486);
+    INSERT INTO reports VALUES ('${s}', 'final_report', 'approved');
+    INSERT INTO evaluations VALUES ('${uid(11)}','${s}','midterm',80,'2026-01-01'),('${uid(12)}','${s}','final',70,'2026-02-01');`);
+  await assert.rejects(db.exec(`INSERT INTO ojt_final_grades VALUES ('${s}', 2.0)`), /clearance/i);
+  await assert.rejects(db.exec(`INSERT INTO certificates VALUES ('${s}')`), /clearance/i);
+  await db.exec(`INSERT INTO evaluation_appeals(evaluation_id, student_id, status) VALUES ('${uid(12)}','${s}','pending')`);
+  await assert.rejects(db.exec(`INSERT INTO ojt_final_grades VALUES ('${s}', 2.0)`), /clearance/i);
+  await db.exec(`UPDATE evaluation_appeals SET status = 'adjusted', resolved_score = 76`);
+  await db.exec(`INSERT INTO ojt_final_grades VALUES ('${s}', 2.0)`);
+  await db.exec(`INSERT INTO certificates VALUES ('${s}')`);
+});
