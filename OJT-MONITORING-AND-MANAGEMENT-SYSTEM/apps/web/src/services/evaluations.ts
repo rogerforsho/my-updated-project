@@ -2,7 +2,7 @@
 
 import { getTrustedActor } from '@/src/lib/trusted-actor';
 
-import { canManageDepartmentRecord, canManageDepartmentStudent } from '@/src/lib/department-scope';
+import { canManageDepartmentRecord, canManageDepartmentStudent, departmentScope, restrictDepartment } from '@/src/lib/department-scope';
 import { recordAuditEvent } from '@/src/lib/audit';
 import type { AppResult, DbEvaluation, DbEvaluationAppeal, EvaluationAppealStatus } from '@ojt/shared';
 
@@ -285,6 +285,28 @@ export async function listEvaluationAppeals(): Promise<AppResult<EvaluationAppea
     .order('created_at', { ascending: false });
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load evaluation appeals.' } };
   return { data: (data ?? []) as EvaluationAppealForCoordinator[], error: null };
+}
+
+export type SubmittedEvaluationForCoordinator = Pick<DbEvaluation, 'evaluation_id' | 'evaluation_type' | 'performance_score' | 'feedback' | 'evaluation_date'> & {
+  students: { student_number: string; course: string; users: { full_name: string } };
+  supervisors: { users: { full_name: string } } | null;
+};
+
+export async function listSubmittedEvaluations(): Promise<AppResult<SubmittedEvaluationForCoordinator[]>> {
+  const { supabase, user, profile } = await getTrustedActor();
+  if (!user || profile?.role !== 'Coordinator' || profile.account_status !== 'active')
+    return { data: null, error: { code: 'FORBIDDEN', message: 'OJT Coordinator access required.' } };
+  const scope = await departmentScope(supabase, user.id, profile.role);
+  if (scope.error) return { data: null, error: { code: 'FORBIDDEN', message: scope.error } };
+  const { data: students, error: studentError } = await restrictDepartment(supabase.from('students').select('student_id'), scope.department);
+  if (studentError) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load evaluations.' } };
+  const ids = (students ?? []).map(row => row.student_id);
+  if (!ids.length) return { data: [], error: null };
+  const { data, error } = await supabase.from('evaluations')
+    .select('evaluation_id, evaluation_type, performance_score, feedback, evaluation_date, students!inner(student_number, course, users!inner(full_name)), supervisors(users(full_name))')
+    .in('student_id', ids).order('evaluation_date', { ascending: false });
+  if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load evaluations.' } };
+  return { data: (data ?? []) as unknown as SubmittedEvaluationForCoordinator[], error: null };
 }
 
 export async function decideEvaluationAppeal(

@@ -880,6 +880,7 @@ test('role boundaries reject other roles, anonymous users, and inactive users be
     ['certificates', 'checkClearanceStatus', ['student'], ['Student', 'Coordinator']],
     ['certificates', 'recordFinalOjtGrade', ['student', 1.75, '2026-2027'], ['Coordinator']],
     ['certificates', 'revokeCertificate', ['certificate', 'Reason'], ['Coordinator']],
+    ['evaluations', 'listSubmittedEvaluations', [], ['Coordinator']],
     ['evaluations', 'overrideEvaluation', ['evaluation', 80, 'Reason'], ['Coordinator']],
     ['reports', 'sendRequirementReminder', ['student-user', ['Report']], ['Coordinator']],
     ['companies', 'setCompanyStatus', ['company', 'inactive'], ['Coordinator']],
