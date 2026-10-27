@@ -41,11 +41,12 @@ function loader(mocks, globals = {}) {
 
 function mobileFixture() {
   const store = new Map();
+  const files = new Map();
   const calls = [];
   const state = {
     online: true,
     userId: 'user-a', studentId: 'student-a',
-    record: null, updateResult: null, insertFailCount: 0,
+    record: null, updateResult: null, insertFailCount: 0, requestFailCount: 0,
     now: '2026-10-05T07:30:00+08:00',
   };
   const secureStore = {
@@ -116,15 +117,19 @@ function mobileFixture() {
     } },
     'expo-file-system/legacy': {
       documentDirectory: 'file:///test/',
-      async getInfoAsync() { return { exists: true }; },
-      async makeDirectoryAsync() {}, async writeAsStringAsync() {}, async copyAsync() {},
-      async deleteAsync() {}, async readAsStringAsync() { return 'AQID'; },
+      async getInfoAsync(uri) { return { exists: uri.endsWith('/') || files.has(uri) }; },
+      async makeDirectoryAsync() {}, async writeAsStringAsync(uri, value) { files.set(uri, value); }, async copyAsync() {},
+      async deleteAsync(uri) { files.delete(uri); }, async readAsStringAsync(uri) { return files.get(uri) ?? 'AQID'; },
     },
     [path.join(root, 'apps/mobile/src/lib/webBff.ts')]: {
       async postWebBff(endpoint, payload) {
         calls.push({ bff: endpoint, payload });
         if (endpoint === '/api/mobile/schedule-proposals')
           return { data: { ...payload, daily_hours: 8 }, error: null };
+        if (state.requestFailCount > 0) {
+          state.requestFailCount--;
+          return { data: null, error: { code: 'SERVER_FAILURE', message: 'The service could not be reached.' } };
+        }
         if (payload.action === 'time_in') {
           if (state.insertFailCount > 0) {
             state.insertFailCount--;
@@ -303,6 +308,41 @@ test('a time-out retry recognizes a previously successful sync without another u
   assert.equal(result.syncedCount, 1);
   assert.equal((await f.queue.getOfflineQueue()).length, 0);
   assert.equal(f.calls.some(c => c.upload || c.update), false);
+});
+
+test('an offline Time Out can replace a pending automatic time-out', async () => {
+  const f = mobileFixture();
+  await f.queue.enqueueOfflineAttendance({ type: 'time_out', student_id: 'student-a',
+    assignment_id: '', attendance_date: '2026-10-05', captured_at: f.state.now,
+    local_photo_uri: 'file:///out.jpg' });
+  f.state.record = { attendance_id: 'server-record',
+    time_out: '2026-10-05T17:00:00+08:00', verification_status: 'pending',
+    time_out_flag_reason: f.load('shared/attendanceDate.ts').AUTO_TIME_OUT_REASON };
+  f.state.updateResult = { attendance_id: 'server-record' };
+  const result = await f.sync.syncPendingOfflineAttendance();
+  assert.equal(result.syncedCount, 1);
+  assert.equal((await f.queue.getOfflineQueue()).length, 0);
+  assert.equal(f.state.record.time_out, f.state.now);
+});
+
+test('a server request failure after selfie upload keeps Time In on the phone', async () => {
+  const f = mobileFixture();
+  f.state.requestFailCount = 1;
+  const result = await f.attendance.recordTimeIn('file:///selfie.jpg');
+  assert.equal(result.error, null);
+  assert.equal(result.data.isOffline, true);
+  assert.equal((await f.queue.getOfflineQueue()).length, 1);
+});
+
+test('a server request failure after selfie upload keeps Time Out on the phone', async () => {
+  const f = mobileFixture();
+  f.state.record = { attendance_id: 'server-record', student_id: 'student-a', attendance_date: '2026-10-05',
+    time_in: '2026-10-04T23:00:00Z', time_out: null };
+  f.state.requestFailCount = 1;
+  const result = await f.attendance.recordTimeOut('server-record', 'file:///out.jpg');
+  assert.equal(result.error, null);
+  assert.equal(result.data.isOffline, true);
+  assert.equal((await f.queue.getOfflineQueue())[0].type, 'time_out');
 });
 
 test('sync retries an already saved time-in without uploading a duplicate', async () => {
@@ -489,7 +529,7 @@ test('inactive or missing profiles cannot access protected pages', async () => {
 
 test('active students cannot use the web portal for student records', async () => {
   const student = webFixture({ user: { id: 'student' }, profile: { role: 'Student', account_status: 'active' } });
-  for (const route of ['/dashboard', '/student/reports', '/settings', '/map']) {
+  for (const route of ['/dashboard', '/settings', '/map']) {
     const response = await student(`http://localhost${route}`);
     assert.equal(response.status, 307);
     assert.equal(response.headers.get('location'), 'http://localhost/auth/mobile-only');

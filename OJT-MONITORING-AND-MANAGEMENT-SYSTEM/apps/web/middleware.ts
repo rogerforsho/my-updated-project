@@ -10,8 +10,6 @@ const KNOWN_PATHS = new Set([
   '/coordinator/progress', '/coordinator/reports', '/coordinator/students', '/coordinator/import', '/coordinator/incident-reports', '/coordinator/submissions', '/coordinator/messages', '/coordinator/notifications',
   '/coordinator/supervisors', '/dashboard', '/health', '/map', '/program-head',
   '/program-head/reports', '/ready', '/robots.txt', '/settings', '/sitemap.xml',
-  '/student/attendance', '/student/certificate', '/student/evaluation-summary',
-  '/student/notifications', '/student/progress', '/student/reports',
   '/supervisor/attendance', '/supervisor/evaluations', '/supervisor/reports',
   '/supervisor/students', '/supervisor/messages', '/supervisor/notifications', '/verify-certificate', '/verify-certificate/search',
 ]);

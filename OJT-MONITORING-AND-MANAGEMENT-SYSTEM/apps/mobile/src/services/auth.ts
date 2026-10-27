@@ -61,7 +61,9 @@ export async function signIn(input: SignInInput): Promise<AppResult<AuthUser>> {
   });
 
   if (error)
-    return { data: null, error: { code: 'UNAUTHORIZED', message: 'Invalid email or password.' } };
+    return { data: null, error: error.name === 'AuthRetryableFetchError'
+      ? { code: 'SERVER_FAILURE', message: 'Cannot reach the server. Check your connection and try again.' }
+      : { code: 'UNAUTHORIZED', message: 'Invalid email or password.' } };
 
   const { data: user, error: userError } = await supabase
     .from('users')

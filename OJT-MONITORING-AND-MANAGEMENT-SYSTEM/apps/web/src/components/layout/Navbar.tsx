@@ -24,12 +24,6 @@ interface NavbarProps {
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard Overview',
-  '/student/attendance': 'Attendance Log',
-  '/student/reports': 'Weekly Reports & DTR',
-  '/student/progress': 'Internship Progress',
-  '/student/certificate': 'Certificate of Completion',
-  '/student/evaluation-summary': 'Performance Evaluation Summary',
-  '/student/notifications': 'Broadcasts & Alerts',
   '/coordinator/approvals': 'Trainee Approvals',
   '/coordinator/messages': 'Messages',
   '/coordinator/notifications': 'Notifications',
@@ -123,16 +117,7 @@ export default function Navbar({ user, isMenuOpen = false, onMenuToggle }: Navba
         </div>
 
         {/* Notifications Shortcut */}
-        {user.role === 'Student' ? (
-          <Link
-            href="/student/notifications"
-            className="relative p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            title="Campus Notifications"
-          >
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900" />
-          </Link>
-        ) : user.role === 'Coordinator' || user.role === 'Supervisor' ? (
+        {user.role === 'Coordinator' || user.role === 'Supervisor' ? (
           <StaffNotificationBell userId={user.user_id} role={user.role} />
         ) : (
           <div

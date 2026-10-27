@@ -11,17 +11,13 @@ import { getAuthUser } from '@/src/services/auth';
 import { createClient } from '@/src/lib/supabase/server';
 import {
   Timer,
-  Hourglass,
   Building2,
-  CalendarCheck,
   UserCheck,
   Users,
   AlertTriangle,
   Star,
   ArrowRight,
-  FileText,
   Clock,
-  BarChart3,
   ClipboardCheck,
 } from '@/src/components/ui/Icons';
 
@@ -36,64 +32,7 @@ export default async function DashboardPage() {
   let stats: any = {};
   let departmentSubtitle = 'Colegio de Montalban';
 
-  if (user.role === 'Student') {
-    const { data: student } = await supabase
-      .from('students')
-      .select('student_id, required_hours, student_number, course')
-      .eq('user_id', user.user_id)
-      .maybeSingle();
-
-    if (student) {
-      const isICS = ['BS Information Technology', 'BS Computer Science', 'BS Computer Engineering', 'BSIT', 'BS-CPE', 'BSCPE'].some(c =>
-        (student.course || '').toLowerCase().includes(c.toLowerCase())
-      );
-      departmentSubtitle = isICS
-        ? 'Institute of Computing Studies (ICS)'
-        : 'Institute of Business and Entrepreneurship (IBE)';
-
-      const { data: progress } = await supabase
-        .from('internship_progress')
-        .select('completed_hours, remaining_hours, progress_status')
-        .eq('student_id', student.student_id)
-        .maybeSingle();
-
-      const today = new Date().toISOString().split('T')[0];
-      const { data: todayAttendance } = await supabase
-        .from('attendance')
-        .select('time_in, time_out, late_status, verification_status')
-        .eq('student_id', student.student_id)
-        .eq('attendance_date', today)
-        .maybeSingle();
-
-      const { data: assignment } = await supabase
-        .from('student_assignments')
-        .select(`
-          assignment_id,
-          assignment_status,
-          companies ( company_name ),
-          supervisors ( users ( full_name ) )
-        `)
-        .eq('student_id', student.student_id)
-        .eq('assignment_status', 'active')
-        .maybeSingle();
-
-      const companyName = (assignment?.companies as any)?.company_name;
-      const supervisorUser = (assignment?.supervisors as any)?.users;
-      const supervisorName = Array.isArray(supervisorUser)
-        ? supervisorUser[0]?.full_name
-        : supervisorUser?.full_name;
-
-      stats = {
-        student,
-        progress: progress || { completed_hours: 0, remaining_hours: student.required_hours || 486, progress_status: 'not_started' },
-        todayAttendance,
-        assignment: {
-          company_name: companyName,
-          supervisor_name: supervisorName,
-        },
-      };
-    }
-  } else if (user.role === 'Coordinator') {
+  if (user.role === 'Coordinator') {
     departmentSubtitle = 'OJT Coordinator Office';
     const [
       { count: pendingApprovals },
@@ -194,14 +133,6 @@ export default async function DashboardPage() {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               Portal Online
             </span>
-            {user.role === 'Student' && (
-              <Link
-                href="/student/attendance"
-                className="text-xs font-bold text-amber-400 hover:text-amber-300 hover:underline flex items-center gap-1 transition-colors"
-              >
-                Log Attendance <ArrowRight className="w-3 h-3" />
-              </Link>
-            )}
             {user.role === 'Coordinator' && (
               <Link
                 href="/coordinator/approvals"
@@ -223,72 +154,6 @@ export default async function DashboardPage() {
       </div>
 
       {/* Hero: Role-Specific Primary Metric Cards - Standardized Height & Micro-interactions */}
-      {user.role === 'Student' && stats.student && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-          <div className="group h-full min-h-[104px] p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-3.5 cursor-default">
-            <div className="w-11 h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 text-[#0A3824] dark:text-emerald-400 flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105">
-              <Timer className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0 flex flex-col justify-center">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rendered Hours</p>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5 leading-tight">
-                {stats.progress.completed_hours} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">/ {stats.student.required_hours || 486} hrs</span>
-              </h3>
-              <p className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold mt-0.5 truncate">
-                {Math.min(100, Math.round((stats.progress.completed_hours / (stats.student.required_hours || 486)) * 100))}% completed
-              </p>
-            </div>
-          </div>
-
-          <div className="group h-full min-h-[104px] p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-3.5 cursor-default">
-            <div className="w-11 h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 text-[#0A3824] dark:text-emerald-400 flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105">
-              <Hourglass className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0 flex flex-col justify-center">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Remaining Hours</p>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5 leading-tight">
-                {stats.progress.remaining_hours} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">hrs</span>
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5 truncate">Target: {stats.student.required_hours || 486} hrs</p>
-            </div>
-          </div>
-
-          <div className="group h-full min-h-[104px] p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-3.5 cursor-default">
-            <div className="w-11 h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 text-[#0A3824] dark:text-emerald-400 flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105">
-              <Building2 className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0 flex flex-col justify-center">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Assigned Company</p>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white mt-0.5 truncate max-w-[150px]">
-                {stats.assignment.company_name || 'Not yet assigned'}
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5 truncate max-w-[150px]">
-                {stats.assignment.supervisor_name ? `Sup: ${stats.assignment.supervisor_name}` : 'Awaiting Supervisor'}
-              </p>
-            </div>
-          </div>
-
-          <div className="group h-full min-h-[104px] p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-3.5 cursor-default">
-            <div className="w-11 h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 text-[#0A3824] dark:text-emerald-400 flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105">
-              <CalendarCheck className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0 flex flex-col justify-center">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Today&apos;s Status</p>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white mt-0.5 leading-tight truncate">
-                {stats.todayAttendance?.time_in ? 'Time In Recorded' : 'Not Clocked In'}
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5 truncate">
-                {stats.todayAttendance?.time_out
-                  ? 'Shift Completed'
-                  : stats.todayAttendance?.time_in
-                  ? 'Currently on Shift'
-                  : 'Pending Attendance'}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {user.role === 'Coordinator' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           <div className="group h-full min-h-[104px] p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-3.5 cursor-default">
@@ -386,51 +251,6 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Left / Primary Operations Hub (2 Columns on Large Screens) */}
         <div className="lg:col-span-2 space-y-5">
-          {user.role === 'Student' && (
-            <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Practicum Quick Actions</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Quickly access attendance, daily logs, and required submissions</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                <Link
-                  href="/student/attendance"
-                  className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-500/30 transition-all flex flex-col gap-2 group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-[#0A3824] text-[var(--cdm-sand)] flex items-center justify-center">
-                    <Clock className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-[#0A3824] dark:group-hover:text-emerald-400">Log Attendance</span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">Record daily time-in & selfie</span>
-                </Link>
-
-                <Link
-                  href="/student/reports"
-                  className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-500/30 transition-all flex flex-col gap-2 group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-[#0A3824] text-[var(--cdm-sand)] flex items-center justify-center">
-                    <FileText className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-[#0A3824] dark:group-hover:text-emerald-400">Submit Reports</span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">Upload weekly journals & DTR</span>
-                </Link>
-
-                <Link
-                  href="/student/progress"
-                  className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-500/30 transition-all flex flex-col gap-2 group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-[#0A3824] text-[var(--cdm-sand)] flex items-center justify-center">
-                    <BarChart3 className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-[#0A3824] dark:group-hover:text-emerald-400">Track Progress</span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">View completion milestones</span>
-                </Link>
-              </div>
-            </div>
-          )}
-
           {user.role === 'Coordinator' && (
             <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
               <div className="flex items-center justify-between mb-4">

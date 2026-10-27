@@ -1,4 +1,6 @@
 import 'server-only';
+import { after } from 'next/server';
+import { processTransactionalEmailQueue } from '@/src/lib/email/process-queue';
 import { createClient } from '@/src/lib/supabase/server';
 import { departmentScope, canManageDepartmentStudent } from '@/src/lib/department-scope';
 import { serviceClient, authActionLimit } from './internal';
@@ -162,6 +164,9 @@ export async function updateStudentAccountStatus(
     return { data: null, error: { code: 'NOT_FOUND', message: 'Pending student registration not found. It may already have been processed.' } };
   if (result?.result_status !== 'ok')
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Invalid registration review request.' } };
+
+  // Send right away so delivery does not depend on the pg_cron worker; the cron job stays as the retry path.
+  after(() => processTransactionalEmailQueue().catch((error) => console.error('[account-review] email flush failed', error)));
 
   return { data: { notificationCreated: true, emailQueued: true }, error: null };
 }

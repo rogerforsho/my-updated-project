@@ -1,4 +1,4 @@
-import { getAttendanceDate, getPhilippineClock, isWithinGeofence } from '@ojt/shared';
+import { AUTO_TIME_OUT_REASON, getAttendanceDate, getPhilippineClock, isWithinGeofence } from '@ojt/shared';
 import { authenticateMobileStudent, mobileBffFailure, type MobileSupabaseClient } from '@/src/lib/mobile-bff';
 import { getServiceClient } from '@/src/lib/supabase/service';
 import { authActionLimit } from '@/src/services/auth/internal';
@@ -234,13 +234,15 @@ export async function POST(request: Request) {
     if (!await hasValidSelfie(service, selfiePath))
       return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Upload a valid selfie before recording Time Out.' });
 
-    let query = service.from('attendance').select('attendance_id, assignment_id, time_in, time_out')
+    let query = service.from('attendance').select('attendance_id, assignment_id, time_in, time_out, time_out_flag_reason, verification_status')
       .eq('student_id', studentId).eq('attendance_date', attendanceDate);
     if (typeof attendanceId === 'string' && !attendanceId.startsWith('offline_')) query = query.eq('attendance_id', attendanceId);
     const { data: record, error: lookupError } = await query.maybeSingle();
     if (lookupError || !record)
       return mobileBffFailure({ status: 404, code: 'NOT_FOUND', message: 'Record Time In before Time Out.' });
-    if (record.time_out)
+    const replacingAutoTimeOut = Boolean(record.time_out && record.verification_status === 'pending' &&
+      record.time_out_flag_reason === AUTO_TIME_OUT_REASON);
+    if (record.time_out && !replacingAutoTimeOut)
       return mobileBffFailure({ status: 409, code: 'DUPLICATE_REQUEST', message: 'Time Out has already been recorded for today.' });
     if (new Date(capturedAt).getTime() < new Date(record.time_in).getTime())
       return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Time Out cannot be earlier than Time In.' });
@@ -250,7 +252,7 @@ export async function POST(request: Request) {
       return mobileBffFailure({ status: 503, code: 'SERVER_FAILURE', message: 'Could not verify the attendance location policy.' });
     const evidence = deriveLocationEvidence(latitude, longitude, policy, clientReason);
     const receivedAt = new Date().toISOString();
-    const { data: updated, error } = await service.from('attendance').update({
+    let updateQuery = service.from('attendance').update({
       time_out: capturedAt,
       time_out_selfie_path: selfiePath,
       verification_status: 'pending',
@@ -258,13 +260,19 @@ export async function POST(request: Request) {
       time_out_lng: evidence.longitude,
       time_out_distance_meters: evidence.distanceMeters,
       time_out_location_status: evidence.status,
-      time_out_flag_reason: evidence.flagReason,
+      time_out_flag_reason: replacingAutoTimeOut
+        ? [evidence.flagReason, 'Offline Time Out replaced automatic time-out; review before crediting hours.'].filter(Boolean).join(' ')
+        : evidence.flagReason,
       sync_status: 'synced',
       time_out_received_at: receivedAt,
       synced_at: receivedAt,
       updated_at: receivedAt,
-    }).eq('student_id', studentId).eq('attendance_id', record.attendance_id).is('time_out', null)
-      .select('attendance_id').maybeSingle();
+    }).eq('student_id', studentId).eq('attendance_id', record.attendance_id);
+    updateQuery = replacingAutoTimeOut
+      ? updateQuery.eq('verification_status', 'pending').eq('time_out', record.time_out!)
+        .eq('time_out_flag_reason', AUTO_TIME_OUT_REASON)
+      : updateQuery.is('time_out', null);
+    const { data: updated, error } = await updateQuery.select('attendance_id').maybeSingle();
     if (error || !updated)
       return mobileBffFailure({ status: 503, code: 'SERVER_FAILURE', message: 'Failed to record Time Out.' });
     return Response.json({ data: null, error: null }, { status: 200, headers: { 'Cache-Control': 'no-store' } });

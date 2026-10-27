@@ -6,7 +6,7 @@ import Link from 'next/link';
 import type { AuthUser } from '@ojt/shared';
 import { accountRoleLabel } from '@ojt/shared';
 import { useDesktop } from '@/src/hooks/useDesktop';
-import { Clock, ArrowRight } from '@/src/components/ui/Icons';
+import { ArrowRight } from '@/src/components/ui/Icons';
 
 interface Props {
   user: AuthUser;
@@ -97,16 +97,6 @@ export default function MiniWidgetView({ user }: Props) {
 
       {/* Quick Action Buttons */}
       <div className="space-y-2 pt-2">
-        {user.role === 'Student' && (
-          <Link
-            href="/student/attendance"
-            className="w-full py-2.5 rounded-xl bg-[#0A3824] hover:bg-[#0d4e2e] text-[var(--cdm-sand)] font-bold text-xs border border-[var(--cdm-sand)]/40 flex items-center justify-center gap-2 shadow-sm transition-all"
-          >
-            <Clock className="w-3.5 h-3.5" />
-            <span>Attendance & Daily Log</span>
-          </Link>
-        )}
-
         {user.role === 'Coordinator' && (
           <Link
             href="/coordinator/approvals"

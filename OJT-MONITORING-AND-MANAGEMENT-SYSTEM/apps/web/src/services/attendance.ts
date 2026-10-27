@@ -5,7 +5,6 @@ import { getTrustedActor } from '@/src/lib/trusted-actor';
 import { getServiceClient } from '@/src/lib/supabase/service';
 import { toPublicSupabaseUrl } from '@/src/lib/supabase/public-url';
 import { recordAuditEvent } from '@/src/lib/audit';
-import { canManageDepartmentStudent } from '@/src/lib/department-scope';
 import type { AppResult, DbAttendance, VerificationStatus } from '@ojt/shared';
 
 

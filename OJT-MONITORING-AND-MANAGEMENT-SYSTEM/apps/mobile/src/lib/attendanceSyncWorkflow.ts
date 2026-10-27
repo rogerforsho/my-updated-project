@@ -1,3 +1,5 @@
+import { AUTO_TIME_OUT_REASON } from '@ojt/shared';
+
 export interface QueuedAttendanceEvent {
   id: string;
   type: 'time_in' | 'time_out';
@@ -23,6 +25,8 @@ interface AttendanceSnapshot {
   attendance_id: string;
   time_in?: string | null;
   time_out?: string | null;
+  time_out_flag_reason?: string | null;
+  verification_status?: string | null;
 }
 
 export interface AttendanceSyncAdapter {
@@ -104,8 +108,13 @@ export async function syncAttendanceWorkflow(
           if (sameInstant(existing.time_out, item.captured_at)) {
             await adapter.removeQueueItem(item.id);
             syncedCount++;
-          } else errors.push(conflictMessage(item, 'time out'));
-          continue;
+            continue;
+          }
+          if (existing.verification_status !== 'pending' ||
+              existing.time_out_flag_reason !== AUTO_TIME_OUT_REASON) {
+            errors.push(conflictMessage(item, 'time out'));
+            continue;
+          }
         }
 
         const storagePath = await adapter.uploadSelfie(item);

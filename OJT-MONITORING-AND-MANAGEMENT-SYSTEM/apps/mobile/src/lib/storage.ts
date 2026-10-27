@@ -15,6 +15,14 @@ import { optimizeSelfie, optimizeDocumentImage } from './imageOptimizer';
 import { postWebBff } from './webBff';
 import type { AppResult } from '@ojt/shared';
 
+const UPLOAD_TIMEOUT_MS = 90000;
+
+function withTimeout<T>(work: Promise<T>, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const expiry = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(message)), UPLOAD_TIMEOUT_MS); });
+  return Promise.race([work, expiry]).finally(() => clearTimeout(timer));
+}
+
 function resolveMimeType(fileName: string, providedMime?: string): string {
   if (providedMime && providedMime !== 'application/octet-stream' && providedMime.includes('/')) {
     return providedMime;
@@ -132,7 +140,10 @@ export async function uploadReportToStorage(
   studentId: string,
   mimeType: string = 'application/pdf'
 ): Promise<AppResult<{ path: string; url?: string }>> {
+  const t0 = Date.now();
+  const dbg = (step: string) => console.log(`[DEBUG-r7q2] report upload ${step} +${Date.now() - t0}ms`);
   try {
+    dbg(`start uri=${fileUri.slice(0, 40)} mime=${mimeType}`);
     let sourceUri = fileUri;
     let precomputedBuffer: ArrayBuffer | null = null;
     const resolvedMime = resolveMimeType(fileName, mimeType);
@@ -149,21 +160,24 @@ export async function uploadReportToStorage(
 
     const cleanFileName = fileName.split(/[\\/]/).at(-1)?.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 200) || 'report.pdf';
     const arrayBuffer = precomputedBuffer || (await convertSourceToArrayBuffer(sourceUri));
+    dbg(`file read bytes=${arrayBuffer.byteLength}`);
     const upload = await postWebBff<{ filePath: string; token: string }>('/api/mobile/reports/upload', {
       file_name: cleanFileName,
       file_size: arrayBuffer.byteLength,
     });
+    dbg(`prepare done error=${upload.error?.message ?? 'none'}`);
     if (upload.error || !upload.data)
       return { data: null, error: upload.error || { code: 'SERVER_FAILURE', message: 'Could not prepare a secure document upload.' } };
     if (!upload.data.filePath.startsWith(`${studentId}/reports/`))
       return { data: null, error: { code: 'SERVER_FAILURE', message: 'The document upload could not be verified.' } };
 
-    const { data, error } = await supabase.storage.from('private-documents').uploadToSignedUrl(
+    const { data, error } = await withTimeout(supabase.storage.from('private-documents').uploadToSignedUrl(
       upload.data.filePath,
       upload.data.token,
       arrayBuffer,
       { contentType: resolvedMime },
-    );
+    ), 'The upload timed out. Check your connection and try again.');
+    dbg(`storage upload done error=${error?.message ?? 'none'}`);
     if (error || !data)
       return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to upload document.' } };
     return { data: { path: data.path }, error: null };

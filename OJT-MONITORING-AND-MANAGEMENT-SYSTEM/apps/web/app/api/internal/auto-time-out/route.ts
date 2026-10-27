@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import { getServiceClient } from '@/src/lib/supabase/service';
+import { AUTO_TIME_OUT_REASON } from '@ojt/shared';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
         time_out: new Date(Date.parse(row.time_in) + AUTO_TIME_OUT_MS).toISOString(),
         time_out_received_at: new Date(now).toISOString(),
         time_out_location_status: 'not_applicable',
-        time_out_flag_reason: 'Automatic time-out: no Time Out was recorded within 10 hours of Time In.',
+        time_out_flag_reason: AUTO_TIME_OUT_REASON,
         verification_status: 'pending',
       })
       .eq('attendance_id', row.attendance_id)

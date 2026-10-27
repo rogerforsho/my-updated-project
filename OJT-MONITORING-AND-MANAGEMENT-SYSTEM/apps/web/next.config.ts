@@ -30,7 +30,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
+  output: process.env.VERCEL ? undefined : 'standalone',
   outputFileTracingRoot: path.resolve(__dirname, '../..'),
   transpilePackages: ['@ojt/shared'],
   // 5 MB validated file plus multipart overhead. Keep the transport bounded.

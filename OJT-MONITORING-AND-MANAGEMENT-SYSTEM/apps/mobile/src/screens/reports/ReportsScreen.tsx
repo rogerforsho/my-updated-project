@@ -119,13 +119,19 @@ export default function ReportsScreen() {
     }
 
     setSubmitting(true);
-    const result = await submitStudentReport({
-      report_type: selectedType,
-      file_path: filePath.trim() || undefined,
-      file_attachment: attachedFile || undefined,
-      remarks: remarks.trim() || undefined,
-    });
-    setSubmitting(false);
+    let result: Awaited<ReturnType<typeof submitStudentReport>>;
+    try {
+      result = await submitStudentReport({
+        report_type: selectedType,
+        file_path: filePath.trim() || undefined,
+        file_attachment: attachedFile || undefined,
+        remarks: remarks.trim() || undefined,
+      });
+    } catch {
+      result = { data: null, error: { code: 'SERVER_FAILURE', message: 'The submission failed. Check your connection and try again.' } };
+    } finally {
+      setSubmitting(false);
+    }
 
     if (result.error) {
       setModalError(result.error.message);

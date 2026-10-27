@@ -221,6 +221,7 @@ function workflowFixture(role = 'Admin', options = {}) {
       },
       'server-only': {},
       'next/headers': { async headers() { return new Headers(); } },
+      'next/server': { after() {} },
       'next/navigation': { redirect() {} },
     }, { NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'unit-test-hmac-key', NEXT_PUBLIC_APP_URL: 'https://portal.test' });
   }
@@ -1680,14 +1681,19 @@ test('desktop export rejects untrusted frames, path traversal, changed folders a
 });
 
 function offlineQueueFixture(raw = null) {
-  const state = { raw, writes: 0, deleted: [], failWrite: false };
+  const state = { raw, files: new Map(), writes: 0, deleted: [], failWrite: false };
   const queue = load('apps/mobile/src/lib/offlineQueue.ts', {
     '@ojt/shared': { getAttendanceDate: () => '2026-10-08' },
     'expo-secure-store': {
       async getItemAsync() { return state.raw; },
-      async setItemAsync(_key, value) { if (state.failWrite) throw new Error('Disk full'); state.writes++; state.raw = value; },
+      async deleteItemAsync() { state.raw = null; },
     },
-    'expo-file-system/legacy': { documentDirectory: 'file:///private/', async deleteAsync(uri) { state.deleted.push(uri); } },
+    'expo-file-system/legacy': { documentDirectory: 'file:///private/',
+      async getInfoAsync(uri) { return { exists: state.files.has(uri) }; },
+      async readAsStringAsync(uri) { return state.files.get(uri); },
+      async writeAsStringAsync(uri, value) { if (state.failWrite) throw new Error('Disk full'); state.writes++; state.files.set(uri, value); },
+      async deleteAsync(uri) { state.deleted.push(uri); },
+    },
   });
   return { state, queue };
 }
@@ -1721,6 +1727,26 @@ test('concurrent offline enqueue preserves both records and failed removal prese
   assert.deepEqual(state.deleted, [queuedAttendance.local_photo_uri]);
 });
 
+test('new attendance stays writable beyond a SecureStore-sized queue and old entries migrate', async () => {
+  const legacy = [{ ...queuedAttendance, id: 'legacy', created_at: '2026-10-08T01:00:00Z' }];
+  const { state, queue } = offlineQueueFixture(JSON.stringify(legacy));
+  for (let i = 0; i < 12; i++)
+    await queue.enqueueOfflineAttendance({ ...queuedAttendance, captured_at: `2026-10-08T${String(i).padStart(2, '0')}:00:00Z` });
+  assert.equal((await queue.getOfflineQueue()).length, 13);
+  assert.equal(state.raw, null);
+  assert.ok([...state.files.values()].some(value => value.length > 2048));
+  assert.equal((await queue.getOfflineQueue())[0].id, 'legacy');
+});
+
+
+test('a half-written first queue file does not hide the legacy queue', async () => {
+  const legacy = [{ ...queuedAttendance, id: 'legacy', created_at: '2026-10-08T01:00:00Z' }];
+  const { state, queue } = offlineQueueFixture(JSON.stringify(legacy));
+  state.files.set('file:///private/cdm_ojt_attendance_a.json', '{"version":1,"queue":[');
+  assert.equal((await queue.getOfflineQueue())[0].id, 'legacy');
+  await queue.enqueueOfflineAttendance({ ...queuedAttendance, captured_at: '2026-10-08T02:00:00Z' });
+  assert.equal((await queue.getOfflineQueue()).length, 2);
+});
 
 test('registration upload bounds requests before invoking the upload service', async () => {
   let calls = 0;
@@ -1828,6 +1854,60 @@ test('attendance rejects future-dated Time In and Time Out against the server cl
     assert.equal(response.status, 400, body.action);
     assert.equal((await response.json()).error, 'VALIDATION_FAILURE');
   }
+});
+
+test('only a pending automatic Time Out can be replaced with captured offline evidence', async () => {
+  const reason = load('shared/attendanceDate.ts').AUTO_TIME_OUT_REASON;
+  const capturedAt = new Date(Date.now() - 3 * 3600000).toISOString();
+  const row = { attendance_id: 'attendance', student_id: 'student', assignment_id: 'assignment',
+    attendance_date: '2026-10-26', time_in: new Date(Date.now() - 12 * 3600000).toISOString(),
+    time_out: new Date(Date.now() - 2 * 3600000).toISOString(), time_out_flag_reason: reason,
+    verification_status: 'pending' };
+  const client = { from(table) {
+    let operation = 'select'; let values = null; const filters = [];
+    const query = {
+      select() { return this; },
+      eq(column, value) { filters.push(candidate => candidate[column] === value); return this; },
+      is(column, value) { filters.push(candidate => candidate[column] === value); return this; },
+      lte() { return this; }, or() { return this; }, order() { return this; }, limit() { return this; },
+      update(value) { operation = 'update'; values = value; return this; },
+      async maybeSingle() {
+        const data = table === 'student_assignments' ? { assignment_id: 'assignment', student_id: 'student', company_id: 'company', branch_id: 'branch', start_date: '2026-01-01', end_date: null }
+          : table === 'company_branches' ? { company_id: 'company', branch_id: 'branch', geofence_enabled: false }
+            : table === 'practicum_schedules' ? null : table === 'attendance' ? row : null;
+        if (!data || !filters.every(filter => filter(data))) return { data: null, error: null };
+        if (operation === 'update') Object.assign(row, values);
+        return { data, error: null };
+      },
+    };
+    return query;
+  }, storage: { from() { return {
+    async info() { return { data: { size: 1, contentType: 'image/jpeg' }, error: null }; },
+    async download() { return { data: { type: 'image/jpeg', async arrayBuffer() { return new ArrayBuffer(1); } }, error: null }; },
+  }; } } };
+  const route = load('apps/web/app/api/mobile/attendance/route.ts', {
+    '@ojt/shared': { AUTO_TIME_OUT_REASON: reason, getAttendanceDate: () => '2026-10-26',
+      getPhilippineClock: date => date, isWithinGeofence: () => ({ isWithin: true, distanceMeters: 0 }) },
+    '@/src/lib/mobile-bff': {
+      async authenticateMobileStudent() { return { actor: { user: { id: 'user' }, studentId: 'student', supabase: client }, error: null }; },
+      mobileBffFailure(error) { return Response.json({ error: error.code }, { status: error.status }); },
+    },
+    '@/src/lib/supabase/service': { getServiceClient: () => client },
+    '@/src/services/auth/internal': { async authActionLimit() { return null; } },
+    '@/src/lib/uploadValidation': { validateUploadedBytes() { return { data: true, error: null }; } },
+  });
+  const request = () => new Request('https://portal.example/api/mobile/attendance', { method: 'POST',
+    headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'time_out',
+      attendance_id: 'attendance', attendance_date: '2026-10-26', time_out: capturedAt,
+      time_out_selfie_path: 'student/time_out_offline.jpg', latitude: 14, longitude: 121 }) });
+  assert.equal((await route.POST(request())).status, 200);
+  assert.equal(row.time_out, capturedAt);
+  assert.match(row.time_out_flag_reason, /replaced automatic time-out/i);
+  assert.equal((await route.POST(request())).status, 409);
+  row.time_out_flag_reason = reason;
+  row.verification_status = 'verified';
+  assert.equal((await route.POST(request())).status, 409);
+  assert.equal(row.time_out, capturedAt);
 });
 
 test('offline attendance from a closed assignment syncs within its placement dates and stays pending', async () => {

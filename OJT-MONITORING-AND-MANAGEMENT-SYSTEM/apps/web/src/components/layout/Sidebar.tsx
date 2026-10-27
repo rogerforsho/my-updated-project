@@ -12,7 +12,6 @@ import {
   Clock,
   BarChart3,
   FileText,
-  Award,
   Bell,
   UserCheck,
   Users,
@@ -43,15 +42,6 @@ interface NavItem {
 }
 
 const NAV_ITEMS: Record<string, NavItem[]> = {
-  Student: [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Attendance', href: '/student/attendance', icon: Clock },
-    { label: 'Progress', href: '/student/progress', icon: BarChart3 },
-    { label: 'Reports', href: '/student/reports', icon: FileText },
-    { label: 'Evaluations', href: '/student/evaluation-summary', icon: Star },
-    { label: 'Certificate', href: '/student/certificate', icon: Award },
-    { label: 'Notifications', href: '/student/notifications', icon: Bell },
-  ],
   Coordinator: [
     { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { label: 'Approvals', href: '/coordinator/approvals', icon: UserCheck, section: 'Students' },

@@ -185,6 +185,19 @@ export async function recordTimeIn(
     location_status: locationData?.locationStatus ?? 'verified',
     flag_reason: locationData?.flagReason ?? null,
   });
+  if (result.error?.code === 'SERVER_FAILURE') {
+    try {
+      const savedPath = await saveImageToSandbox(selfie_uri, `time_in_${Date.now()}.jpg`);
+      await enqueueOfflineAttendance({
+        type: 'time_in', student_id: student.student_id, assignment_id: assignment.assignment_id,
+        local_photo_uri: savedPath, captured_at: capturedAt, attendance_date: today,
+        latitude: locationData?.latitude ?? null, longitude: locationData?.longitude ?? null,
+        distance_meters: locationData?.distanceMeters ?? null,
+        location_status: locationData?.locationStatus ?? 'verified', flag_reason: locationData?.flagReason ?? null,
+      });
+      return { data: { attendance_id: 'offline_pending', isOffline: true }, error: null };
+    } catch { /* Keep the server error when local recovery cannot be saved. */ }
+  }
   if (result.error || !result.data) return { data: null, error: result.error || { code: 'SERVER_FAILURE', message: 'Failed to record Time In.' } };
   return { data: { attendance_id: result.data.attendance_id, isOffline: false }, error: null };
 }
@@ -284,6 +297,19 @@ export async function recordTimeOut(
     location_status: locationData?.locationStatus ?? 'verified',
     flag_reason: locationData?.flagReason ?? null,
   });
+  if (result.error?.code === 'SERVER_FAILURE') {
+    try {
+      const savedPath = await saveImageToSandbox(selfie_uri, `time_out_${Date.now()}.jpg`);
+      await enqueueOfflineAttendance({
+        type: 'time_out', student_id: student.student_id, assignment_id: '', attendance_id,
+        local_photo_uri: savedPath, captured_at: capturedAt, attendance_date: today,
+        latitude: locationData?.latitude ?? null, longitude: locationData?.longitude ?? null,
+        distance_meters: locationData?.distanceMeters ?? null,
+        location_status: locationData?.locationStatus ?? 'verified', flag_reason: locationData?.flagReason ?? null,
+      });
+      return { data: { isOffline: true }, error: null };
+    } catch { /* Keep the server error when local recovery cannot be saved. */ }
+  }
   if (result.error) return { data: null, error: result.error };
   return { data: { isOffline: false }, error: null };
 }
