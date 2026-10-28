@@ -1,5 +1,6 @@
 'use client';
 
+import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
 import { useEffect, useState, useCallback } from 'react';
 import Button from '@/src/components/ui/Button';
 import Alert from '@/src/components/ui/Alert';
@@ -10,7 +11,6 @@ import {
   type EvaluationRubricCriteria
 } from '@/src/services/evaluations';
 
-const PAGE_SIZE = 20;
 
 const DEFAULT_CRITERIA: EvaluationRubricCriteria = {
   technical_competence: 4,
@@ -39,6 +39,7 @@ export default function SupervisorEvaluationsPage() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [page, setPage] = useState(1);
+  const [pageSize, changePageSize] = usePageSize();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -56,12 +57,12 @@ export default function SupervisorEvaluationsPage() {
   const load = useCallback(async (p: number) => {
     setLoading(true);
     setError('');
-    const result = await listEvaluationsForSupervisor(p, PAGE_SIZE, { search, type: typeFilter });
+    const result = await listEvaluationsForSupervisor(p, pageSize, { search, type: typeFilter });
     setLoading(false);
     if (result.error) { setError(result.error.message); return; }
     setEvaluations(result.data!.evaluations);
     setTotal(result.data!.total);
-  }, [search, typeFilter]);
+  }, [search, typeFilter, pageSize]);
 
   useEffect(() => {
     const t = setTimeout(() => { setSearch(searchText.trim()); setPage(1); }, 300);
@@ -150,7 +151,7 @@ export default function SupervisorEvaluationsPage() {
     load(page);
   }
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   function getScoreBadge(score: number | null) {
     if (score === null) return <span className="text-slate-400">—</span>;
@@ -232,7 +233,7 @@ export default function SupervisorEvaluationsPage() {
                 <tr key={e.evaluation_id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-5 py-4">
                     <p className="font-bold text-slate-900">{e.students?.users?.full_name}</p>
-                    <p className="text-xs text-slate-400 font-mono mt-0.5">{e.students?.student_number} • {e.students?.course}</p>
+                    <p className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">{e.students?.student_number} • {e.students?.course}</p>
                   </td>
                   <td className="px-5 py-4">
                     <Badge className={`text-[10px] font-extrabold uppercase ${
@@ -260,15 +261,7 @@ export default function SupervisorEvaluationsPage() {
         )}
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4 text-sm text-slate-500">
-          <span>Page {page} of {totalPages}</span>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
-            <Button variant="ghost" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
-          </div>
-        </div>
-      )}
+      <div className="mt-4"><PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={(n) => { changePageSize(n); setPage(1); }} /></div>
 
       {/* 5-Dimension Rubric Evaluation Modal */}
       <Modal

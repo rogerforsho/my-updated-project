@@ -1,5 +1,6 @@
 'use client';
 
+import { PagerBar, SearchBox, usePageSize } from '@/src/components/ui/ListControls';
 import { useEffect, useState, useCallback } from 'react';
 import { listAttendanceForSupervisor, verifyAttendance, getSelfieUrl, batchVerifyAttendance, type AttendanceWithStudent } from '@/src/services/attendance';
 import Button from '@/src/components/ui/Button';
@@ -8,7 +9,6 @@ import Modal from '@/src/components/ui/Modal';
 import Alert from '@/src/components/ui/Alert';
 import type { VerificationStatus } from '@ojt/shared';
 
-const PAGE_SIZE = 20;
 
 // Errand / justification entries are outside-geofence or no-GPS logs with a student note, at Time In or Time Out.
 function isFieldEntry(r: AttendanceWithStudent) {
@@ -27,6 +27,9 @@ export default function SupervisorAttendancePage() {
   const [records, setRecords] = useState<AttendanceWithStudent[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, changePageSize] = usePageSize();
+  const [searchText, setSearchText] = useState('');
+  const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<VerificationStatus | undefined>('pending');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -41,10 +44,10 @@ export default function SupervisorAttendancePage() {
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState('');
 
-  const load = useCallback(async (p: number, f: VerificationStatus | undefined) => {
+  const load = useCallback(async (p: number, f: VerificationStatus | undefined, q: string, size: number) => {
     setLoading(true);
     setError('');
-    const result = await listAttendanceForSupervisor(p, PAGE_SIZE, f);
+    const result = await listAttendanceForSupervisor(p, size, f, q);
     setLoading(false);
     if (result.error) { setError(result.error.message); return; }
     setRecords(result.data!.records);
@@ -52,8 +55,13 @@ export default function SupervisorAttendancePage() {
   }, []);
 
   useEffect(() => {
-    load(page, filter);
-  }, [page, filter, load]);
+    const t = setTimeout(() => { setSearch(searchText.trim()); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [searchText]);
+
+  useEffect(() => {
+    load(page, filter, search, pageSize);
+  }, [page, filter, search, pageSize, load]);
 
   async function openRecord(record: AttendanceWithStudent) {
     setSelected(record);
@@ -89,7 +97,7 @@ export default function SupervisorAttendancePage() {
     setVerifying(false);
     if (result.error) { setVerifyError(result.error.message); return; }
     setSelected(null);
-    load(page, filter);
+    load(page, filter, search, pageSize);
   }
 
   async function handleBatchVerify() {
@@ -102,13 +110,13 @@ export default function SupervisorAttendancePage() {
       if (result.error) { setError(result.error.message); return; }
       setSuccess(`Verified ${result.data?.verifiedCount || 0} of ${batchIds.length} requested records. Records already processed or no longer assigned were skipped.`);
       setBatchIds([]);
-      await load(page, filter);
+      await load(page, filter, search, pageSize);
     } catch {
       setError('Unable to complete verification. Refresh the records before retrying.');
     } finally { setBatchLoading(false); }
   }
 
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const totalPages = Math.ceil(total / pageSize);
 
   const cleanLogs = records.filter(
     r => r.verification_status === 'pending' && r.late_status === 'on_time' && !isFieldEntry(r)
@@ -195,6 +203,8 @@ export default function SupervisorAttendancePage() {
         </div>
       )}
 
+      <div className="mb-3"><SearchBox value={searchText} onChange={setSearchText} placeholder="Search student name or ID..." /></div>
+
       {/* Modern Filter Pill Bar */}
       <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-xl border border-slate-200/80 w-fit mb-5 select-none">
         {FILTERS.map(f => (
@@ -247,7 +257,7 @@ export default function SupervisorAttendancePage() {
                         <div className="flex items-center gap-2">
                           <div>
                             <p className="font-semibold text-slate-900">{r.students?.users?.full_name}</p>
-                            <p className="text-xs text-slate-400 font-mono mt-0.5">{r.students?.student_number}</p>
+                            <p className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">{r.students?.student_number}</p>
                           </div>
                           {isOfflineSynced && (
                             <span className="inline-flex items-center text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200" title="Captured offline and synced">
@@ -321,15 +331,7 @@ export default function SupervisorAttendancePage() {
         )}
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4 text-sm text-slate-500">
-          <span>Page {page} of {totalPages} ({total} total)</span>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
-            <Button variant="ghost" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
-          </div>
-        </div>
-      )}
+      <div className="mt-4"><PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={(n) => { changePageSize(n); setPage(1); }} /></div>
 
       {/* Review Modal */}
       <Modal title="Inspect Attendance & Selfie Evidence" open={!!selected} onClose={() => setSelected(null)}>
