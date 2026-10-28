@@ -99,6 +99,9 @@ export default function Sidebar({ user, isOpen = false, onClose }: Props) {
   const pathname = usePathname();
   const currentTab = useSearchParams().get('tab') ?? 'users';
   const [adminOpen, setAdminOpen] = React.useState(true);
+  const [collapsed, setCollapsed] = React.useState<string[]>([]);
+  const toggleSection = (section: string) =>
+    setCollapsed((prev) => (prev.includes(section) ? prev.filter((name) => name !== section) : [...prev, section]));
   const { isDesktop, toggleMiniWidget } = useDesktop();
   const items = NAV_ITEMS[user.role] ?? [];
   const sidebarRef = useRef<HTMLElement>(null);
@@ -239,8 +242,17 @@ export default function Sidebar({ user, isOpen = false, onClose }: Props) {
             return (
               <React.Fragment key={item.href}>
               {startsSection && (
-                <p className="px-3 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#E4DBC4]/70">{item.section}</p>
+                <button
+                  type="button"
+                  onClick={() => toggleSection(item.section!)}
+                  aria-expanded={!collapsed.includes(item.section!)}
+                  className="w-full flex items-center justify-between px-3 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#E4DBC4]/70 hover:text-[#E4DBC4] cursor-pointer"
+                >
+                  {item.section}
+                  <ChevronDown className={`w-3 h-3 transition-transform duration-150 ${collapsed.includes(item.section!) ? '-rotate-90' : ''}`} />
+                </button>
               )}
+              {(!item.section || !collapsed.includes(item.section) || active) && (
               <Link
                 href={item.href}
                 onClick={onClose}
@@ -254,6 +266,7 @@ export default function Sidebar({ user, isOpen = false, onClose }: Props) {
                 <IconComponent className={`w-4 h-4 shrink-0 transition-colors ${active ? 'text-[#E4DBC4]' : 'text-slate-400 group-hover:text-slate-200'}`} />
                 <span className="truncate">{item.label}</span>
               </Link>
+              )}
               </React.Fragment>
             );
           })}

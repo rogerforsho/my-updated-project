@@ -48,12 +48,12 @@ export default function DashboardShell({ user, children, departments = [] }: Pro
 
         {departments.length > 1 && (
           <div className="flex items-center gap-2 border-b border-[var(--line)] bg-[var(--surface-muted)] px-4 py-1.5 text-xs">
-            <label htmlFor="dept-switch" className="font-semibold text-[var(--text-muted)]">Department</label>
+            <label htmlFor="dept-switch" className="font-semibold text-[var(--text-muted)]">Display theme</label>
             <select id="dept-switch" value={dept} onChange={(e) => chooseDept(e.target.value as 'ICS' | 'IBE')}
               className="rounded-md border border-[var(--line)] bg-[var(--surface)] px-2 py-1 font-semibold">
               {departments.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
-            <span className="text-[var(--text-muted)]">Theme only. Your lists still cover every department you are granted.</span>
+            <span className="text-[var(--text-muted)]">Changes colors only. The records shown still cover every department you are granted.</span>
           </div>
         )}
 
