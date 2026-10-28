@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { CompanyPicker } from '@/src/components/ui/CompanyPicker';
 import { exportTimecardCsv, listTimecard, type TimecardRow } from '@/src/services/timecard';
 import { ExceptionReview } from './ExceptionReview';
+import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
 
-const PAGE_SIZE = 20;
 const isoDaysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
 const clock = (v: string | null) => (v ? new Date(v).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—');
 
@@ -24,6 +24,7 @@ function Timecard() {
   const [rows, setRows] = useState<TimecardRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, changePageSize] = usePageSize();
   const [searchText, setSearchText] = useState('');
   const [search, setSearch] = useState('');
   const [companyId, setCompanyId] = useState('');
@@ -40,11 +41,11 @@ function Timecard() {
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
-    const res = await listTimecard(page, PAGE_SIZE, { search, companyId: companyId || undefined, from, to, studentId: student?.id });
+    const res = await listTimecard(page, pageSize, { search, companyId: companyId || undefined, from, to, studentId: student?.id });
     setLoading(false);
     if (res.error) { setError(res.error.message); return; }
     setRows(res.data?.rows ?? []); setTotal(res.data?.total ?? 0);
-  }, [page, search, companyId, from, to, student]);
+  }, [page, pageSize, search, companyId, from, to, student]);
   useEffect(() => { void load(); }, [load]);
 
   async function download() {
@@ -57,7 +58,7 @@ function Timecard() {
     URL.revokeObjectURL(url);
   }
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const field = 'rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal';
   return (
     <div className="space-y-4">
@@ -97,7 +98,7 @@ function Timecard() {
                 <tr key={r.key}>
                   <td className="p-3">
                     <button type="button" onClick={() => { setStudent({ id: r.student_id, name: r.full_name }); setPage(1); }} className="text-left font-semibold text-slate-900 hover:underline">{r.full_name || 'Student'}</button>
-                    <p className="text-xs text-slate-500">{r.student_number}{r.company_name ? ` · ${r.company_name}` : ''}</p>
+                    <p className="text-[11px] text-slate-500 tabular-nums">{r.student_number}{r.company_name ? ` · ${r.company_name}` : ''}</p>
                   </td>
                   <td className="p-3 whitespace-nowrap">{r.date}</td>
                   <td className="p-3">{clock(r.time_in)}</td>
@@ -113,13 +114,7 @@ function Timecard() {
         )}
       </div>
 
-      <div className="flex items-center justify-between text-xs text-slate-500">
-        <span>{total ? `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)} of ${total}` : '0 records'}</span>
-        <div className="flex gap-1">
-          <button type="button" disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)} className="rounded-lg border border-slate-200 px-3 py-1.5 disabled:opacity-40">Previous</button>
-          <button type="button" disabled={page >= totalPages || loading} onClick={() => setPage((p) => p + 1)} className="rounded-lg border border-slate-200 px-3 py-1.5 disabled:opacity-40">Next</button>
-        </div>
-      </div>
+      <PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={(n) => { changePageSize(n); setPage(1); }} />
     </div>
   );
 }
