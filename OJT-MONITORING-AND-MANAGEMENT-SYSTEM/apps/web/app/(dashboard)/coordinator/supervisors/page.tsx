@@ -5,11 +5,10 @@ import Button from '@/src/components/ui/Button';
 import Input from '@/src/components/ui/Input';
 import Alert from '@/src/components/ui/Alert';
 import Modal from '@/src/components/ui/Modal';
+import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
 import { createSupervisor, listSupervisors, type SupervisorInput } from '@/src/services/supervisors';
 import { SupervisorInvitesPanel } from '@/src/components/SupervisorInvitesPanel';
 import { CompanyPicker } from '@/src/components/ui/CompanyPicker';
-
-const PAGE_SIZE = 20;
 
 const EMPTY_FORM: SupervisorInput = {
   full_name: '',
@@ -22,6 +21,7 @@ export default function SupervisorsPage() {
   const [supervisors, setSupervisors] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, changePageSize] = usePageSize();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -34,12 +34,12 @@ export default function SupervisorsPage() {
   const load = useCallback(async (p: number) => {
     setLoading(true);
     setError('');
-    const result = await listSupervisors(p, PAGE_SIZE, search);
+    const result = await listSupervisors(p, pageSize, search);
     setLoading(false);
     if (result.error) { setError(result.error.message); return; }
     setSupervisors(result.data!.supervisors);
     setTotal(result.data!.total);
-  }, [search]);
+  }, [search, pageSize]);
 
   useEffect(() => {
     const t = setTimeout(() => { setSearch(searchText.trim()); setPage(1); }, 300);
@@ -67,7 +67,7 @@ export default function SupervisorsPage() {
     load(page);
   }
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto page-fade-in">
@@ -124,15 +124,7 @@ export default function SupervisorsPage() {
         )}
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4 text-sm text-slate-500">
-          <span>Page {page} of {totalPages}</span>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
-            <Button variant="ghost" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
-          </div>
-        </div>
-      )}
+      <div className="mt-4"><PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={(n) => { changePageSize(n); setPage(1); }} /></div>
 
       <SupervisorInvitesPanel />
 
