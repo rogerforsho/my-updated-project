@@ -162,7 +162,6 @@ export function TraineeBoard({ trainees, intake }: { trainees: SupervisedTrainee
   const list = useSearchPaging(
     filtered,
     (t) => `${t.full_name} ${t.student_number} ${t.course} ${STATUS_LABEL[t.placement.assignment_status] ?? ''} ${t.graduated ? 'graduated' : ''}`,
-    12,
   );
   const graduated = trainees.filter((t) => t.graduated).length;
 
@@ -244,7 +243,7 @@ export function TraineeBoard({ trainees, intake }: { trainees: SupervisedTrainee
           );
         })}
       </div>
-      <PagerBar page={list.page} totalPages={list.totalPages} total={list.matched} setPage={list.setPage} />
+      <PagerBar {...list.pager} />
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { listSubmittedEvaluations, type SubmittedEvaluationForCoordinator } from
 
 export default function CoordinatorSupervisorEvaluationsPage() {
   const [rows, setRows] = useState<SubmittedEvaluationForCoordinator[]>([]);
-  const list = useSearchPaging(rows, (r) => `${r.students.users.full_name} ${r.students.student_number} ${r.students.course} ${r.supervisors?.users.full_name ?? ''}`, 10);
+  const list = useSearchPaging(rows, (r) => `${r.students.users.full_name} ${r.students.student_number} ${r.students.course} ${r.supervisors?.users.full_name ?? ''}`);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -46,7 +46,7 @@ export default function CoordinatorSupervisorEvaluationsPage() {
           <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">{row.feedback || 'No feedback provided.'}</p>
         </article>
       ))}
-      <PagerBar page={list.page} totalPages={list.totalPages} total={list.matched} setPage={list.setPage} />
+      <PagerBar {...list.pager} />
     </div>
   );
 }

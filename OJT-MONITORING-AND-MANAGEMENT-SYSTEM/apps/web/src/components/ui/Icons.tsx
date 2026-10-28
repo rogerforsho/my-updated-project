@@ -699,3 +699,11 @@ export function Database({ className = 'w-4 h-4', ...props }: IconProps) {
 
 
 
+
+export function MoreHorizontal({ className = 'w-4 h-4', ...props }: IconProps) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24" {...props}>
+      <circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" />
+    </svg>
+  );
+}
