@@ -17,9 +17,9 @@ import {
   listPracticumSchedules, reviewPracticumSchedule,
   type ScheduleDetail,
 } from '@/src/services/schedule';
+import { PagerBar, SearchBox, usePageSize } from '@/src/components/ui/ListControls';
 import type { AssignmentStatus, DbCompanyBranch, StudentStatus } from '@ojt/shared';
 
-const PAGE_SIZE = 20;
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -28,6 +28,9 @@ export default function AssignmentsPage() {
   const [assignments, setAssignments] = useState<AssignmentDetail[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, changePageSize] = usePageSize();
+  const [searchText, setSearchText] = useState('');
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -71,12 +74,17 @@ export default function AssignmentsPage() {
   const loadAssignments = useCallback(async (p: number) => {
     setLoading(true);
     setError('');
-    const result = await listAssignments(p, PAGE_SIZE);
+    const result = await listAssignments(p, pageSize, search);
     setLoading(false);
     if (result.error) { setError(result.error.message); return; }
     setAssignments(result.data!.assignments);
     setTotal(result.data!.total);
-  }, []);
+  }, [pageSize, search]);
+
+  useEffect(() => {
+    const t = setTimeout(() => { setSearch(searchText.trim()); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [searchText]);
 
   const loadProposals = useCallback(async (filter: 'pending' | 'all') => {
     setProposalsLoading(true);
@@ -276,7 +284,7 @@ export default function AssignmentsPage() {
     loadAssignments(page);
   }
 
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto page-fade-in">
@@ -327,13 +335,14 @@ export default function AssignmentsPage() {
 
       {activeTab === 'assignments' ? (
         <>
+          <div className="mb-3"><SearchBox value={searchText} onChange={setSearchText} placeholder="Search student name or ID..." /></div>
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             {loading ? (
               <div className="flex items-center justify-center py-20 text-slate-400 text-sm">Loading...</div>
             ) : assignments.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-slate-400">
                 <span className="text-4xl mb-3">📋</span>
-                <p className="text-sm">No assignments recorded yet.</p>
+                <p className="text-sm">{search ? 'No assignments match your search.' : 'No assignments recorded yet.'}</p>
               </div>
             ) : (
               <div className="overflow-x-auto" role="region" aria-label="Active trainee assignments" tabIndex={0}>
@@ -353,7 +362,7 @@ export default function AssignmentsPage() {
                     <tr key={a.assignment_id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-5 py-4">
                         <p className="font-medium text-slate-900">{a.students?.users?.full_name}</p>
-                        <p className="text-xs text-slate-400">{a.students?.student_number} • {a.students?.course}</p>
+                        <p className="text-[11px] text-slate-500 tabular-nums">{a.students?.student_number} • {a.students?.course}</p>
                         <div className="mt-1 flex items-center gap-2">
                           <Badge status={a.students?.status}>{a.students?.status?.toUpperCase()}</Badge>
                           <select
@@ -392,15 +401,7 @@ export default function AssignmentsPage() {
             )}
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4 text-sm text-slate-500">
-              <span>Page {page} of {totalPages}</span>
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => setPage(p => p - 1)} disabled={page === 1}>Previous</Button>
-                <Button variant="ghost" onClick={() => setPage(p => p + 1)} disabled={page === totalPages}>Next</Button>
-              </div>
-            </div>
-          )}
+          <div className="mt-4"><PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={(n) => { changePageSize(n); setPage(1); }} /></div>
         </>
       ) : (
         /* Schedule Proposals Tab */
@@ -469,7 +470,7 @@ export default function AssignmentsPage() {
                       <tr key={p.schedule_id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-5 py-4">
                           <p className="font-medium text-slate-900">{p.students?.users?.full_name}</p>
-                          <p className="text-xs text-slate-400">{p.students?.student_number} • {p.students?.course}</p>
+                          <p className="text-[11px] text-slate-500 tabular-nums">{p.students?.student_number} • {p.students?.course}</p>
                         </td>
                         <td className="px-5 py-4">
                           <p className="text-slate-800 font-medium">
