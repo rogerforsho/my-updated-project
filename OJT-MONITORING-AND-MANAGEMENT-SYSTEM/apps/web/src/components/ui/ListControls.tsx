@@ -5,6 +5,21 @@ import { DEFAULT_PAGE_SIZE, PAGE_SIZES, pageItems, rangeText } from '@/src/lib/p
 
 const SIZE_KEY = 'ojt-rows-per-page';
 
+/** Rows-per-page choice, remembered across pages and sessions. */
+export function usePageSize(): [number, (n: number) => void] {
+  const [size, setSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  useEffect(() => {
+    try {
+      const saved = Number(localStorage.getItem(SIZE_KEY));
+      if ((PAGE_SIZES as readonly number[]).includes(saved)) setSize(saved);
+    } catch { /* storage blocked: keep default */ }
+  }, []);
+  return [size, (n) => {
+    setSize(n);
+    try { localStorage.setItem(SIZE_KEY, String(n)); } catch { /* ignore */ }
+  }];
+}
+
 /**
  * Search + paging over a list the page has already loaded in full.
  * shortcut: client-side, only complete while the service returns every row; use server paging past ~1000 rows.
@@ -12,19 +27,9 @@ const SIZE_KEY = 'ojt-rows-per-page';
 export function useSearchPaging<T>(items: T[], textOf: (item: T) => string) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [pageSize, setSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [pageSize, changeSize] = usePageSize();
+  function setPageSize(n: number) { changeSize(n); setPage(1); }
   useEffect(() => { setPage(1); }, [search]);
-  useEffect(() => {
-    try {
-      const saved = Number(localStorage.getItem(SIZE_KEY));
-      if ((PAGE_SIZES as readonly number[]).includes(saved)) setSize(saved);
-    } catch { /* storage blocked: keep default */ }
-  }, []);
-  function setPageSize(n: number) {
-    setSize(n);
-    setPage(1);
-    try { localStorage.setItem(SIZE_KEY, String(n)); } catch { /* ignore */ }
-  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
