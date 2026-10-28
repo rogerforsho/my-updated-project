@@ -11,7 +11,8 @@ import {
   listStudentsForAssignment, listSupervisorsForCompany,
   type AssignmentDetail, type StudentAssignmentOption,
 } from '@/src/services/assignments';
-import { listCompanies, listCompanyBranches, getCompanyCapacity } from '@/src/services/companies';
+import { CompanyPicker } from '@/src/components/ui/CompanyPicker';
+import { listCompanyBranches, getCompanyCapacity } from '@/src/services/companies';
 import {
   listPracticumSchedules, reviewPracticumSchedule,
   type ScheduleDetail,
@@ -42,7 +43,6 @@ export default function AssignmentsPage() {
   const [saving, setSaving] = useState(false);
 
   const [students, setStudents] = useState<StudentAssignmentOption[]>([]);
-  const [companies, setCompanies] = useState<{ company_id: string; company_name: string }[]>([]);
   const [supervisors, setSupervisors] = useState<{ supervisor_id: string; full_name: string; position: string }[]>([]);
   const [branches, setBranches] = useState<DbCompanyBranch[]>([]);
   const [capacity, setCapacity] = useState<{ active: number; limit: number; atCapacity: boolean } | null>(null);
@@ -110,13 +110,8 @@ export default function AssignmentsPage() {
     setCapacity(null);
     setBranches([]);
 
-    const [studentsRes, companiesRes] = await Promise.all([
-      listStudentsForAssignment(),
-      listCompanies(1, 100),
-    ]);
-
+    const studentsRes = await listStudentsForAssignment();
     if (studentsRes.data) setStudents(studentsRes.data);
-    if (companiesRes.data) setCompanies(companiesRes.data.companies);
     setModalOpen(true);
   }
 
@@ -181,10 +176,6 @@ export default function AssignmentsPage() {
     setSelectedProposal(prop);
     setReviewError('');
     setReviewSubmitting(false);
-
-    // Pre-populate company list
-    const compRes = await listCompanies(1, 100);
-    if (compRes.data) setCompanies(compRes.data.companies);
 
     const initialCompanyId = prop.company_id || '';
     const branchRes = initialCompanyId ? await listCompanyBranches(initialCompanyId) : null;
@@ -423,7 +414,7 @@ export default function AssignmentsPage() {
                 onClick={() => { setProposalsFilter('pending'); loadProposals('pending'); }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   proposalsFilter === 'pending'
-                    ? 'bg-[#0A3824] text-white shadow-xs'
+                    ? 'bg-[var(--cdm-green)] text-white shadow-xs'
                     : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
                 }`}
               >
@@ -433,7 +424,7 @@ export default function AssignmentsPage() {
                 onClick={() => { setProposalsFilter('all'); loadProposals('all'); }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   proposalsFilter === 'all'
-                    ? 'bg-[#0A3824] text-white shadow-xs'
+                    ? 'bg-[var(--cdm-green)] text-white shadow-xs'
                     : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
                 }`}
               >
@@ -594,17 +585,7 @@ export default function AssignmentsPage() {
                   Student indicated custom partner: <strong className="font-bold">{selectedProposal.custom_company_name}</strong>. Please select the matching registered company or register it first.
                 </p>
               )}
-              <select
-                value={reviewForm.company_id}
-                onChange={e => handleReviewCompanyChange(e.target.value)}
-                className="rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#0A3824]"
-                required
-              >
-                <option value="">Select partner company</option>
-                {companies.map(c => (
-                  <option key={c.company_id} value={c.company_id}>{c.company_name}</option>
-                ))}
-              </select>
+              <CompanyPicker openOnly label="" value={reviewForm.company_id} valueLabel={selectedProposal.companies?.company_name ?? ''} onChange={(id) => handleReviewCompanyChange(id)} />
             </div>
 
             <div className="flex flex-col gap-1">
@@ -781,18 +762,7 @@ export default function AssignmentsPage() {
 
           {/* Company */}
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-slate-700">Host Training Establishment (HTE)</label>
-            <select
-              value={form.company_id}
-              onChange={e => handleCompanyChange(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#0A3824] focus:border-[#0A3824]"
-              required
-            >
-              <option value="">Select company</option>
-              {companies.map(c => (
-                <option key={c.company_id} value={c.company_id}>{c.company_name}</option>
-              ))}
-            </select>
+            <CompanyPicker openOnly label="Host Training Establishment (HTE)" value={form.company_id} onChange={(id) => handleCompanyChange(id)} />
           </div>
 
           {/* Live Capacity Indicator */}

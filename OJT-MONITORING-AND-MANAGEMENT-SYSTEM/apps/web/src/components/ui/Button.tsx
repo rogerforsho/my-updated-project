@@ -15,7 +15,7 @@ export function Button({ loading, variant = 'primary', size = 'default', childre
   };
 
   const variants = {
-    primary: 'bg-[#0A3824] text-white hover:bg-[#174E32] focus:ring-2 focus:ring-[#45644A]/35 focus:ring-offset-1 border border-emerald-900/20',
+    primary: 'bg-[var(--cdm-green)] text-white hover:bg-[var(--cdm-green-light)] focus:ring-2 focus:ring-[#45644A]/35 focus:ring-offset-1 border border-emerald-900/20',
     gold: 'bg-[#E4DBC4] text-[#092E1D] hover:bg-[#D8D0BA] focus:ring-2 focus:ring-[#45644A]/35 focus:ring-offset-1 font-bold',
     ghost: 'bg-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100/90 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700',
     outline: 'bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700 focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700 shadow-xs',

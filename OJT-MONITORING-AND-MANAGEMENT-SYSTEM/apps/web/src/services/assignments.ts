@@ -136,6 +136,8 @@ export async function createAssignment(input: AssignmentInput): Promise<AppResul
     .select()
     .single();
 
+  if (error?.message.includes('not accepting new students'))
+    return { data: null, error: { code: 'FORBIDDEN', message: 'This company is not accepting new students.' } };
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to create assignment.' } };
 
   // Log Audit Trail

@@ -146,7 +146,7 @@ export default function DepartmentReportsClient({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs uppercase font-extrabold tracking-wider text-[var(--cdm-sand)] bg-[#0A3824] px-2.5 py-0.5 rounded-full border border-[var(--cdm-sand)]/40">
+            <span className="text-xs uppercase font-extrabold tracking-wider text-[var(--cdm-sand)] bg-[var(--cdm-green)] px-2.5 py-0.5 rounded-full border border-[var(--cdm-sand)]/40">
               {isICSView ? 'ICS Department' : 'IBE Department'}
             </span>
             <span className="text-xs text-slate-500 font-medium">Academic Practicum Analytics</span>
@@ -169,7 +169,7 @@ export default function DepartmentReportsClient({
               {(['ICS', 'IBE'] as const).map(department => (
                 <button key={department} type="button"
                   onClick={() => { setActiveDept(department); setCourseFilter('ALL'); }}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${activeDept === department ? 'bg-[#0A3824] text-[var(--cdm-sand)] shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                  className={`px-3 py-1.5 rounded-lg transition-all ${activeDept === department ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
                 >{department}</button>
               ))}
             </div>
@@ -183,7 +183,7 @@ export default function DepartmentReportsClient({
           </button>
           <button
             onClick={exportCSV}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-[#0A3824] text-white hover:bg-[#092E1D] shadow-sm transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-[var(--cdm-green)] text-white hover:bg-[#092E1D] shadow-sm transition-all cursor-pointer"
           >
             <FileSpreadsheet className="w-4 h-4 text-[var(--cdm-sand)]" />
             Export CSV
@@ -414,7 +414,7 @@ export default function DepartmentReportsClient({
                   onClick={() => setCourseFilter('ALL')}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                     courseFilter === 'ALL'
-                      ? 'bg-[#0A3824] text-[var(--cdm-sand)] shadow-sm'
+                      ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] shadow-sm'
                       : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                   }`}
                 >
@@ -424,7 +424,7 @@ export default function DepartmentReportsClient({
                   onClick={() => setCourseFilter('BSIT')}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                     courseFilter === 'BSIT'
-                      ? 'bg-[#0A3824] text-[var(--cdm-sand)] shadow-sm'
+                      ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] shadow-sm'
                       : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                   }`}
                 >
@@ -434,7 +434,7 @@ export default function DepartmentReportsClient({
                   onClick={() => setCourseFilter('BS-CPE')}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                     courseFilter === 'BS-CPE'
-                      ? 'bg-[#0A3824] text-[var(--cdm-sand)] shadow-sm'
+                      ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] shadow-sm'
                       : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                   }`}
                 >
@@ -447,7 +447,7 @@ export default function DepartmentReportsClient({
                   onClick={() => setCourseFilter('ALL')}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                     courseFilter === 'ALL'
-                      ? 'bg-[#0A3824] text-[var(--cdm-sand)] shadow-sm'
+                      ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] shadow-sm'
                       : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                   }`}
                 >
@@ -457,7 +457,7 @@ export default function DepartmentReportsClient({
                   onClick={() => setCourseFilter('BSBA-HRM')}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                     courseFilter === 'BSBA-HRM'
-                      ? 'bg-[#0A3824] text-[var(--cdm-sand)] shadow-sm'
+                      ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] shadow-sm'
                       : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                   }`}
                 >
@@ -467,7 +467,7 @@ export default function DepartmentReportsClient({
                   onClick={() => setCourseFilter('BSENTREP')}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                     courseFilter === 'BSENTREP'
-                      ? 'bg-[#0A3824] text-[var(--cdm-sand)] shadow-sm'
+                      ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] shadow-sm'
                       : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                   }`}
                 >
@@ -547,7 +547,7 @@ export default function DepartmentReportsClient({
                         <div className="w-24 h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1.5">
                           <div
                             className={`h-full rounded-full transition-all ${
-                              s.percentage >= 100 ? 'bg-emerald-500' : 'bg-[#0A3824]'
+                              s.percentage >= 100 ? 'bg-emerald-500' : 'bg-[var(--cdm-green)]'
                             }`}
                             style={{ width: `${s.percentage}%` }}
                           />

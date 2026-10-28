@@ -6,7 +6,8 @@ import Input from '@/src/components/ui/Input';
 import Alert from '@/src/components/ui/Alert';
 import Modal from '@/src/components/ui/Modal';
 import { createSupervisor, listSupervisors, type SupervisorInput } from '@/src/services/supervisors';
-import { listCompanies } from '@/src/services/companies';
+import { SupervisorInvitesPanel } from '@/src/components/SupervisorInvitesPanel';
+import { CompanyPicker } from '@/src/components/ui/CompanyPicker';
 
 const PAGE_SIZE = 20;
 
@@ -27,27 +28,29 @@ export default function SupervisorsPage() {
   const [form, setForm] = useState<SupervisorInput>(EMPTY_FORM);
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [companies, setCompanies] = useState<{ company_id: string; company_name: string }[]>([]);
+  const [searchText, setSearchText] = useState('');
+  const [search, setSearch] = useState('');
 
   const load = useCallback(async (p: number) => {
     setLoading(true);
     setError('');
-    const result = await listSupervisors(p, PAGE_SIZE);
+    const result = await listSupervisors(p, PAGE_SIZE, search);
     setLoading(false);
     if (result.error) { setError(result.error.message); return; }
     setSupervisors(result.data!.supervisors);
     setTotal(result.data!.total);
-  }, []);
+  }, [search]);
+
+  useEffect(() => {
+    const t = setTimeout(() => { setSearch(searchText.trim()); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [searchText]);
 
   useEffect(() => {
     let mounted = true;
     const fetchData = async () => {
       if (!mounted) return;
       await load(page);
-      const companiesResult = await listCompanies(1, 100);
-      if (mounted) {
-        setCompanies((companiesResult.data?.companies ?? []).filter(c => c.status === 'active').map(c => ({ company_id: c.company_id, company_name: c.company_name })));
-      }
     };
     fetchData();
     return () => { mounted = false; };
@@ -76,6 +79,15 @@ export default function SupervisorsPage() {
         <Button onClick={() => setModalOpen(true)}>+ Add Supervisor</Button>
       </div>
 
+      <input
+        type="search"
+        aria-label="Search supervisors"
+        value={searchText}
+        onChange={e => setSearchText(e.target.value)}
+        placeholder="Search by name or email..."
+        className="mb-4 w-full sm:w-80 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-teal-500"
+      />
+
       {error && <div className="mb-4"><Alert type="error" message={error} /></div>}
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -84,7 +96,7 @@ export default function SupervisorsPage() {
         ) : supervisors.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
             <span className="text-4xl mb-3">👩‍🏫</span>
-            <p className="text-sm">No supervisors yet.</p>
+            <p className="text-sm">{search ? 'No supervisors match your search.' : 'No supervisors yet.'}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -122,20 +134,12 @@ export default function SupervisorsPage() {
         </div>
       )}
 
+      <SupervisorInvitesPanel />
+
       <Modal title="Add Supervisor" open={modalOpen} onClose={() => setModalOpen(false)}>
         <Input label="Full Name" value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} required />
         <Input label="Email" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required />
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-700">Company</label>
-          <select
-            value={form.company_id}
-            onChange={e => setForm(f => ({ ...f, company_id: e.target.value }))}
-            className="rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-          >
-            <option value="">Select company</option>
-            {companies.map(c => <option key={c.company_id} value={c.company_id}>{c.company_name}</option>)}
-          </select>
-        </div>
+        <CompanyPicker value={form.company_id} onChange={(company_id) => setForm(f => ({ ...f, company_id }))} />
         <Input label="Position" value={form.position} onChange={e => setForm(f => ({ ...f, position: e.target.value }))} required />
         {formError && <Alert type="error" message={formError} />}
         <div className="flex gap-3 pt-1">

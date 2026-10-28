@@ -54,8 +54,9 @@ const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Supervisors', href: '/coordinator/supervisors', icon: User, section: 'Partners' },
     { label: 'Assignments', href: '/coordinator/assignments', icon: FileSignature, section: 'Monitoring' },
     { label: 'Submissions', href: '/coordinator/submissions', icon: ClipboardCheck, section: 'Monitoring' },
-    { label: 'Attendance Exceptions', href: '/coordinator/attendance', icon: Clock, section: 'Monitoring' },
+    { label: 'Attendance', href: '/coordinator/attendance', icon: Clock, section: 'Monitoring' },
     { label: 'Progress', href: '/coordinator/progress', icon: TrendingUp, section: 'Monitoring' },
+    { label: 'Holidays & Days Off', href: '/coordinator/non-working-days', icon: Clock, section: 'Monitoring' },
     { label: 'What-if Analysis', href: '/coordinator/what-if', icon: Compass, section: 'Monitoring' },
     { label: 'Incident Reports', href: '/coordinator/incident-reports', icon: ShieldAlert, section: 'Monitoring' },
     { label: 'Supervisor Evaluations', href: '/coordinator/supervisor-evaluations', icon: Star, section: 'Evaluation' },
@@ -140,7 +141,7 @@ export default function Sidebar({ user, isOpen = false, onClose }: Props) {
       <aside
         ref={sidebarRef}
         id="primary-navigation"
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-[#092E1D] border-r border-emerald-950/40 flex flex-col h-full shrink-0 select-none transition-transform duration-200 ease-out shadow-2xl lg:shadow-none ${
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-[var(--cdm-dark)] border-r border-emerald-950/40 flex flex-col h-full shrink-0 select-none transition-transform duration-200 ease-out shadow-2xl lg:shadow-none ${
           isOpen ? 'visible translate-x-0' : 'invisible -translate-x-full lg:visible lg:translate-x-0'
         }`}
       >

@@ -191,7 +191,7 @@ export default function CoordinatorApprovalsPage() {
               loading={batchLoading}
               disabled={loading || !!actionLoading || rejectSubmitting || !!error || selectedIds.length === 0}
               title={selectedIds.length === 0 ? 'Tick the registrations you have verified first' : undefined}
-              className="bg-[#0A3824] hover:bg-[#092E1D] text-white shadow-sm font-medium text-xs sm:text-sm px-4 py-2"
+              className="bg-[var(--cdm-green)] hover:bg-[#092E1D] text-white shadow-sm font-medium text-xs sm:text-sm px-4 py-2"
             >
               Approve Selected ({selectedIds.length})
             </Button>
@@ -311,7 +311,7 @@ export default function CoordinatorApprovalsPage() {
                           <Button
                             onClick={() => handleAction(student.user_id, 'active')}
                             loading={actionLoading === student.user_id}
-                            className="bg-[#0A3824] hover:bg-[#092E1D] text-white text-xs px-3 py-1.5"
+                            className="bg-[var(--cdm-green)] hover:bg-[#092E1D] text-white text-xs px-3 py-1.5"
                           >
                             Approve
                           </Button>

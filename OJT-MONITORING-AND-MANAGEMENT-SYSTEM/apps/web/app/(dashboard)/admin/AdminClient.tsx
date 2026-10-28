@@ -34,6 +34,7 @@ import {
 } from '@/src/services/admin';
 import { createAnnouncement, listAnnouncements, deleteAnnouncement } from '@/src/services/announcements';
 import type { DbAnnouncement } from '@ojt/shared';
+import { NonWorkingDaysPanel } from '@/src/components/NonWorkingDaysPanel';
 import { listAuditLogs, type AuditLogItem } from '@/src/services/audit';
 import { accountRoleLabel, type AccountStatus } from '@ojt/shared';
 
@@ -49,6 +50,7 @@ interface Props {
 }
 
 const PAGE_SIZE = 10;
+const AUDIT_PAGE_SIZE = 20;
 
 const ROLE_TABS = [
   { id: 'all', label: 'All Roles' },
@@ -72,11 +74,12 @@ function formatAuditDetails(details?: Record<string, unknown>) {
     .join(' · ');
 }
 
-type AdminTab ='users' | 'announcements' | 'audit';
+type AdminTab ='users' | 'announcements' | 'holidays' | 'audit';
 
 const ADMIN_TABS: { id: AdminTab; label: string; Icon: typeof Users }[] = [
   { id: 'users', label: 'Users', Icon: Users },
   { id: 'announcements', label: 'Announcements', Icon: Megaphone },
+  { id: 'holidays', label: 'Holidays', Icon: Megaphone },
   { id: 'audit', label: 'Audit Log', Icon: Shield },
 ];
 
@@ -129,6 +132,11 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [auditLoading, setAuditLoading] = useState(true);
   const [auditError, setAuditError] = useState('');
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditAction, setAuditAction] = useState('');
+  const [auditFrom, setAuditFrom] = useState('');
+  const [auditTo, setAuditTo] = useState('');
 
 
   const fetchUsers = useCallback(async (
@@ -193,13 +201,13 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
     loadAnnouncements();
   }, [loadAnnouncements]);
 
-  async function loadAudit() {
+  async function loadAudit(p = auditPage) {
     setAuditLoading(true);
     setAuditError('');
     try {
-      const res = await listAuditLogs(1, 10);
+      const res = await listAuditLogs(p, AUDIT_PAGE_SIZE, auditAction, auditFrom || undefined, auditTo || undefined);
       if (res.error) setAuditError(res.error.message);
-      else setAuditLogs(res.data?.logs ?? []);
+      else { setAuditLogs(res.data?.logs ?? []); setAuditTotal(res.data?.total ?? 0); }
     } catch {
       setAuditError('Unable to load audit records. Please refresh the log.');
     } finally { setAuditLoading(false); }
@@ -862,6 +870,8 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
           </section>
         )}
 
+        {activeTab === 'holidays' && <NonWorkingDaysPanel mode="admin" />}
+
       {/* System Security & Audit Trail */}
         {activeTab === 'audit' && (
       <div className="space-y-3 pt-2">
@@ -870,10 +880,26 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
             <Shield className="w-5 h-5 text-[#0A3824]" />
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">System Activity & Security Audit Trail</h2>
           </div>
-          <Button size="sm" variant="outline" onClick={loadAudit} disabled={auditLoading} className="text-xs h-7 cursor-pointer">
+          <Button size="sm" variant="outline" onClick={() => loadAudit()} disabled={auditLoading} className="text-xs h-7 cursor-pointer">
             Refresh Log
           </Button>
         </div>
+
+        <form
+          className="flex flex-wrap items-end gap-2 text-xs"
+          onSubmit={(e) => { e.preventDefault(); setAuditPage(1); loadAudit(1); }}
+        >
+          <label className="flex flex-col gap-1">Action
+            <input value={auditAction} onChange={(e) => setAuditAction(e.target.value)} placeholder="e.g. deactivate" className="h-8 rounded-lg border border-slate-300 px-2 dark:bg-slate-900 dark:border-slate-700" />
+          </label>
+          <label className="flex flex-col gap-1">From
+            <input type="date" value={auditFrom} onChange={(e) => setAuditFrom(e.target.value)} className="h-8 rounded-lg border border-slate-300 px-2 dark:bg-slate-900 dark:border-slate-700" />
+          </label>
+          <label className="flex flex-col gap-1">To
+            <input type="date" value={auditTo} onChange={(e) => setAuditTo(e.target.value)} className="h-8 rounded-lg border border-slate-300 px-2 dark:bg-slate-900 dark:border-slate-700" />
+          </label>
+          <Button size="sm" type="submit" disabled={auditLoading} className="h-8 text-xs cursor-pointer">Apply</Button>
+        </form>
 
         <Card className="border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden bg-white dark:bg-slate-900">
           <CardContent className="p-0">
@@ -926,6 +952,15 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+            {auditTotal > AUDIT_PAGE_SIZE && (
+              <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+                <span>Page {auditPage} of {Math.ceil(auditTotal / AUDIT_PAGE_SIZE)} · {auditTotal} events</span>
+                <div className="flex gap-1">
+                  <Button size="sm" variant="outline" aria-label="Previous page" disabled={auditPage <= 1 || auditLoading} onClick={() => { setAuditPage(auditPage - 1); loadAudit(auditPage - 1); }} className="h-7 px-2 cursor-pointer"><ChevronLeft className="w-3.5 h-3.5" /></Button>
+                  <Button size="sm" variant="outline" aria-label="Next page" disabled={auditPage >= Math.ceil(auditTotal / AUDIT_PAGE_SIZE) || auditLoading} onClick={() => { setAuditPage(auditPage + 1); loadAudit(auditPage + 1); }} className="h-7 px-2 cursor-pointer"><ChevronRight className="w-3.5 h-3.5" /></Button>
+                </div>
               </div>
             )}
           </CardContent>

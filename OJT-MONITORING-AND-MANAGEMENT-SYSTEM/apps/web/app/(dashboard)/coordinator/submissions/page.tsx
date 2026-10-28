@@ -17,6 +17,8 @@ import {
 import { getSignedDocumentUrl } from '@/src/services/storage';
 import { isCoordinatorReviewType, SUPERVISOR_REVIEW_REPORT_TYPES } from '@ojt/shared';
 
+const ROSTER_PAGE_SIZE = 25;
+
 export default function CoordinatorSubmissionsPage() {
   // Top-level tab: 'compliance' (Who needs requirements) vs 'feed' (Document review stream)
   const [activeTab, setActiveTab] = useState<'compliance' | 'feed'>('compliance');
@@ -27,6 +29,8 @@ export default function CoordinatorSubmissionsPage() {
   const [complianceSearch, setComplianceSearch] = useState('');
   const [complianceFilter, setComplianceFilter] = useState<'all' | 'needs_requirements' | 'ready_for_review' | 'ready_for_placement' | 'deployed'>('needs_requirements');
   const [courseFilter, setCourseFilter] = useState<string>('all');
+  const [rosterPage, setRosterPage] = useState(1);
+  useEffect(() => { setRosterPage(1); }, [complianceSearch, courseFilter, complianceFilter]);
   const [inspectingStudent, setInspectingStudent] = useState<StudentGatewayStatus | null>(null);
   const [remindingStudentId, setRemindingStudentId] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -59,7 +63,7 @@ export default function CoordinatorSubmissionsPage() {
   // ─── Load Document Feed Data ───────────────────────────────────────────────
   const loadReports = useCallback(async (p: number) => {
     setLoadingReports(true);
-    const res = await listReportsForCoordinator(p, 20);
+    const res = await listReportsForCoordinator(p, 20, feedStatusFilter);
     setLoadingReports(false);
     if (res.error) {
       setError(res.error.message);
@@ -67,7 +71,7 @@ export default function CoordinatorSubmissionsPage() {
     }
     setReports(res.data!.reports);
     setTotalReports(res.data!.total);
-  }, []);
+  }, [feedStatusFilter]);
 
   useEffect(() => {
     loadCompliance();
@@ -164,12 +168,11 @@ export default function CoordinatorSubmissionsPage() {
   }, [complianceData, complianceSearch, courseFilter, complianceFilter]);
 
   // ─── Filtered Document Feed ────────────────────────────────────────────────
-  const filteredReports = reports.filter(r => {
-    if (feedStatusFilter === 'all') return true;
-    return r.status === feedStatusFilter;
-  });
+  const filteredReports = reports;
 
   const totalPages = Math.max(1, Math.ceil(totalReports / 20));
+  // shortcut: roster is paged client-side over the full compliance summary, move server-side past a few thousand trainees
+
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto page-fade-in">
@@ -193,7 +196,7 @@ export default function CoordinatorSubmissionsPage() {
             onClick={() => setActiveTab('compliance')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'compliance'
-                ? 'bg-[#0A3824] text-[var(--cdm-sand)] shadow-sm'
+                ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -210,7 +213,7 @@ export default function CoordinatorSubmissionsPage() {
             onClick={() => setActiveTab('feed')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'feed'
-                ? 'bg-[#0A3824] text-[var(--cdm-sand)] shadow-sm'
+                ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -305,8 +308,8 @@ export default function CoordinatorSubmissionsPage() {
               onClick={() => setComplianceFilter('deployed')}
               className={`p-4 rounded-2xl border transition-all cursor-pointer ${
                 complianceFilter === 'deployed'
-                  ? 'bg-[#0A3824]/10 border-[#0A3824]/30 ring-2 ring-[#0A3824]/30 shadow-sm'
-                  : 'bg-white border-slate-200/80 hover:border-[#0A3824]/20 hover:bg-[#0A3824]/5'
+                  ? 'bg-[var(--cdm-green)]/10 border-[#0A3824]/30 ring-2 ring-[#0A3824]/30 shadow-sm'
+                  : 'bg-white border-slate-200/80 hover:border-[#0A3824]/20 hover:bg-[var(--cdm-green)]/5'
               }`}
             >
               <div className="flex items-center justify-between">
@@ -411,7 +414,7 @@ export default function CoordinatorSubmissionsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredStudents.map(student => {
+                    {filteredStudents.slice((rosterPage - 1) * ROSTER_PAGE_SIZE, rosterPage * ROSTER_PAGE_SIZE).map(student => {
                       const percent = Math.round((student.submitted_count / student.total_required) * 100);
                       const isComplete = student.approved_count === student.total_required;
 
@@ -492,7 +495,7 @@ export default function CoordinatorSubmissionsPage() {
                           <td className="px-5 py-4">
                             {student.compliance_state === 'deployed' && (
                               <div>
-                                <Badge className="bg-[#0A3824]/10 text-[#0A3824] border-[#0A3824]/20 text-xs font-bold">
+                                <Badge className="bg-[var(--cdm-green)]/10 text-[#0A3824] border-[#0A3824]/20 text-xs font-bold">
                                   🏢 DEPLOYED
                                 </Badge>
                                 <p className="text-[11px] text-slate-500 font-medium mt-0.5 truncate max-w-[150px]">
@@ -551,6 +554,15 @@ export default function CoordinatorSubmissionsPage() {
                 </table>
               </div>
             )}
+            {filteredStudents.length > ROSTER_PAGE_SIZE && (
+              <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 text-xs text-slate-500">
+                <span>Page {rosterPage} of {Math.ceil(filteredStudents.length / ROSTER_PAGE_SIZE)} · {filteredStudents.length} trainees</span>
+                <div className="flex gap-1">
+                  <Button variant="ghost" onClick={() => setRosterPage(p => Math.max(1, p - 1))} disabled={rosterPage === 1}>Prev</Button>
+                  <Button variant="ghost" onClick={() => setRosterPage(p => p + 1)} disabled={rosterPage >= Math.ceil(filteredStudents.length / ROSTER_PAGE_SIZE)}>Next</Button>
+                </div>
+              </div>
+              )}
           </div>
         </div>
       )}
@@ -569,10 +581,10 @@ export default function CoordinatorSubmissionsPage() {
               {(['all', 'submitted', 'approved', 'rejected'] as const).map(tab => (
                 <button
                   key={tab}
-                  onClick={() => setFeedStatusFilter(tab)}
+                  onClick={() => { setFeedStatusFilter(tab); setReportPage(1); }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer ${
                     feedStatusFilter === tab
-                      ? 'bg-[#0A3824] text-[var(--cdm-sand)] shadow-sm'
+                      ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] shadow-sm'
                       : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                   }`}
                 >
@@ -843,7 +855,7 @@ export default function CoordinatorSubmissionsPage() {
               <Button
                 onClick={() => submitDecision('approved')}
                 loading={submittingAction}
-                className="bg-[#0A3824] hover:bg-[#092E1D] text-[var(--cdm-sand)] font-bold"
+                className="bg-[var(--cdm-green)] hover:bg-[#092E1D] text-[var(--cdm-sand)] font-bold"
               >
                 Approve & Sign Off
               </Button>

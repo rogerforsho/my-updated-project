@@ -60,6 +60,15 @@ export async function POST(request: Request) {
         (typeof input[key] !== 'string' || !input[key].startsWith(`${auth.actor.user.id}/reports/`) || input[key].length > 500)))
     return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Check the HTE and branch details, email, and uploaded evidence.' });
 
+  // A student already placed cannot ask for another company (one active placement at a time).
+  const { count: activePlacements, error: placementError } = await auth.actor.supabase.from('student_assignments')
+    .select('*', { count: 'exact', head: true }).eq('student_id', auth.actor.studentId).eq('assignment_status', 'active');
+  if (placementError) return mobileBffFailure({ status: 503, code: 'SERVER_FAILURE', message: 'Could not check your placement. Try again.' });
+  if ((activePlacements ?? 0) > 0) {
+    await removeOwnedEvidence([input.business_permit_path as string | null | undefined, input.moa_path as string | null | undefined], auth.actor.user.id);
+    return mobileBffFailure({ status: 409, code: 'DUPLICATE_REQUEST', message: 'You already have an active placement. Ask your coordinator if you need to change it.' });
+  }
+
   if (!await validEvidence(input.business_permit_path as string | null | undefined, auth.actor.user.id) ||
       !await validEvidence(input.moa_path as string | null | undefined, auth.actor.user.id)) {
     await removeOwnedEvidence([input.business_permit_path as string | null | undefined, input.moa_path as string | null | undefined], auth.actor.user.id);

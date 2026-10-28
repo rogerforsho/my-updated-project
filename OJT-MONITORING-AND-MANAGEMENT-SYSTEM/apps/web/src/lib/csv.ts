@@ -23,3 +23,14 @@ export function parseCsv(text: string): string[][] {
   if (field !== '' || row.length) { row.push(field); rows.push(row); }
   return rows.filter(cells => cells.some(cell => cell.trim() !== ''));
 }
+
+// A leading = + - @ would run as a formula when the CSV is opened in a spreadsheet.
+export function csvCell(v: unknown): string {
+  let s = v == null ? '' : String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+export function toCsv(head: string[], rows: unknown[][]): string {
+  return [head.join(','), ...rows.map((r) => r.map(csvCell).join(','))].join('\r\n');
+}

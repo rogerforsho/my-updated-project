@@ -231,4 +231,8 @@ textarea,
 
 .dark ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.28);
-}
+}
+
+/* Department themes for Coordinators with a department grant: ICS orange, IBE blue. Super Admin and Supervisor stay on the default green. */
+[data-dept='ICS'] { --cdm-dark: #3A1D0A; --cdm-green: #B45309; --cdm-green-light: #C2570C; --cdm-olive: #B45309; }
+[data-dept='IBE'] { --cdm-dark: #0B2447; --cdm-green: #1D4ED8; --cdm-green-light: #2563EB; --cdm-olive: #1D4ED8; }
