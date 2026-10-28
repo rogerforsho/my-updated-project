@@ -3,7 +3,7 @@
 import { createClient } from '@/src/lib/supabase/server';
 import { getServiceClient } from '@/src/lib/supabase/service';
 import { recordAuditEvent } from '@/src/lib/audit';
-import { restrictDepartment } from '@/src/lib/department-scope';
+import { restrictDepartment, courseDepartment } from '@/src/lib/department-scope';
 import crypto from 'crypto';
 import type { AppResult, UserRole, AccountStatus } from '@ojt/shared';
 
@@ -51,6 +51,7 @@ export interface UserManagementItem {
   employee_number?: string | null;
   account_category: string;
   created_at: string;
+  department: string | null;
 }
 
 export interface CreateSystemUserInput {
@@ -66,7 +67,8 @@ export async function listAllUsers(
   pageSize = 20,
   roleFilter?: string,
   statusFilter?: string,
-  search?: string
+  search?: string,
+  departmentFilter?: string
 ): Promise<AppResult<{ users: UserManagementItem[]; total: number }>> {
   const { authorized } = await assertSuperAdmin();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
@@ -83,6 +85,18 @@ export async function listAllUsers(
 
   if (roleFilter && roleFilter !== 'all') query = query.eq('account_category', roleFilter);
   if (statusFilter && statusFilter !== 'all') query = query.eq('account_status', statusFilter);
+  if (departmentFilter === 'ICS' || departmentFilter === 'IBE') {
+    // Students belong by course, coordinators by an active department grant.
+    const [students, grants] = await Promise.all([
+      restrictDepartment(service.from('students').select('user_id'), departmentFilter),
+      service.from('staff_capability_grants').select('user_id').eq('capability', 'academic_workflows')
+        .eq('department_scope', departmentFilter).is('revoked_at', null),
+    ]);
+    if (students.error || grants.error)
+      return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load user records.' } };
+    const ids = [...(students.data ?? []), ...(grants.data ?? [])].map(row => row.user_id as string);
+    query = query.in('user_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']);
+  }
   if (search?.trim()) {
     query = query.or(`full_name.ilike.%${search.trim()}%,email.ilike.%${search.trim()}%`);
   }
@@ -91,9 +105,29 @@ export async function listAllUsers(
   if (error)
     return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load user records.' } };
 
+  const rows = data ?? [];
+  const userIds = rows.map(row => row.user_id as string);
+  const [studentRows, grantRows] = await Promise.all([
+    service.from('students').select('user_id, course').in('user_id', userIds),
+    service.from('staff_capability_grants').select('user_id, department_scope')
+      .eq('capability', 'academic_workflows').is('revoked_at', null).in('user_id', userIds),
+  ]);
+  if (studentRows.error || grantRows.error)
+    return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load user records.' } };
+  const departments = new Map<string, Set<string>>();
+  const addDepartment = (userId: string, department: string | null) => {
+    if (!department) return;
+    departments.set(userId, (departments.get(userId) ?? new Set()).add(department));
+  };
+  for (const row of studentRows.data ?? []) addDepartment(row.user_id, courseDepartment(row.course));
+  for (const row of grantRows.data ?? []) addDepartment(row.user_id, row.department_scope);
+
   return {
     data: {
-      users: (data ?? []) as UserManagementItem[],
+      users: rows.map(row => ({
+        ...row,
+        department: departments.has(row.user_id) ? [...departments.get(row.user_id)!].sort().join(', ') : null,
+      })) as UserManagementItem[],
       total: count ?? 0,
     },
     error: null,

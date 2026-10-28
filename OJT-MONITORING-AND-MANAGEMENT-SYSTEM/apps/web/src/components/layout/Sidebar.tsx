@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import type { AuthUser } from '@ojt/shared';
 import SignOutButton from '@/src/components/layout/SignOutButton';
 import { useDesktop } from '@/src/hooks/useDesktop';
@@ -32,6 +32,9 @@ import {
   Compass,
   RotateCcw,
   ShieldAlert,
+  ChevronDown,
+  Megaphone,
+  Shield,
 } from '@/src/components/ui/Icons';
 
 interface NavItem {
@@ -78,6 +81,14 @@ const NAV_ITEMS: Record<string, NavItem[]> = {
   ],
 };
 
+// Super Admin sections live on /admin and switch with ?tab=.
+const ADMIN_SECTIONS = [
+  { tab: 'users', label: 'User Management', icon: Users },
+  { tab: 'announcements', label: 'Announcements', icon: Megaphone },
+  { tab: 'holidays', label: 'Academic Calendar', icon: Clock },
+  { tab: 'audit', label: 'Audit Log', icon: Shield },
+] as const;
+
 interface Props {
   user: AuthUser;
   isOpen?: boolean;
@@ -86,6 +97,8 @@ interface Props {
 
 export default function Sidebar({ user, isOpen = false, onClose }: Props) {
   const pathname = usePathname();
+  const currentTab = useSearchParams().get('tab') ?? 'users';
+  const [adminOpen, setAdminOpen] = React.useState(true);
   const { isDesktop, toggleMiniWidget } = useDesktop();
   const items = NAV_ITEMS[user.role] ?? [];
   const sidebarRef = useRef<HTMLElement>(null);
@@ -183,7 +196,43 @@ export default function Sidebar({ user, isOpen = false, onClose }: Props) {
 
         {/* Navigation Items */}
         <nav aria-label="Main navigation" className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
-          {items.map((item, index) => {
+          {user.role === 'Admin' ? (
+            <div>
+              <button
+                type="button"
+                onClick={() => setAdminOpen((open) => !open)}
+                aria-expanded={adminOpen}
+                aria-controls="admin-sections"
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold text-white hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                <ShieldCheck className="w-4 h-4 shrink-0 text-[#E4DBC4]" />
+                <span className="flex-1 text-left">Administration</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${adminOpen ? '' : '-rotate-90'}`} />
+              </button>
+              {adminOpen && (
+                <ul id="admin-sections" className="mt-1 ml-3 pl-3 border-l border-white/10 space-y-1">
+                  {ADMIN_SECTIONS.map(({ tab, label, icon: SectionIcon }) => {
+                    const active = pathname === '/admin' && currentTab === tab;
+                    return (
+                      <li key={tab}>
+                        <Link
+                          href={`/admin?tab=${tab}`}
+                          onClick={onClose}
+                          aria-current={active ? 'page' : undefined}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
+                            active ? 'bg-white/15 text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-white/5'
+                          }`}
+                        >
+                          <SectionIcon className="w-4 h-4 shrink-0" />
+                          <span className="truncate">{label}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          ) : items.map((item, index) => {
             const IconComponent = item.icon;
             const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
             const startsSection = item.section && item.section !== items[index - 1]?.section;

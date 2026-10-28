@@ -7,6 +7,13 @@ const patterns = {
   IBE: ['BSBA', 'BSENTREP', 'ENTREPRENEURSHIP', 'HUMAN RESOURCE', 'BSA', 'ACCOUNTANCY'],
 };
 
+export function courseDepartment(course: string | null | undefined): 'ICS' | 'IBE' | null {
+  const text = (course ?? '').toUpperCase();
+  // ICS wins on ambiguous courses, as in course_department().
+  for (const department of ['ICS', 'IBE'] as const) if (patterns[department].some(pattern => text.includes(pattern))) return department;
+  return null;
+}
+
 export async function departmentScope(client: SupabaseClient, userId: string, role: string): Promise<{ department: 'ICS' | 'IBE' | null; departments: string[]; error: string | null }> {
   if (role === 'Student') return { department: null, departments: [], error: null };
   if (role !== 'Coordinator') return { department: null, departments: [], error: 'OJT Coordinator access required.' };
