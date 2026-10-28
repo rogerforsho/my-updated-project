@@ -1,8 +1,8 @@
 # Transactional email queue
 
-Student approvals and rejections are committed with the in-app notification, audit row, and a PGMQ message. Supervisor welcome messages are queued after the account profile is created. A protected Next.js worker sends the existing templates through Resend so provider latency does not hold up web requests. Password recovery uses Supabase's single-use email link; legacy queued OTP reset messages are discarded by the worker and are never sent.
+Student approvals and rejections are committed with the in-app notification, audit row, and a PGMQ message. Supervisor welcome messages are queued after the account profile is created. A protected Next.js worker sends the existing templates through Gmail SMTP so provider latency does not hold up web requests. Password recovery uses Supabase's single-use email link; legacy queued OTP reset messages are discarded by the worker and are never sent.
 
-Failed account-status and supervisor-welcome deliveries are retried after the 60-second queue visibility timeout. Messages with more than five failed attempts are archived in PGMQ for operator review. Legacy password-reset messages are discarded immediately because recovery codes are no longer part of the account-recovery flow. Resend idempotency keys prevent duplicate emails when the provider accepts a message but queue acknowledgement times out.
+Failed account-status and supervisor-welcome deliveries are retried after the 60-second queue visibility timeout. Messages with more than five failed attempts are archived in PGMQ for operator review. Legacy password-reset messages are discarded immediately because recovery codes are no longer part of the account-recovery flow. Gmail SMTP has no idempotency key, so a message the provider accepted but whose queue acknowledgement timed out can be sent twice.
 
 ## Deploy
 
@@ -12,7 +12,7 @@ Failed account-status and supervisor-welcome deliveries are retried after the 60
 4. After the web and mobile clients are updated, apply `20261019023106_enforce_server_mediated_student_writes.sql`. It blocks direct student attendance/report writes and direct authenticated Storage uploads; the BFF service and signed-upload flows remain available.
 5. Apply `20261019054700_student_registration_resubmission.sql` after revision 38. The registration resubmission route requires its revision 39 RPC. Both migration directories contain the file.
 6. Apply `20261019070000_attendance_assignment_date_credit_guard.sql` after revision 39. It prevents verified attendance outside an assignment's date range from earning hours and corrects existing out-of-range credits to zero. Both migration directories contain the file.
-7. Keep `RESEND_API_KEY`, optional `RESEND_FROM_EMAIL`, a long random `CRON_SECRET`, and optional `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` in the deployment environment. Do not commit these values.
+7. Keep `SMTP_USER`, `SMTP_PASS` (a Gmail app password), optional `EMAIL_FROM`, a long random `CRON_SECRET`, and optional `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` in the deployment environment. Do not commit these values.
 8. In the Supabase Dashboard, enable the `pg_cron`, `pg_net`, and Vault extensions if they are not already enabled.
 9. Store the worker URL and authorization value in Vault. Substitute the deployed origin and the same `CRON_SECRET` used by Next.js:
 

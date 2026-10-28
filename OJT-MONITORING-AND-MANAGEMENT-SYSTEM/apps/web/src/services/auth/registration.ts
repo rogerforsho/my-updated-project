@@ -112,7 +112,8 @@ export async function registerStudent(
   // Use the public signup flow so Supabase sends its email confirmation link.
   // Admin createUser(email_confirm: true) silently bypasses email ownership checks.
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:3000' : '');
-  if (!appUrl || (process.env.NODE_ENV === 'production' && !appUrl.startsWith('https://'))) {
+  const requireHttps = process.env.NODE_ENV === 'production' && process.env.ALLOW_INSECURE_APP_URL !== 'true';
+  if (!appUrl || (requireHttps && !appUrl.startsWith('https://'))) {
     return { data: null, error: { code: 'SERVER_FAILURE', message: 'Registration email confirmation is not configured.' } };
   }
   const supabase = await createClient();

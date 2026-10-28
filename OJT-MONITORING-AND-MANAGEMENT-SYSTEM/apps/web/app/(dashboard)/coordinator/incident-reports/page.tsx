@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchPaging, SearchBox, PagerBar } from '@/src/components/ui/ListControls';
 import { listIncidentReports, reviewIncidentReport, type IncidentReportRow } from '@/src/services/incidentReports';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -15,6 +16,7 @@ export default function IncidentReportsPage() {
   const [filter, setFilter] = useState<'open' | 'all'>('open');
   const [rows, setRows] = useState<IncidentReportRow[]>([]);
   const [selected, setSelected] = useState<IncidentReportRow | null>(null);
+  const list = useSearchPaging(rows, (r) => `${r.student_name} ${r.student_number} ${r.course} ${CATEGORY_LABELS[r.category] ?? r.category}`);
   const [response, setResponse] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -48,8 +50,9 @@ export default function IncidentReportsPage() {
       </button>)}
     </div>
     {!!error && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+    <div className="mt-4"><SearchBox value={list.search} onChange={list.setSearch} placeholder="Search student, ID, course or category..." /></div>
     <div className="mt-6 space-y-3">
-      {rows.map((row) => <button key={row.incident_id} type="button" onClick={() => { setSelected(row); setResponse(row.coordinator_response ?? ''); }}
+      {list.visible.map((row) => <button key={row.incident_id} type="button" onClick={() => { setSelected(row); setResponse(row.coordinator_response ?? ''); }}
         className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left hover:border-emerald-700">
         <span className="flex flex-wrap items-center justify-between gap-2">
           <span className="font-semibold text-slate-900">{CATEGORY_LABELS[row.category] ?? row.category} · {row.student_name} ({row.student_number})</span>
@@ -58,8 +61,9 @@ export default function IncidentReportsPage() {
         <span className="mt-1 block truncate text-sm text-slate-600">{row.description}</span>
         <span className="mt-1 block text-xs text-slate-500">{row.course} · submitted {new Date(row.created_at).toLocaleString()}</span>
       </button>)}
-      {!rows.length && <p className="rounded-xl bg-slate-50 p-6 text-sm text-slate-600">{filter === 'open' ? 'No open incident reports.' : 'No incident reports yet.'}</p>}
+      {!list.visible.length && <p className="rounded-xl bg-slate-50 p-6 text-sm text-slate-600">{list.search ? 'No reports match your search.' : filter === 'open' ? 'No open incident reports.' : 'No incident reports yet.'}</p>}
     </div>
+    <div className="mt-4"><PagerBar page={list.page} totalPages={list.totalPages} total={list.matched} setPage={list.setPage} /></div>
     {selected && <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center">
       <section role="dialog" aria-modal="true" aria-labelledby="incident-title" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
         <h2 id="incident-title" className="text-xl font-bold">{CATEGORY_LABELS[selected.category] ?? selected.category}</h2>

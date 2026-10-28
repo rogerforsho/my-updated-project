@@ -16,6 +16,10 @@ services:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?Set staging publishable key in apps/web/.env.staging.local}
       SUPABASE_URL: ${SUPABASE_URL:?Set staging URL in apps/web/.env.staging.local}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:?Set staging secret key in apps/web/.env.staging.local}
+      CRON_SECRET: ${CRON_SECRET:?Set a long random CRON_SECRET in apps/web/.env.staging.local}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
     ports:
       - "127.0.0.1:3001:3000"
     restart: unless-stopped

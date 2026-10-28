@@ -35,6 +35,9 @@ const isValidRatings = (value: unknown): value is EvaluationRubricCriteria =>
 export default function SupervisorEvaluationsPage() {
   const [evaluations, setEvaluations] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
+  const [searchText, setSearchText] = useState('');
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -53,12 +56,17 @@ export default function SupervisorEvaluationsPage() {
   const load = useCallback(async (p: number) => {
     setLoading(true);
     setError('');
-    const result = await listEvaluationsForSupervisor(p, PAGE_SIZE);
+    const result = await listEvaluationsForSupervisor(p, PAGE_SIZE, { search, type: typeFilter });
     setLoading(false);
     if (result.error) { setError(result.error.message); return; }
     setEvaluations(result.data!.evaluations);
     setTotal(result.data!.total);
-  }, []);
+  }, [search, typeFilter]);
+
+  useEffect(() => {
+    const t = setTimeout(() => { setSearch(searchText.trim()); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [searchText]);
 
   useEffect(() => {
     let mounted = true;
@@ -177,13 +185,34 @@ export default function SupervisorEvaluationsPage() {
 
       {error && <div className="mb-4"><Alert type="error" message={error} /></div>}
 
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="search"
+          aria-label="Search trainee name or student number"
+          value={searchText}
+          onChange={e => setSearchText(e.target.value)}
+          placeholder="Search trainee name or ID..."
+          className="w-full sm:w-72 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-teal-500"
+        />
+        <select
+          aria-label="Filter by evaluation stage"
+          value={typeFilter}
+          onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
+          className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm"
+        >
+          <option value="all">All stages</option>
+          <option value="midterm">Midterm</option>
+          <option value="final">Final</option>
+        </select>
+      </div>
+
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20 text-slate-400 text-sm">Loading evaluations...</div>
         ) : evaluations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
             <span className="text-4xl mb-3">⭐</span>
-            <p className="text-sm font-semibold text-slate-700">No evaluations submitted yet</p>
+            <p className="text-sm font-semibold text-slate-700">{search || typeFilter !== 'all' ? 'No evaluations match your filters' : 'No evaluations submitted yet'}</p>
             <p className="text-xs text-slate-400 mt-1">Submit competency ratings for your assigned interns.</p>
           </div>
         ) : (

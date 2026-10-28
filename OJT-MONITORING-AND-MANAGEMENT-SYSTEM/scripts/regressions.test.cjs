@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const os = require('node:os');
 const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 const ts = require('typescript');
@@ -41,11 +42,12 @@ function loader(mocks, globals = {}) {
 
 function mobileFixture() {
   const store = new Map();
+  const files = new Map();
   const calls = [];
   const state = {
     online: true,
     userId: 'user-a', studentId: 'student-a',
-    record: null, updateResult: null, insertFailCount: 0,
+    record: null, updateResult: null, insertFailCount: 0, requestFailCount: 0,
     now: '2026-10-05T07:30:00+08:00',
   };
   const secureStore = {
@@ -116,15 +118,19 @@ function mobileFixture() {
     } },
     'expo-file-system/legacy': {
       documentDirectory: 'file:///test/',
-      async getInfoAsync() { return { exists: true }; },
-      async makeDirectoryAsync() {}, async writeAsStringAsync() {}, async copyAsync() {},
-      async deleteAsync() {}, async readAsStringAsync() { return 'AQID'; },
+      async getInfoAsync(uri) { return { exists: uri.endsWith('/') || files.has(uri) }; },
+      async makeDirectoryAsync() {}, async writeAsStringAsync(uri, value) { files.set(uri, value); }, async copyAsync() {},
+      async deleteAsync(uri) { files.delete(uri); }, async readAsStringAsync(uri) { return files.get(uri) ?? 'AQID'; },
     },
     [path.join(root, 'apps/mobile/src/lib/webBff.ts')]: {
       async postWebBff(endpoint, payload) {
         calls.push({ bff: endpoint, payload });
         if (endpoint === '/api/mobile/schedule-proposals')
           return { data: { ...payload, daily_hours: 8 }, error: null };
+        if (state.requestFailCount > 0) {
+          state.requestFailCount--;
+          return { data: null, error: { code: 'SERVER_FAILURE', message: 'The service could not be reached.' } };
+        }
         if (payload.action === 'time_in') {
           if (state.insertFailCount > 0) {
             state.insertFailCount--;
@@ -190,6 +196,40 @@ test('what-if scenario estimates completion without rounding away existing hours
   assert.equal(simulateCompletion({ completedHours: 486, requiredHours: 486, plannedWeeklyHours: 40, missedWeeks: 1, asOfDate: '2026-10-20' }).ok, true);
   assert.equal(simulateCompletion({ completedHours: 100, requiredHours: 486, plannedWeeklyHours: 41, missedWeeks: 0, asOfDate: '2026-10-20' }).ok, false);
   assert.equal(simulateCompletion({ completedHours: 1, requiredHours: 400, plannedWeeklyHours: 35, missedWeeks: 0, asOfDate: '2026-02-30' }).ok, false);
+});
+
+test('zip writer builds a valid archive that standard tools can read back', () => {
+  const { zipStore } = loader({}, { TextEncoder, Uint8Array, DataView, ArrayBuffer, Uint32Array })('apps/web/src/lib/zip.ts');
+  const entries = [
+    { name: 'a/hello.txt', data: new TextEncoder().encode('hello zip') },
+    { name: 'a/ünï.csv', data: new TextEncoder().encode('x,y,1,2') },
+    { name: 'empty.bin', data: new Uint8Array(0) },
+    { name: 'big.bin', data: Uint8Array.from({ length: 100_000 }, (_, i) => i % 251) },
+  ];
+  const zip = Buffer.from(zipStore(entries, new Date(2026, 9, 28, 10, 30, 0)));
+  const dir = path.join(os.tmpdir(), `zip-test-${process.pid}`);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'out.zip'), zip);
+  // Python's zipfile checks every CRC and size while reading.
+  const py = `import zipfile,sys;z=zipfile.ZipFile(sys.argv[1]);assert z.testzip() is None;print("|".join(f"{i.filename}:{len(z.read(i))}" for i in z.infolist()))`;
+  const run = require('node:child_process').spawnSync('python', ['-c', py, path.join(dir, 'out.zip')], { encoding: 'utf8', env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });
+  if (run.error || run.status !== 0) { console.warn('python unavailable, checking structure only:', run.stderr || run.error); assert.equal(zip.readUInt32LE(zip.length - 22), 0x06054b50); assert.equal(zip.readUInt16LE(zip.length - 14), 4); }
+  else assert.equal(run.stdout.trim(), 'a/hello.txt:9|a/ünï.csv:7|empty.bin:0|big.bin:100000');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('expected end date skips weekends and non-working days without reducing rendered hours', () => {
+  const { expectedEndDate } = loader({})('shared/expectedEnd.ts');
+  // Fri 2026-10-23, 24h left at 8h/day Mon-Fri: Mon 26, Tue 27, Wed 28.
+  assert.equal(expectedEndDate({ remainingHours: 24, dailyHours: 8, workDays: [1, 2, 3, 4, 5], nonWorkingDates: [], asOfDate: '2026-10-23' }), '2026-10-28');
+  // A holiday on Tue 27 and a company day off on Wed 28 push it to Thu 29 and Fri 30.
+  assert.equal(expectedEndDate({ remainingHours: 24, dailyHours: 8, workDays: [1, 2, 3, 4, 5], nonWorkingDates: ['2026-10-27', '2026-10-28'], asOfDate: '2026-10-23' }), '2026-10-30');
+  // A partial last day still counts as a day.
+  assert.equal(expectedEndDate({ remainingHours: 9, dailyHours: 8, workDays: [1, 2, 3, 4, 5], nonWorkingDates: [], asOfDate: '2026-10-23' }), '2026-10-27');
+  assert.equal(expectedEndDate({ remainingHours: 0, dailyHours: 8, workDays: [1], nonWorkingDates: [], asOfDate: '2026-10-23' }), '2026-10-23');
+  assert.equal(expectedEndDate({ remainingHours: 8, dailyHours: 8, workDays: [], nonWorkingDates: [], asOfDate: '2026-10-23' }), null);
+  assert.equal(expectedEndDate({ remainingHours: 8, dailyHours: 0, workDays: [1], nonWorkingDates: [], asOfDate: '2026-10-23' }), null);
+  assert.equal(expectedEndDate({ remainingHours: 8, dailyHours: 8, workDays: [1], nonWorkingDates: [], asOfDate: '2026-02-30' }), null);
 });
 
 test('mobile schedule proposal sends policy-normalized lunch interval to the BFF', async () => {
@@ -303,6 +343,41 @@ test('a time-out retry recognizes a previously successful sync without another u
   assert.equal(result.syncedCount, 1);
   assert.equal((await f.queue.getOfflineQueue()).length, 0);
   assert.equal(f.calls.some(c => c.upload || c.update), false);
+});
+
+test('an offline Time Out can replace a pending automatic time-out', async () => {
+  const f = mobileFixture();
+  await f.queue.enqueueOfflineAttendance({ type: 'time_out', student_id: 'student-a',
+    assignment_id: '', attendance_date: '2026-10-05', captured_at: f.state.now,
+    local_photo_uri: 'file:///out.jpg' });
+  f.state.record = { attendance_id: 'server-record',
+    time_out: '2026-10-05T17:00:00+08:00', verification_status: 'pending',
+    time_out_flag_reason: f.load('shared/attendanceDate.ts').AUTO_TIME_OUT_REASON };
+  f.state.updateResult = { attendance_id: 'server-record' };
+  const result = await f.sync.syncPendingOfflineAttendance();
+  assert.equal(result.syncedCount, 1);
+  assert.equal((await f.queue.getOfflineQueue()).length, 0);
+  assert.equal(f.state.record.time_out, f.state.now);
+});
+
+test('a server request failure after selfie upload keeps Time In on the phone', async () => {
+  const f = mobileFixture();
+  f.state.requestFailCount = 1;
+  const result = await f.attendance.recordTimeIn('file:///selfie.jpg');
+  assert.equal(result.error, null);
+  assert.equal(result.data.isOffline, true);
+  assert.equal((await f.queue.getOfflineQueue()).length, 1);
+});
+
+test('a server request failure after selfie upload keeps Time Out on the phone', async () => {
+  const f = mobileFixture();
+  f.state.record = { attendance_id: 'server-record', student_id: 'student-a', attendance_date: '2026-10-05',
+    time_in: '2026-10-04T23:00:00Z', time_out: null };
+  f.state.requestFailCount = 1;
+  const result = await f.attendance.recordTimeOut('server-record', 'file:///out.jpg');
+  assert.equal(result.error, null);
+  assert.equal(result.data.isOffline, true);
+  assert.equal((await f.queue.getOfflineQueue())[0].type, 'time_out');
 });
 
 test('sync retries an already saved time-in without uploading a duplicate', async () => {
@@ -489,7 +564,7 @@ test('inactive or missing profiles cannot access protected pages', async () => {
 
 test('active students cannot use the web portal for student records', async () => {
   const student = webFixture({ user: { id: 'student' }, profile: { role: 'Student', account_status: 'active' } });
-  for (const route of ['/dashboard', '/student/reports', '/settings', '/map']) {
+  for (const route of ['/dashboard', '/settings', '/map']) {
     const response = await student(`http://localhost${route}`);
     assert.equal(response.status, 307);
     assert.equal(response.headers.get('location'), 'http://localhost/auth/mobile-only');

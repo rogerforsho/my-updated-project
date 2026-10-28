@@ -3,6 +3,8 @@
  * Sends official institutional emails to students when their accounts are approved or rejected.
  */
 
+import { deliverEmail } from './deliver';
+
 interface SendAccountStatusOptions {
   to: string;
   fullName: string;
@@ -18,9 +20,6 @@ export async function sendAccountStatusEmail({
   reason,
   idempotencyKey,
 }: SendAccountStatusOptions): Promise<{ success: boolean; error?: string }> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'Colegio de Montalban <onboarding@resend.dev>';
-
   const isApproved = status === 'active';
   const subject = isApproved
     ? 'Colegio de Montalban OJT - Account Verified & Approved: Action Required'
@@ -141,38 +140,7 @@ export async function sendAccountStatusEmail({
     </html>
   `;
 
-  // 1. Dispatch via Resend REST API if configured
-  if (apiKey) {
-    try {
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
-        },
-        body: JSON.stringify({
-          from: fromEmail,
-          to: [to],
-          subject,
-          html: htmlContent,
-        }),
-        signal: AbortSignal.timeout(15_000),
-      });
-
-      if (!response.ok) {
-        console.error('[sendAccountStatusEmail] provider rejected delivery:', response.status);
-        return { success: false, error: 'Email delivery failed.' };
-      }
-
-      return { success: true };
-    } catch {
-      console.error('[sendAccountStatusEmail] provider request failed');
-      return { success: false, error: 'Email delivery failed.' };
-    }
-  }
-
-  return { success: false, error: 'Email delivery is not configured.' };
+  return deliverEmail({ to, subject, html: htmlContent, category: 'Account Status', idempotencyKey });
 }
 
 function escapeHtml(str: string): string {
@@ -201,8 +169,6 @@ export async function sendSupervisorWelcomeEmail({
   employeeNumber,
   idempotencyKey,
 }: SendSupervisorWelcomeOptions): Promise<{ success: boolean; error?: string }> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'Colegio de Montalban <onboarding@resend.dev>';
   const portalUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://ojt.cdm.edu.ph';
   const subject = `Set up your CdM OJT Portal supervisor account (${companyName})`;
 
@@ -246,35 +212,5 @@ export async function sendSupervisorWelcomeEmail({
     </html>
   `;
 
-  if (apiKey) {
-    try {
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
-        },
-        body: JSON.stringify({
-          from: fromEmail,
-          to,
-          subject,
-          html: htmlContent,
-        }),
-        signal: AbortSignal.timeout(15_000),
-      });
-
-      if (!res.ok) {
-        console.error('[sendSupervisorWelcomeEmail] provider rejected delivery:', res.status);
-        return { success: false, error: 'Welcome email could not be delivered.' };
-      }
-      return { success: true };
-    } catch {
-      console.error('[sendSupervisorWelcomeEmail] provider request failed');
-      return { success: false, error: 'Welcome email could not be delivered.' };
-    }
-  }
-
-  // Never print credentials to process logs.
-  return { success: false, error: 'Welcome email is not configured.' };
+  return deliverEmail({ to, subject, html: htmlContent, category: 'Supervisor Welcome', idempotencyKey });
 }

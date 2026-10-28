@@ -1,7 +1,7 @@
 const { randomUUID } = require('node:crypto');
 const { createClient } = require('@supabase/supabase-js');
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !serviceKey) {
   console.error('Missing Supabase URL or service key.');
@@ -38,6 +38,23 @@ if (!url || !serviceKey) {
       p_window_seconds: 60,
     });
     checks.push(['Migration 028 rate-limit function', limitError?.message?.includes('Invalid rate limit parameters')]);
+
+    // Revision 44 predates these features: check the API contract, not just its marker.
+    for (const [table, columns] of [
+      ['users', 'user_id,must_change_password'],
+      ['pending_staff_invites', 'email,kind'],
+      ['chat_messages', 'attachment_path,attachment_name,tagged_student_label'],
+      ['incident_reports', 'incident_id,student_id,status'],
+    ]) {
+      const { error } = await service.from(table).select(columns).limit(0);
+      checks.push([`Current API columns: ${table}`, !error]);
+    }
+    const { error: chatError } = await service.rpc('send_chat_message', {
+      p_counterpart_user_id: null, p_content: '', p_attachment_path: null,
+      p_attachment_name: null, p_tagged_student_id: null,
+    });
+    checks.push(['Current chat RPC resolves without accepting a service-role participant',
+      chatError?.code === '22023' || (chatError?.code === '42501' && /permission denied for function send_chat_message/.test(chatError.message))]);
 
     for (const [name, passed] of checks) console.log(`${passed ? 'PASS' : 'FAIL'} ${name}`);
     if (checks.some(([, passed]) => !passed)) process.exitCode = 1;

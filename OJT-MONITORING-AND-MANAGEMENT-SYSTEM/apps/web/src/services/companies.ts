@@ -57,7 +57,8 @@ async function assertCoordinator() {
 
 export async function listCompanies(
   page = 1,
-  pageSize = 20
+  pageSize = 20,
+  opts: { search?: string; status?: string } = {}
 ): Promise<AppResult<{ companies: CompanyWithSupervisors[]; total: number }>> {
   const { supabase, authorized } = await assertCoordinator();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
@@ -65,11 +66,11 @@ export async function listCompanies(
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  const { data, error, count } = await supabase
+  let query = supabase
     .from('companies')
     .select(`
       *,
-      supervisors (
+      supervisors${opts.status === 'with-supervisors' ? '!inner' : ''} (
         supervisor_id, user_id, position,
         users ( full_name, email )
       )
@@ -77,8 +78,41 @@ export async function listCompanies(
     .order('company_name', { ascending: true })
     .range(from, to);
 
+  const q = opts.search?.trim().replace(/[%_,()]/g, '');
+  if (q) query = query.or(`company_name.ilike.%${q}%,contact_person.ilike.%${q}%,contact_email.ilike.%${q}%,address.ilike.%${q}%`);
+  if (opts.status === 'active' || opts.status === 'inactive') query = query.eq('status', opts.status);
+  if (opts.status === 'geofence') query = query.eq('geofence_enabled', true).not('latitude', 'is', null).not('longitude', 'is', null);
+
+  const { data, error, count } = await query;
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load companies.' } };
   return { data: { companies: data as CompanyWithSupervisors[], total: count ?? 0 }, error: null };
+}
+
+export async function searchActiveCompanies(
+  search: string,
+  openOnly = false
+): Promise<AppResult<{ company_id: string; company_name: string }[]>> {
+  const { supabase, authorized } = await assertCoordinator();
+  if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
+  let query = supabase.from('companies').select('company_id, company_name, max_interns')
+    .eq('status', 'active').order('company_name').limit(20);
+  if (openOnly) query = query.eq('accepting_students', true);
+  const q = search.trim().replace(/[%_,()]/g, '');
+  if (q) query = query.ilike('company_name', `%${q}%`);
+  const { data, error } = await query;
+  if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to search companies.' } };
+  let rows = data ?? [];
+  if (openOnly) {
+    // Hide companies whose active placements already reached their limit.
+    const limited = rows.filter((c) => c.max_interns != null).map((c) => c.company_id);
+    if (limited.length) {
+      const { data: placed } = await supabase.from('student_assignments').select('company_id').in('company_id', limited).eq('assignment_status', 'active');
+      const counts = new Map<string, number>();
+      for (const a of placed ?? []) counts.set(a.company_id, (counts.get(a.company_id) ?? 0) + 1);
+      rows = rows.filter((c) => c.max_interns == null || (counts.get(c.company_id) ?? 0) < c.max_interns);
+    }
+  }
+  return { data: rows.map(({ company_id, company_name }) => ({ company_id, company_name })), error: null };
 }
 
 export async function listCompanyBranches(company_id: string): Promise<AppResult<DbCompanyBranch[]>> {
@@ -248,23 +282,23 @@ export async function getCompanyCapacity(
   const { supabase, authorized } = await assertCoordinator();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
-  const { count, error } = await supabase
-    .from('student_assignments')
-    .select('*', { count: 'exact', head: true })
-    .eq('company_id', company_id)
-    .eq('assignment_status', 'active');
+  const [{ count, error }, { data: company }] = await Promise.all([
+    supabase.from('student_assignments').select('*', { count: 'exact', head: true })
+      .eq('company_id', company_id).eq('assignment_status', 'active'),
+    supabase.from('companies').select('max_interns, accepting_students').eq('company_id', company_id).maybeSingle(),
+  ]);
 
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to fetch capacity.' } };
 
   const active = count || 0;
-  const recommendedCapacity = 5; // Institutional benchmark per partner establishment
-
+  // recommended_capacity keeps its old meaning (limit shown to the coordinator); the supervisor's limit wins when set.
+  const limit = company?.max_interns ?? 5;
   return {
     data: {
       company_id,
       active_interns: active,
-      recommended_capacity: recommendedCapacity,
-      is_at_capacity: active >= recommendedCapacity,
+      recommended_capacity: limit,
+      is_at_capacity: active >= limit || company?.accepting_students === false,
     },
     error: null,
   };

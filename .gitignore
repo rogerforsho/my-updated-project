@@ -10,3 +10,21 @@ OJT-MONITORING-AND-MANAGEMENT-SYSTEM/apps/mobile/.env
 
 # Personal Claude Code settings
 .claude/settings.local.json
+
+# Private local panel demo credentials and document
+artifacts/panel-local/
+artifacts/OJT Panel Demonstration Guide.docx
+artifacts/panel-guide-qa/
+artifacts/panel-audit/actors.private.json
+
+# Local audit/demo scripts and fixtures (contain demo credentials)
+artifacts/
+.claude/
+# Local tooling output and stray generated files
+/vercel.json
+OJT-MONITORING-AND-MANAGEMENT-SYSTEM/tsconfig.json
+OJT-MONITORING-AND-MANAGEMENT-SYSTEM/apps/web/app.json
+OJT-MONITORING-AND-MANAGEMENT-SYSTEM/output/vercel-build-fix/
+OJT-MONITORING-AND-MANAGEMENT-SYSTEM/OJT-CDM/
+OJT-MONITORING-AND-MANAGEMENT-SYSTEM/.expo/
+OJT-MONITORING-AND-MANAGEMENT-SYSTEM/.obsidian/

@@ -1,5 +1,5 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { validateSchedulePolicy, type WorkModality } from '@ojt/shared';
+import { getGatewayStatus, validateSchedulePolicy, type WorkModality } from '@ojt/shared';
 import { readLimitedJson } from '@/src/lib/read-limited-json';
 
 export const runtime = 'nodejs';
@@ -65,6 +65,13 @@ export async function POST(request: Request) {
     .select('student_id').eq('user_id', user.id).maybeSingle();
   if (studentError || !student)
     return failure('NOT_FOUND', 'Student profile not found.', 404);
+
+  const { data: reports, error: reportsError } = await supabase.from('reports')
+    .select('report_type').eq('student_id', student.student_id).eq('status', 'approved');
+  if (reportsError) return failure('SERVER_FAILURE', 'Could not check pre-deployment documents.', 503);
+  const gateway = getGatewayStatus(reports || []);
+  if (!gateway.isCleared)
+    return failure('VALIDATION_FAILURE', `Cannot propose practicum schedule: approved pre-deployment documents are required. Missing: ${gateway.missing.join(', ')}.`, 400);
 
   const { data: existing, error: existingError } = await supabase.from('practicum_schedules')
     .select('schedule_id, status').eq('student_id', student.student_id)

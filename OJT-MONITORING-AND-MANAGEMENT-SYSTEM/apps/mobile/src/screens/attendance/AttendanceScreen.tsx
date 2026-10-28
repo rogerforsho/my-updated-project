@@ -332,7 +332,8 @@ export default function AttendanceScreen() {
       const photo = await camera.takePhoto({ quality: 0.8 });
       const optimized = await optimizeSelfie(photo.uri, { includeBase64: true });
       await submitAttendance(optimized.uri || photo.uri);
-    } catch {
+    } catch (err) {
+      console.warn('[captureSelfie] failed:', err);
       setError('Error processing selfie image. Please ensure your face is clearly visible within the frame and try again.');
       setStep('idle');
     } finally {

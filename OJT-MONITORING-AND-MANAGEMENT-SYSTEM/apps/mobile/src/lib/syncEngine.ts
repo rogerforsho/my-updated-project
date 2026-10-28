@@ -88,7 +88,7 @@ async function syncQueue(): Promise<SyncResult> {
       return { error: result.error };
     },
     async findTimeOut(item, studentId) {
-      let query = supabase.from('attendance').select('attendance_id, time_out').eq('student_id', studentId);
+      let query = supabase.from('attendance').select('attendance_id, time_out, time_out_flag_reason, verification_status').eq('student_id', studentId);
       query = item.attendance_id && !item.attendance_id.startsWith('offline_')
         ? query.eq('attendance_id', item.attendance_id)
         : query.eq('attendance_date', item.attendance_date);

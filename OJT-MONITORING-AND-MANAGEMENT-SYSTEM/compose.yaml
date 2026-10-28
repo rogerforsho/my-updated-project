@@ -18,6 +18,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
+      - "127.0.0.1:3000:3000"
       - "${OJT_LOCAL_LAN_IP:?Set OJT_LOCAL_LAN_IP in .env.docker}:3000:3000"
     volumes:
       - shared-stuff:/stuff

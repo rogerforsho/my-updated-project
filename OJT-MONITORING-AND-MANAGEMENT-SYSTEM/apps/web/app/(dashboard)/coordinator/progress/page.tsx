@@ -6,6 +6,8 @@ import { Badge } from '@/src/components/ui/Badge';
 import { Users } from '@/src/components/ui/Icons';
 import Link from 'next/link';
 import ClearanceActionModal from '@/src/components/coordinator/ClearanceActionModal';
+import { departmentScope } from '@/src/lib/department-scope';
+import { COURSE_DEPARTMENT, STUDENT_REGISTRATION_COURSES } from '@ojt/shared';
 
 interface Props {
   searchParams: Promise<{ course?: string; status?: string; page?: string }>;
@@ -27,7 +29,8 @@ export default async function CoordinatorProgressPage({ searchParams }: Props) {
   const students = data?.students ?? [];
   const total = data?.total ?? 0;
 
-  const courses = ['All', 'BSIT', 'BSCS', 'BSBA-MKT', 'BSBA-HRM', 'BSBA-FM', 'BSA'];
+  const { departments } = await departmentScope(supabase, user.id, profile?.role ?? '');
+  const courses = ['All', ...STUDENT_REGISTRATION_COURSES.filter(c => departments.includes(COURSE_DEPARTMENT[c]))];
   const statusTabs = [
     { label: 'All Trainees', key: '' },
     { label: 'Not started', key: 'not_started' },
@@ -64,7 +67,7 @@ export default async function CoordinatorProgressPage({ searchParams }: Props) {
               href={href}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 isSelected
-                  ? 'bg-[#0A3824] text-white shadow-sm'
+                  ? 'bg-[var(--cdm-green)] text-white shadow-sm'
                   : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
               }`}
             >
@@ -158,7 +161,7 @@ export default async function CoordinatorProgressPage({ searchParams }: Props) {
                                 isDone
                                   ? 'bg-emerald-500'
                                   : s.percentage >= 75
-                                  ? 'bg-[#0A3824]'
+                                  ? 'bg-[var(--cdm-green)]'
                                   : s.percentage >= 25
                                   ? 'bg-amber-500'
                                   : 'bg-slate-400'

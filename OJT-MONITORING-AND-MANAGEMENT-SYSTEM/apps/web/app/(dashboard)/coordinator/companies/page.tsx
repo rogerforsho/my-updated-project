@@ -43,6 +43,9 @@ export default function CoordinatorCompaniesPage() {
   const [companies, setCompanies] = useState<CompanyWithSupervisors[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'geofence' | 'with-supervisors'>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -61,12 +64,17 @@ export default function CoordinatorCompaniesPage() {
   const load = useCallback(async (p: number) => {
     setLoading(true);
     setError('');
-    const result = await listCompanies(p, PAGE_SIZE);
+    const result = await listCompanies(p, PAGE_SIZE, { search: debouncedSearch, status: statusFilter });
     setLoading(false);
     if (result.error) { setError(result.error.message); return; }
     setCompanies(result.data!.companies);
     setTotal(result.data!.total);
-  }, []);
+  }, [debouncedSearch, statusFilter]);
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(searchQuery); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
   useEffect(() => {
     let isMounted = true;
@@ -147,30 +155,8 @@ export default function CoordinatorCompaniesPage() {
     load(page);
   }
 
-  // Table Controls State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'geofence' | 'with-supervisors' | 'no-supervisors'>('all');
 
-  const filteredCompanies = companies.filter(c => {
-    // 1. Search Query filter
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchesName = c.company_name?.toLowerCase().includes(q);
-      const matchesContact = c.contact_person?.toLowerCase().includes(q);
-      const matchesEmail = c.contact_email?.toLowerCase().includes(q);
-      const matchesAddress = c.address?.toLowerCase().includes(q);
-      if (!matchesName && !matchesContact && !matchesEmail && !matchesAddress) return false;
-    }
-
-    // 2. Status & Attributes filter
-    if (statusFilter === 'active' && c.status !== 'active') return false;
-    if (statusFilter === 'inactive' && c.status !== 'inactive') return false;
-    if (statusFilter === 'geofence' && (!c.geofence_enabled || c.latitude == null || c.longitude == null)) return false;
-    if (statusFilter === 'with-supervisors' && (!c.supervisors || c.supervisors.length === 0)) return false;
-    if (statusFilter === 'no-supervisors' && c.supervisors && c.supervisors.length > 0) return false;
-
-    return true;
-  });
+  const filteredCompanies = companies;
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
@@ -246,7 +232,7 @@ export default function CoordinatorCompaniesPage() {
               <Filter className="w-3.5 h-3.5 text-slate-500" />
               <select
                 value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value as any)}
+                onChange={e => { setStatusFilter(e.target.value as typeof statusFilter); setPage(1); }}
                 aria-label="Filter companies by status"
                 className="text-xs bg-transparent text-slate-700 font-medium focus:outline-none cursor-pointer pr-1"
               >
@@ -255,7 +241,6 @@ export default function CoordinatorCompaniesPage() {
                 <option value="inactive">Inactive Only</option>
                 <option value="geofence">GPS Configured</option>
                 <option value="with-supervisors">With Supervisors</option>
-                <option value="no-supervisors">No Supervisors</option>
               </select>
             </div>
 

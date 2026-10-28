@@ -25,7 +25,9 @@ export interface AuditLogItem {
 export async function listAuditLogs(
   page = 1,
   pageSize = 20,
-  actionFilter?: string
+  actionFilter?: string,
+  fromDate?: string,
+  toDate?: string
 ): Promise<AppResult<{ logs: AuditLogItem[]; total: number }>> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -58,8 +60,10 @@ export async function listAuditLogs(
       .range(from, to);
 
     if (actionFilter && actionFilter !== 'all') {
-      query = query.eq('action', actionFilter);
+      query = query.ilike('action', `%${actionFilter.trim().replace(/[%_,()]/g, '')}%`);
     }
+    if (fromDate) query = query.gte('created_at', `${fromDate}T00:00:00`);
+    if (toDate) query = query.lte('created_at', `${toDate}T23:59:59.999`);
 
     const { data, error, count } = await query;
     if (error) {

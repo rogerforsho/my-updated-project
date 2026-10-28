@@ -8,7 +8,7 @@ import { getServiceClient } from '@/src/lib/supabase/service';
 import { recordAuditEvent } from '@/src/lib/audit';
 import { validateUploadedBytes } from '@/src/lib/uploadValidation';
 import { authActionLimit } from '@/src/services/auth/internal';
-import { GATEWAY_DOCUMENT_SPECS, isCoordinatorReviewType, STUDENT_REPORT_TYPES, SUPERVISOR_REVIEW_REPORT_TYPES, matchesDoc } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, getGatewayStatus, isCoordinatorReviewType, STUDENT_REPORT_TYPES, SUPERVISOR_REVIEW_REPORT_TYPES, matchesDoc } from '@ojt/shared';
 import type { AppResult, DbReport } from '@ojt/shared';
 
 
@@ -117,7 +117,7 @@ export async function submitReport(input: ReportInput): Promise<AppResult<null>>
   return { data: null, error: null };
 }
 
-export async function listReportsForCoordinator(page = 1, pageSize = 20): Promise<AppResult<{ reports: ReportWithStudent[]; total: number }>> {
+export async function listReportsForCoordinator(page = 1, pageSize = 20, status?: string): Promise<AppResult<{ reports: ReportWithStudent[]; total: number }>> {
   const { supabase, profile } = await getTrustedActor();
   if (!profile || profile.role !== 'Coordinator' || profile.account_status !== 'active')
     return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
@@ -125,11 +125,13 @@ export async function listReportsForCoordinator(page = 1, pageSize = 20): Promis
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  const { data, error, count } = await supabase
+  let query = supabase
     .from('reports')
     .select(`*, students ( student_number, course, users ( full_name ) )`, { count: 'exact' })
     .order('submission_date', { ascending: false })
     .range(from, to);
+  if (status && status !== 'all') query = query.eq('status', status);
+  const { data, error, count } = await query;
 
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load reports.' } };
 
@@ -312,23 +314,7 @@ export async function checkStudentGatewayStatus(student_id: string): Promise<{ i
     .eq('student_id', student_id)
     .eq('status', 'approved');
 
-  const approvedReports = reports || [];
-  const approvedSpecs = new Set<string>();
-
-  for (const r of approvedReports) {
-    for (const spec of GATEWAY_DOCUMENT_SPECS) {
-      if (matchesDoc(r.report_type, spec.name)) {
-        approvedSpecs.add(spec.id);
-      }
-    }
-  }
-
-  const missing = GATEWAY_DOCUMENT_SPECS.filter(s => !approvedSpecs.has(s.id)).map(s => s.name);
-  return {
-    isCleared: approvedSpecs.size === GATEWAY_DOCUMENT_SPECS.length,
-    approvedCount: approvedSpecs.size,
-    missing,
-  };
+  return getGatewayStatus(reports || []);
 }
 
 export async function getGatewayComplianceSummary(): Promise<AppResult<GatewayComplianceSummary>> {

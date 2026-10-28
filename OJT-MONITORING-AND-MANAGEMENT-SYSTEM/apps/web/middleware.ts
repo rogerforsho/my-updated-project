@@ -2,22 +2,20 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { authCookieOptions } from './src/lib/supabase/auth-cookie';
 
-const PUBLIC_PATHS = ['/auth/sign-in', '/auth/register', '/auth/mobile-only', '/auth/pending', '/auth/reset-password', '/auth/callback'];
+const PUBLIC_PATHS = ['/auth/sign-in', '/auth/register', '/auth/mobile-only', '/auth/pending', '/auth/reset-password', '/auth/callback', '/auth/supervisor-invite'];
 const KNOWN_PATHS = new Set([
   '/', '/admin', '/api/internal/auto-time-out', '/api/internal/process-transactional-email', '/api/mobile/attendance', '/api/mobile/notifications', '/api/mobile/reports', '/api/mobile/registration/resubmit', '/api/mobile/schedule-proposals', '/api/registration/id-card', '/api/registration/submit', '/auth/callback', '/auth/callback/finish', '/auth/pending',
   '/auth/register', '/auth/mobile-only', '/auth/reset-password', '/auth/sign-in',
   '/coordinator/approvals', '/coordinator/assignments', '/coordinator/companies',
   '/coordinator/progress', '/coordinator/reports', '/coordinator/students', '/coordinator/import', '/coordinator/incident-reports', '/coordinator/submissions', '/coordinator/messages', '/coordinator/notifications',
-  '/coordinator/supervisors', '/dashboard', '/health', '/map', '/program-head',
+  '/coordinator/supervisors', '/coordinator/non-working-days', '/dashboard', '/health', '/map', '/program-head',
   '/program-head/reports', '/ready', '/robots.txt', '/settings', '/sitemap.xml',
-  '/student/attendance', '/student/certificate', '/student/evaluation-summary',
-  '/student/notifications', '/student/progress', '/student/reports',
   '/supervisor/attendance', '/supervisor/evaluations', '/supervisor/reports',
   '/supervisor/students', '/supervisor/messages', '/supervisor/notifications', '/verify-certificate', '/verify-certificate/search',
 ]);
 
 function isKnownPath(path: string) {
-  return KNOWN_PATHS.has(path) || /^\/(?:downloads\/[^/]+|verify-certificate\/[^/]+)$/.test(path);
+  return KNOWN_PATHS.has(path) || /^\/(?:downloads\/[^/]+|verify-certificate\/[^/]+|auth\/supervisor-invite\/[A-Za-z0-9_-]{43})$/.test(path);
 }
 
 function redirectToPath(request: NextRequest, path: string) {
