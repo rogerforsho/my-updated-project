@@ -5,6 +5,7 @@ import Alert from '@/src/components/ui/Alert';
 import Button from '@/src/components/ui/Button';
 import { Badge } from '@/src/components/ui/Badge';
 import Modal from '@/src/components/ui/Modal';
+import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
 import { listPendingStudents, updateStudentAccountStatus } from '@/src/services/auth';
 import { COURSE_DEPARTMENT, STUDENT_REGISTRATION_COURSES } from '@ojt/shared';
 
@@ -29,12 +30,12 @@ type PendingStudent = {
   id_card_back_signed_url?: string | null;
 };
 
-const PAGE_SIZE = 20;
 
 export default function CoordinatorApprovalsPage() {
   const [students, setStudents] = useState<PendingStudent[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, changePageSize] = usePageSize();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -58,7 +59,7 @@ export default function CoordinatorApprovalsPage() {
     setError('');
     setSelectedIds([]);
     try {
-      const result = await listPendingStudents(pageNumber, PAGE_SIZE, courseFilter);
+      const result = await listPendingStudents(pageNumber, pageSize, courseFilter);
       if (requestId !== requestRef.current) return;
       if (result.error) { setError(result.error.message); return; }
       setStudents(result.data?.students ?? []);
@@ -69,7 +70,7 @@ export default function CoordinatorApprovalsPage() {
     } finally {
       if (requestId === requestRef.current) setLoading(false);
     }
-  }, [courseFilter]);
+  }, [courseFilter, pageSize]);
 
   useEffect(() => {
     let active = true;
@@ -175,7 +176,7 @@ export default function CoordinatorApprovalsPage() {
   const courses = ['All', ...STUDENT_REGISTRATION_COURSES.filter(c => departments.includes(COURSE_DEPARTMENT[c]))];
   const filteredStudents = students;
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto page-fade-in">
@@ -268,7 +269,7 @@ export default function CoordinatorApprovalsPage() {
                       </td>
                       <td className="px-5 py-4">
                         <p className="font-semibold text-slate-900">{student.full_name}</p>
-                        <p className="text-xs text-slate-400 font-mono mt-0.5">{student.student_number}</p>
+                        <p className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">{student.student_number}</p>
                       </td>
                       <td className="px-5 py-4 text-slate-600 font-mono text-xs">{student.email}</td>
                       <td className="px-5 py-4">
@@ -428,15 +429,7 @@ export default function CoordinatorApprovalsPage() {
         </Modal>
       )}
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4 text-sm text-slate-500">
-          <span>Page {page} of {totalPages} ({total} total)</span>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
-            <Button variant="ghost" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
-          </div>
-        </div>
-      )}
+      <div className="mt-4"><PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={(n) => { changePageSize(n); setPage(1); }} /></div>
     </div>
   );
 }

@@ -146,7 +146,7 @@ export default async function DashboardPage() {
             {user.role === 'Supervisor' && (
               <Link
                 href="/supervisor/attendance"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-white/10 hover:bg-white/20 border border-white/25 px-3 py-1.5 rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-amber-400"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0A3824] bg-white hover:bg-amber-50 border border-white px-3.5 py-1.5 rounded-lg shadow-xs transition-colors focus-visible:outline-2 focus-visible:outline-amber-400"
               >
                 Verify Logs <ArrowRight className="w-3 h-3" />
               </Link>
@@ -185,8 +185,8 @@ export default async function DashboardPage() {
       {user.role === 'Supervisor' && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
           <div className="group h-full min-h-[104px] p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-3.5 cursor-default">
-            <div className="w-11 h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 text-[#0A3824] dark:text-emerald-400 flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105">
-              <Users className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-full bg-emerald-500/10 dark:bg-emerald-400/15 text-[#0A3824] dark:text-emerald-400 flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105">
+              <Users className="w-6 h-6" />
             </div>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Assigned Interns</p>
@@ -196,26 +196,26 @@ export default async function DashboardPage() {
           </div>
 
           <div className="group h-full min-h-[104px] p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-3.5 cursor-default">
-            <div className="w-11 h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 text-[#0A3824] dark:text-emerald-400 flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105">
-              <Timer className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-full bg-amber-500/10 dark:bg-amber-400/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105">
+              <Timer className="w-6 h-6" />
             </div>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pending Attendance</p>
               <h3 className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-0.5 leading-tight">{stats.pendingAttendance}</h3>
-              <Link href="/supervisor/attendance" className="text-xs text-[#0A3824] dark:text-emerald-400 font-bold hover:underline truncate">
+              <Link href="/supervisor/attendance" className="mt-0.5 text-xs text-[#0A3824] dark:text-emerald-400 font-bold hover:underline truncate">
                 Verify logs →
               </Link>
             </div>
           </div>
 
           <div className="group h-full min-h-[104px] p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-3.5 cursor-default">
-            <div className="w-11 h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 text-[#0A3824] dark:text-emerald-400 flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105">
-              <Star className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-full bg-emerald-500/10 dark:bg-emerald-400/15 text-[#0A3824] dark:text-emerald-400 flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105">
+              <Star className="w-6 h-6" />
             </div>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Evaluations</p>
               <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5 leading-tight">{stats.completedEvaluations}</h3>
-              <Link href="/supervisor/evaluations" className="text-xs text-[#0A3824] dark:text-emerald-400 font-bold hover:underline truncate">
+              <Link href="/supervisor/evaluations" className="mt-0.5 text-xs text-[#0A3824] dark:text-emerald-400 font-bold hover:underline truncate">
                 Rate students →
               </Link>
             </div>

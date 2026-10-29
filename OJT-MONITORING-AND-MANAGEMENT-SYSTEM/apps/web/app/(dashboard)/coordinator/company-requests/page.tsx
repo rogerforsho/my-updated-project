@@ -59,7 +59,7 @@ export default function CompanyRequestsPage() {
       </button>)}
       {!list.visible.length && <p className="rounded-xl bg-slate-50 p-6 text-sm text-slate-600">{list.search ? 'No requests match your search.' : 'No pending HTE requests.'}</p>}
     </div>
-    <div className="mt-4"><PagerBar page={list.page} totalPages={list.totalPages} total={list.matched} setPage={list.setPage} /></div>
+    <div className="mt-4"><PagerBar {...list.pager} /></div>
     {selected && <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center">
       <section role="dialog" aria-modal="true" aria-labelledby="request-title" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
         <h2 id="request-title" className="text-xl font-bold">{selected.requested_company_name}</h2>

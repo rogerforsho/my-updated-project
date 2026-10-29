@@ -222,7 +222,7 @@ export default function Sidebar({ user, isOpen = false, onClose }: Props) {
                           href={`/admin?tab=${tab}`}
                           onClick={onClose}
                           aria-current={active ? 'page' : undefined}
-                          className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
+                          className={`flex items-center gap-3 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
                             active ? 'bg-white/15 text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-white/5'
                           }`}
                         >
@@ -257,7 +257,7 @@ export default function Sidebar({ user, isOpen = false, onClose }: Props) {
                 href={item.href}
                 onClick={onClose}
                 aria-current={active ? 'page' : undefined}
-                className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
+                className={`flex items-center gap-3 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
                   active
                     ? 'bg-white/10 text-white shadow-2xs border border-white/15 font-bold'
                     : 'text-slate-400 hover:text-white hover:bg-white/5 active:scale-[0.99]'
@@ -298,7 +298,7 @@ export default function Sidebar({ user, isOpen = false, onClose }: Props) {
             href="/settings"
             onClick={onClose}
             aria-current={pathname === '/settings' ? 'page' : undefined}
-            className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
+            className={`flex items-center gap-3 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
               pathname === '/settings'
                 ? 'bg-white/10 text-white shadow-2xs border border-white/15 font-bold'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'

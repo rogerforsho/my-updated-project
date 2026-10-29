@@ -178,11 +178,12 @@ export default function ScheduleProposalModal({ visible, onClose, onSubmitted }:
                 <View style={[
                   s.statusBanner,
                   existingProposal.status === 'approved' ? s.statusBannerApproved :
-                  existingProposal.status === 'rejected' ? s.statusBannerRejected : s.statusBannerPending
+                  existingProposal.status === 'rejected' || existingProposal.status === 'modified' ? s.statusBannerRejected : s.statusBannerPending
                 ]}>
                   <Text style={s.statusBannerTitle}>
                     {existingProposal.status === 'approved' ? '✓ Schedule Approved' :
-                     existingProposal.status === 'rejected' ? '⚠️ Schedule Needs Revision' : '⏳ Pending OJT Coordinator Review'}
+                     existingProposal.status === 'rejected' ? '⚠️ Schedule Rejected: Please Revise and Resubmit' :
+                     existingProposal.status === 'modified' ? '⚠️ Coordinator Requested Changes' : '⏳ Pending OJT Coordinator Review'}
                   </Text>
                   {existingProposal.coordinator_feedback && (
                     <Text style={s.statusBannerText}>

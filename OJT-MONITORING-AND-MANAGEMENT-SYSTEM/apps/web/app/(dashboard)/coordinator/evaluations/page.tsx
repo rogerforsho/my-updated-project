@@ -9,7 +9,7 @@ import { decideEvaluationAppeal, listEvaluationAppeals, type EvaluationAppealFor
 
 export default function CoordinatorEvaluationAppealsPage() {
   const [appeals, setAppeals] = useState<EvaluationAppealForCoordinator[]>([]);
-  const list = useSearchPaging(appeals, (a) => `${a.students.users.full_name} ${a.students.student_number} ${a.students.course} ${a.status}`, 10);
+  const list = useSearchPaging(appeals, (a) => `${a.students.users.full_name} ${a.students.student_number} ${a.students.course} ${a.status}`);
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [scores, setScores] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -99,7 +99,7 @@ export default function CoordinatorEvaluationAppealsPage() {
           )}
         </article>
       ))}
-      <PagerBar page={list.page} totalPages={list.totalPages} total={list.matched} setPage={list.setPage} />
+      <PagerBar {...list.pager} />
     </div>
   );
 }

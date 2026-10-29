@@ -15,9 +15,9 @@ import {
   type GatewayComplianceSummary,
 } from '@/src/services/reports';
 import { getSignedDocumentUrl } from '@/src/services/storage';
+import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
 import { isCoordinatorReviewType, SUPERVISOR_REVIEW_REPORT_TYPES } from '@ojt/shared';
 
-const ROSTER_PAGE_SIZE = 25;
 
 export default function CoordinatorSubmissionsPage() {
   // Top-level tab: 'compliance' (Who needs requirements) vs 'feed' (Document review stream)
@@ -30,6 +30,8 @@ export default function CoordinatorSubmissionsPage() {
   const [complianceFilter, setComplianceFilter] = useState<'all' | 'needs_requirements' | 'ready_for_review' | 'ready_for_placement' | 'deployed'>('needs_requirements');
   const [courseFilter, setCourseFilter] = useState<string>('all');
   const [rosterPage, setRosterPage] = useState(1);
+  const [pageSize, changePageSize] = usePageSize();
+  const setPageSize = (n: number) => { changePageSize(n); setRosterPage(1); setReportPage(1); };
   useEffect(() => { setRosterPage(1); }, [complianceSearch, courseFilter, complianceFilter]);
   const [inspectingStudent, setInspectingStudent] = useState<StudentGatewayStatus | null>(null);
   const [remindingStudentId, setRemindingStudentId] = useState<string | null>(null);
@@ -63,7 +65,7 @@ export default function CoordinatorSubmissionsPage() {
   // ─── Load Document Feed Data ───────────────────────────────────────────────
   const loadReports = useCallback(async (p: number) => {
     setLoadingReports(true);
-    const res = await listReportsForCoordinator(p, 20, feedStatusFilter);
+    const res = await listReportsForCoordinator(p, pageSize, feedStatusFilter);
     setLoadingReports(false);
     if (res.error) {
       setError(res.error.message);
@@ -71,7 +73,7 @@ export default function CoordinatorSubmissionsPage() {
     }
     setReports(res.data!.reports);
     setTotalReports(res.data!.total);
-  }, [feedStatusFilter]);
+  }, [feedStatusFilter, pageSize]);
 
   useEffect(() => {
     loadCompliance();
@@ -170,7 +172,7 @@ export default function CoordinatorSubmissionsPage() {
   // ─── Filtered Document Feed ────────────────────────────────────────────────
   const filteredReports = reports;
 
-  const totalPages = Math.max(1, Math.ceil(totalReports / 20));
+  const totalPages = Math.max(1, Math.ceil(totalReports / pageSize));
   // shortcut: roster is paged client-side over the full compliance summary, move server-side past a few thousand trainees
 
 
@@ -414,7 +416,7 @@ export default function CoordinatorSubmissionsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredStudents.slice((rosterPage - 1) * ROSTER_PAGE_SIZE, rosterPage * ROSTER_PAGE_SIZE).map(student => {
+                    {filteredStudents.slice((rosterPage - 1) * pageSize, rosterPage * pageSize).map(student => {
                       const percent = Math.round((student.submitted_count / student.total_required) * 100);
                       const isComplete = student.approved_count === student.total_required;
 
@@ -423,7 +425,7 @@ export default function CoordinatorSubmissionsPage() {
                           {/* Student Trainee Info */}
                           <td className="px-5 py-4">
                             <p className="font-bold text-slate-900">{student.full_name}</p>
-                            <p className="text-xs text-slate-400 font-mono mt-0.5">
+                            <p className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">
                               {student.student_number} • {student.course} (Yr {student.year_level})
                             </p>
                             <p className="text-[11px] text-slate-400 mt-0.5">{student.email}</p>
@@ -554,15 +556,7 @@ export default function CoordinatorSubmissionsPage() {
                 </table>
               </div>
             )}
-            {filteredStudents.length > ROSTER_PAGE_SIZE && (
-              <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 text-xs text-slate-500">
-                <span>Page {rosterPage} of {Math.ceil(filteredStudents.length / ROSTER_PAGE_SIZE)} · {filteredStudents.length} trainees</span>
-                <div className="flex gap-1">
-                  <Button variant="ghost" onClick={() => setRosterPage(p => Math.max(1, p - 1))} disabled={rosterPage === 1}>Prev</Button>
-                  <Button variant="ghost" onClick={() => setRosterPage(p => p + 1)} disabled={rosterPage >= Math.ceil(filteredStudents.length / ROSTER_PAGE_SIZE)}>Next</Button>
-                </div>
-              </div>
-              )}
+            <div className="px-5 py-3 border-t border-slate-100"><PagerBar page={rosterPage} totalPages={Math.max(1, Math.ceil(filteredStudents.length / pageSize))} total={filteredStudents.length} setPage={setRosterPage} pageSize={pageSize} setPageSize={setPageSize} /></div>
           </div>
         </div>
       )}
@@ -623,7 +617,7 @@ export default function CoordinatorSubmissionsPage() {
                       <tr key={r.report_id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="px-5 py-4">
                           <p className="font-bold text-slate-900">{r.students?.users?.full_name}</p>
-                          <p className="text-xs text-slate-400 font-mono mt-0.5">
+                          <p className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">
                             {r.students?.student_number} • {r.students?.course}
                           </p>
                         </td>
@@ -691,19 +685,7 @@ export default function CoordinatorSubmissionsPage() {
             )}
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4 text-sm text-slate-500">
-              <span>Page {reportPage} of {totalPages}</span>
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => setReportPage(p => Math.max(1, p - 1))} disabled={reportPage === 1}>
-                  Previous
-                </Button>
-                <Button variant="ghost" onClick={() => setReportPage(p => Math.min(totalPages, p + 1))} disabled={reportPage === totalPages}>
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
+          <div className="mt-4"><PagerBar page={reportPage} totalPages={totalPages} total={totalReports} setPage={setReportPage} pageSize={pageSize} setPageSize={setPageSize} /></div>
         </div>
       )}
 

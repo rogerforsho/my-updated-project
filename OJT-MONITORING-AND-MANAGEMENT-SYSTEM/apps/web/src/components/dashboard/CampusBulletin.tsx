@@ -75,8 +75,8 @@ export default function CampusBulletin({ announcements = [] }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#0A3824] text-amber-300 flex items-center justify-center shrink-0 shadow-2xs">
-            <Megaphone className="w-4 h-4 text-amber-300" />
+          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 dark:bg-emerald-400/15 text-[#0A3824] dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <Megaphone className="w-4 h-4" />
           </div>
           <div>
             <h3 className="text-xs font-bold text-slate-900 dark:text-white">Campus Bulletin</h3>
@@ -94,7 +94,7 @@ export default function CampusBulletin({ announcements = [] }: Props) {
           {activeAnnouncements.map((annc) => (
             <div
               key={annc.announcement_id}
-              className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 hover:border-amber-500/40 dark:hover:border-amber-500/40 transition-all flex flex-col gap-1.5 relative group shadow-2xs"
+              className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 hover:border-amber-500/40 dark:hover:border-amber-500/40 transition-all flex flex-col gap-1.5 relative group shadow-2xs"
             >
               <div className="flex items-center justify-between gap-1">
                 <div className="flex items-center gap-1.5">
@@ -119,8 +119,8 @@ export default function CampusBulletin({ announcements = [] }: Props) {
                 </button>
               </div>
 
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-snug">{annc.title}</h4>
-              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3">{annc.content}</p>
+              <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-snug wrap-anywhere">{annc.title}</h4>
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3 wrap-anywhere">{annc.content}</p>
             </div>
           ))}
         </div>

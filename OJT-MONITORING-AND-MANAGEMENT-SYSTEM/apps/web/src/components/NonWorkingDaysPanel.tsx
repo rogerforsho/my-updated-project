@@ -24,7 +24,7 @@ export function NonWorkingDaysPanel({ mode, departments = [] }: { mode: 'admin' 
   }, []);
   useEffect(() => { void load(); }, [load]);
 
-  const list = useSearchPaging(days, (d) => `${d.day_date} ${d.label} ${d.scope} ${d.department ?? ''} ${d.companies?.company_name ?? ''}`, 10);
+  const list = useSearchPaging(days, (d) => `${d.day_date} ${d.label} ${d.scope} ${d.department ?? ''} ${d.companies?.company_name ?? ''}`);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
@@ -95,7 +95,7 @@ export function NonWorkingDaysPanel({ mode, departments = [] }: { mode: 'admin' 
         })}
         {!list.visible.length && <p className="p-6 text-sm text-slate-500">{list.search ? 'No dates match your search.' : 'No upcoming non-working days.'}</p>}
       </div>
-      <PagerBar page={list.page} totalPages={list.totalPages} total={list.matched} setPage={list.setPage} />
+      <PagerBar {...list.pager} />
     </section>
   );
 }

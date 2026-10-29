@@ -11,8 +11,23 @@ import {
   type ReportWithStudent
 } from '@/src/services/reports';
 import { getSignedDocumentUrl } from '@/src/services/storage';
+// PROTOTYPE (throwaway): three UI variants via ?variant=A|B|C on this route. Remove after a winner is picked.
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import PrototypeSwitcher from './_prototype/PrototypeSwitcher';
+import { VariantA, VariantB, VariantC } from './_prototype/Variants';
 
 export default function SupervisorReportsPage() {
+  return (
+    <Suspense>
+      <ReportsPageInner />
+      <PrototypeSwitcher />
+    </Suspense>
+  );
+}
+
+function ReportsPageInner() {
+  const variant = useSearchParams().get('variant');
   const [reports, setReports] = useState<ReportWithStudent[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -84,9 +99,19 @@ export default function SupervisorReportsPage() {
   });
 
   const totalPages = Math.max(1, Math.ceil(total / 20));
+  const vp = {
+    reports: filteredReports,
+    filter,
+    setFilter,
+    openDoc: handleOpenDocument,
+    review: (r: ReportWithStudent) => { setEndorsingReport(r); setFeedback(r.supervisor_feedback || ''); },
+  };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto page-fade-in">
+      {variant === 'A' && <VariantA {...vp} />}
+      {variant === 'B' && <VariantB {...vp} />}
+      {variant === 'C' && <VariantC {...vp} />}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Trainee Accomplishment Reports</h1>

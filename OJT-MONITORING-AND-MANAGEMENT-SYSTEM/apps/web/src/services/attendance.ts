@@ -21,7 +21,8 @@ export interface AttendanceWithStudent extends DbAttendance {
 export async function listAttendanceForSupervisor(
   page = 1,
   pageSize = 20,
-  verificationFilter?: VerificationStatus
+  verificationFilter?: VerificationStatus,
+  search?: string
 ): Promise<AppResult<{ records: AttendanceWithStudent[]; total: number }>> {
   const { supabase, user, profile } = await getTrustedActor();
   if (!user || profile?.role !== 'Supervisor' || profile?.account_status !== 'active')
@@ -46,14 +47,19 @@ export async function listAttendanceForSupervisor(
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
+  const q = search?.trim().replace(/[%_,()]/g, '');
   let query = supabase
     .from('attendance')
-    .select(`*, students ( student_number, course, users ( full_name ) )`, { count: 'exact' })
+    .select(`*, students${q ? '!inner' : ''} ( student_number, course, users${q ? '!inner' : ''} ( full_name ) )`, { count: 'exact' })
     .in('student_id', studentIds)
     .order('attendance_date', { ascending: false })
     .range(from, to);
 
   if (verificationFilter) query = query.eq('verification_status', verificationFilter);
+  // one table per query: a student number has digits, otherwise match the name
+  if (q) query = /\d/.test(q)
+    ? query.ilike('students.student_number', `%${q}%`)
+    : query.ilike('students.users.full_name', `%${q}%`);
 
   const { data, error, count } = await query;
 

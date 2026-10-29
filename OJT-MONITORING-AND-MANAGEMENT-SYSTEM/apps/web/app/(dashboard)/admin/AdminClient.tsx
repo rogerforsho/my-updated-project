@@ -34,6 +34,8 @@ import {
 } from '@/src/services/admin';
 import { createAnnouncement, listAnnouncements, deleteAnnouncement } from '@/src/services/announcements';
 import type { DbAnnouncement } from '@ojt/shared';
+import { usePageSize } from '@/src/components/ui/ListControls';
+import { PAGE_SIZES } from '@/src/lib/paging';
 import { NonWorkingDaysPanel } from '@/src/components/NonWorkingDaysPanel';
 import { listAuditLogs, type AuditLogItem } from '@/src/services/audit';
 import { accountRoleLabel, type AccountStatus } from '@ojt/shared';
@@ -49,7 +51,6 @@ interface Props {
   };
 }
 
-const PAGE_SIZE = 10;
 const AUDIT_PAGE_SIZE = 20;
 
 const ROLE_TABS = [
@@ -100,6 +101,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
   const [users, setUsers] = useState<UserManagementItem[]>(initialUsers);
   const [totalCount, setTotalCount] = useState(initialTotal);
   const [page, setPage] = useState(1);
+  const [pageSize, changePageSize] = usePageSize();
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
@@ -166,7 +168,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
     setTableLoading(true);
     setTableError(null);
     try {
-      const res = await listAllUsers(targetPage, PAGE_SIZE, targetRole, targetStatus, targetSearch, targetDepartment);
+      const res = await listAllUsers(targetPage, pageSize, targetRole, targetStatus, targetSearch, targetDepartment);
       if (requestId !== usersRequestRef.current) return;
       if (res.data) {
         setUsers(res.data.users);
@@ -180,7 +182,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
     } finally {
       if (requestId === usersRequestRef.current) setTableLoading(false);
     }
-  }, []);
+  }, [pageSize]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
@@ -191,7 +193,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
   useEffect(() => {
     if (!hasLoadedInitialRef.current) {
       hasLoadedInitialRef.current = true;
-      if (initialUsers && initialUsers.length > 0 && roleFilter === 'all' && statusFilter === 'all' && departmentFilter === 'all' && !searchQuery && page === 1) {
+      if (initialUsers && initialUsers.length > 0 && roleFilter === 'all' && statusFilter === 'all' && departmentFilter === 'all' && !searchQuery && page === 1 && pageSize === initialUsers.length) {
         setUsers(initialUsers);
         setTotalCount(initialTotal);
         return;
@@ -199,7 +201,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
     }
     if (searchQuery !== debouncedSearch) return;
     fetchUsers(page, roleFilter, statusFilter, debouncedSearch, departmentFilter);
-  }, [page, roleFilter, statusFilter, departmentFilter, searchQuery, debouncedSearch, fetchUsers, initialUsers, initialTotal]);
+  }, [page, roleFilter, statusFilter, departmentFilter, searchQuery, debouncedSearch, fetchUsers, initialUsers, initialTotal, pageSize]);
 
   const loadAnnouncements = useCallback(async () => {
     setAnncListLoading(true);
@@ -406,15 +408,15 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
     }
   }
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   // First, last and the pages around the current one; 'gap' marks skipped ranges.
   const pageNumbers: (number | 'gap')[] = [];
   for (let n = 1; n <= totalPages; n++) {
     if (n === 1 || n === totalPages || Math.abs(n - page) <= 1) pageNumbers.push(n);
     else if (pageNumbers[pageNumbers.length - 1] !== 'gap') pageNumbers.push('gap');
   }
-  const startIndex = (page - 1) * PAGE_SIZE + 1;
-  const endIndex = Math.min(totalCount, page * PAGE_SIZE);
+  const startIndex = (page - 1) * pageSize + 1;
+  const endIndex = Math.min(totalCount, page * pageSize);
 
   return (
     <div className="space-y-4 max-w-[1200px] mx-auto p-4 sm:p-6 lg:p-9 page-fade-in">
@@ -608,7 +610,10 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
                                 <span aria-hidden="true" className="w-8 h-8 rounded-full bg-[#EEF5EF] text-[#073D29] text-xs font-bold flex items-center justify-center shrink-0">
                                   {u.full_name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'U'}
                                 </span>
-                                <span className="font-semibold text-sm text-[#17271F] dark:text-white" title={`ID: ${u.employee_number || u.user_id.slice(0, 8)}`}>{u.full_name}</span>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-sm text-[#17271F] dark:text-white leading-tight">{u.full_name}</p>
+                                  {u.employee_number && <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono tabular-nums">{u.employee_number}</p>}
+                                </div>
                               </div>
                             </td>
                             <td className="px-4 py-2.5 text-sm text-[#738478] break-all">{u.email}</td>
@@ -679,7 +684,17 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
 
               {totalCount > 0 && (
                 <div className="px-5 sm:px-6 py-3.5 border-t border-[#DFE7DF] dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-[#738478]">
-                  <span>Showing {startIndex} to {endIndex} of {totalCount} accounts</span>
+                  <span>Showing {startIndex}–{endIndex} of {totalCount} results</span>
+                  <label className="flex items-center gap-1.5 text-xs">
+                    Rows per page
+                    <select
+                      value={pageSize}
+                      onChange={(e) => { changePageSize(Number(e.target.value)); setPage(1); }}
+                      className="rounded-lg border border-[#DFE7DF] dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1.5"
+                    >
+                      {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </label>
                   <div className="flex items-center gap-1">
                     <Button size="sm" variant="outline" disabled={page <= 1 || tableLoading} onClick={() => setPage((p) => Math.max(1, p - 1))} className="rounded-lg cursor-pointer">Previous</Button>
                     {pageNumbers.map((n, i) => n === 'gap' ? (
