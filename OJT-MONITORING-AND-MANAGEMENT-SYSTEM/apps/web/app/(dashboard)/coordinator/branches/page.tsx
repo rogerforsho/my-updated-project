@@ -1,21 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createCompanyBranch, listCompanies, listCompanyBranches, type CompanyWithSupervisors } from '@/src/services/companies';
+import { createCompanyBranch, listCompanyBranches } from '@/src/services/companies';
+import { CompanyPicker } from '@/src/components/ui/CompanyPicker';
 import type { DbCompanyBranch } from '@ojt/shared';
 
 export default function BranchesPage() {
-  const [companies, setCompanies] = useState<CompanyWithSupervisors[]>([]);
   const [companyId, setCompanyId] = useState('');
   const [branches, setBranches] = useState<DbCompanyBranch[]>([]);
   const [form, setForm] = useState({ branch_name: '', address: '', latitude: '', longitude: '', radius: '50' });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { void listCompanies(1, 100).then((result) => {
-    if (result.data) { setCompanies(result.data.companies); setCompanyId(result.data.companies[0]?.company_id ?? ''); }
-    else setError(result.error?.message ?? 'Could not load HTEs.');
-  }); }, []);
   useEffect(() => { if (companyId) void listCompanyBranches(companyId).then((result) => {
     if (result.data) setBranches(result.data); else setError(result.error?.message ?? 'Could not load branches.');
   }); else setBranches([]); }, [companyId]);
@@ -37,10 +33,7 @@ export default function BranchesPage() {
     <h1 className="text-2xl font-bold text-slate-900">HTE Branches</h1>
     <p className="mt-1 text-sm text-slate-600">Add verified work locations. Attendance uses the assigned branch geofence.</p>
     {!!error && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
-    <label className="mt-6 block text-sm font-semibold">Host Training Establishment</label>
-    <select className="mt-2 w-full rounded-lg border p-2.5" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
-      {companies.map((company) => <option key={company.company_id} value={company.company_id}>{company.company_name}</option>)}
-    </select>
+    <div className="mt-6"><CompanyPicker label="Host Training Establishment" value={companyId} onChange={(id) => setCompanyId(id)} /></div>
     <div className="mt-5 space-y-2">{branches.map((branch) => <div key={branch.branch_id} className="rounded-xl border bg-white p-4">
       <p className="font-semibold text-slate-900">{branch.branch_name}{branch.is_primary ? ' · Primary' : ''}</p>
       <p className="text-sm text-slate-600">{branch.address}</p>

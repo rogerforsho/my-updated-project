@@ -7,6 +7,8 @@ import Input from '@/src/components/ui/Input';
 import Alert from '@/src/components/ui/Alert';
 import Badge from '@/src/components/ui/Badge';
 import Modal from '@/src/components/ui/Modal';
+import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
+import { RowMenu } from '@/src/components/ui/RowMenu';
 import { Trash2, AlertTriangle, RotateCcw, Search, Filter } from '@/src/components/ui/Icons';
 import {
   listCompanies, createCompany, updateCompany, setCompanyStatus, deleteCompany,
@@ -37,12 +39,14 @@ const EMPTY_FORM: CompanyInput = {
   geofence_enabled: false,
 };
 
-const PAGE_SIZE = 20;
-
 export default function CoordinatorCompaniesPage() {
   const [companies, setCompanies] = useState<CompanyWithSupervisors[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, changePageSize] = usePageSize();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'geofence' | 'with-supervisors'>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -61,12 +65,17 @@ export default function CoordinatorCompaniesPage() {
   const load = useCallback(async (p: number) => {
     setLoading(true);
     setError('');
-    const result = await listCompanies(p, PAGE_SIZE);
+    const result = await listCompanies(p, pageSize, { search: debouncedSearch, status: statusFilter });
     setLoading(false);
     if (result.error) { setError(result.error.message); return; }
     setCompanies(result.data!.companies);
     setTotal(result.data!.total);
-  }, []);
+  }, [debouncedSearch, statusFilter, pageSize]);
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(searchQuery); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
   useEffect(() => {
     let isMounted = true;
@@ -147,32 +156,10 @@ export default function CoordinatorCompaniesPage() {
     load(page);
   }
 
-  // Table Controls State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'geofence' | 'with-supervisors' | 'no-supervisors'>('all');
 
-  const filteredCompanies = companies.filter(c => {
-    // 1. Search Query filter
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchesName = c.company_name?.toLowerCase().includes(q);
-      const matchesContact = c.contact_person?.toLowerCase().includes(q);
-      const matchesEmail = c.contact_email?.toLowerCase().includes(q);
-      const matchesAddress = c.address?.toLowerCase().includes(q);
-      if (!matchesName && !matchesContact && !matchesEmail && !matchesAddress) return false;
-    }
+  const filteredCompanies = companies;
 
-    // 2. Status & Attributes filter
-    if (statusFilter === 'active' && c.status !== 'active') return false;
-    if (statusFilter === 'inactive' && c.status !== 'inactive') return false;
-    if (statusFilter === 'geofence' && (!c.geofence_enabled || c.latitude == null || c.longitude == null)) return false;
-    if (statusFilter === 'with-supervisors' && (!c.supervisors || c.supervisors.length === 0)) return false;
-    if (statusFilter === 'no-supervisors' && c.supervisors && c.supervisors.length > 0) return false;
-
-    return true;
-  });
-
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const totalPages = Math.ceil(total / pageSize);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto page-fade-in">
@@ -246,7 +233,7 @@ export default function CoordinatorCompaniesPage() {
               <Filter className="w-3.5 h-3.5 text-slate-500" />
               <select
                 value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value as any)}
+                onChange={e => { setStatusFilter(e.target.value as typeof statusFilter); setPage(1); }}
                 aria-label="Filter companies by status"
                 className="text-xs bg-transparent text-slate-700 font-medium focus:outline-none cursor-pointer pr-1"
               >
@@ -255,7 +242,6 @@ export default function CoordinatorCompaniesPage() {
                 <option value="inactive">Inactive Only</option>
                 <option value="geofence">GPS Configured</option>
                 <option value="with-supervisors">With Supervisors</option>
-                <option value="no-supervisors">No Supervisors</option>
               </select>
             </div>
 
@@ -376,42 +362,12 @@ export default function CoordinatorCompaniesPage() {
                     </td>
 
                     {/* Locked Right-Aligned Action Buttons */}
-                    <td className="pr-5 pl-3 py-3.5 whitespace-nowrap text-right min-w-[220px]">
-                      <div className="inline-flex items-center justify-end gap-1.5 w-full">
-                        <button
-                          type="button"
-                          onClick={() => openEdit(c)}
-                          className="w-[50px] text-center px-2 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                          title={`Edit ${c.company_name}`}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStatus(c)}
-                          className={`w-[84px] text-center px-2 py-1 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
-                            c.status === 'active'
-                              ? 'text-amber-700 bg-amber-50 hover:bg-amber-100/70 border border-amber-200/50'
-                              : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200/50'
-                          }`}
-                          title={c.status === 'active' ? 'Deactivate Company' : 'Activate Company'}
-                        >
-                          {c.status === 'active' ? 'Deactivate' : 'Activate'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDeleteTarget(c);
-                            setDeleteError('');
-                            setSuccessMessage('');
-                          }}
-                          className="w-[74px] justify-center inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg border border-rose-200 transition-colors cursor-pointer shadow-2xs"
-                          title={`Delete ${c.company_name}`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                          Delete
-                        </button>
-                      </div>
+                    <td className="pr-5 pl-3 py-3.5 whitespace-nowrap text-right">
+                      <RowMenu items={[
+                        { label: 'Edit', onSelect: () => openEdit(c) },
+                        { label: c.status === 'active' ? 'Deactivate' : 'Activate', onSelect: () => handleToggleStatus(c) },
+                        { label: 'Delete', destructive: true, onSelect: () => { setDeleteTarget(c); setDeleteError(''); setSuccessMessage(''); } },
+                      ]} />
                     </td>
                   </tr>
                 ))}
@@ -420,32 +376,7 @@ export default function CoordinatorCompaniesPage() {
           </div>
         )}
 
-        {/* Global Pagination Bar */}
-        <div className="p-4 border-t border-slate-100 bg-slate-50/40 flex items-center justify-between text-xs text-slate-500">
-          <span>
-            Page <strong className="text-slate-700">{page}</strong> of <strong className="text-slate-700">{totalPages || 1}</strong> ({total} total companies)
-          </span>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1 || loading}
-              className="text-xs"
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage(p => p + 1)}
-              disabled={page >= totalPages || loading}
-              className="text-xs"
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+        <div className="p-4 border-t border-slate-100 bg-slate-50/40"><PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={(n) => { changePageSize(n); setPage(1); }} /></div>
       </div>
 
       {/* Create / Edit Modal */}

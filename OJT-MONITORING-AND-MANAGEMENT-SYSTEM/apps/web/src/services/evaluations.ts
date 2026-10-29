@@ -43,7 +43,8 @@ export interface EvaluationInput {
 
 export async function listEvaluationsForSupervisor(
   page = 1,
-  pageSize = 20
+  pageSize = 20,
+  opts: { search?: string; type?: string } = {}
 ): Promise<AppResult<{ evaluations: EvaluationWithStudent[]; total: number }>> {
   const { supabase, user, profile } = await getTrustedActor();
   if (!user || profile?.role !== 'Supervisor' || profile?.account_status !== 'active')
@@ -58,12 +59,19 @@ export async function listEvaluationsForSupervisor(
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  const { data, error, count } = await supabase
+  const q = opts.search?.trim().replace(/[%_,()]/g, '');
+  let query = supabase
     .from('evaluations')
-    .select(`*, students ( student_number, course, users ( full_name ) )`, { count: 'exact' })
+    .select(`*, students${q ? '!inner' : ''} ( student_number, course, users${q ? '!inner' : ''} ( full_name ) )`, { count: 'exact' })
     .eq('supervisor_id', supervisor.supervisor_id)
     .order('evaluation_date', { ascending: false })
     .range(from, to);
+  if (opts.type === 'midterm' || opts.type === 'final') query = query.eq('evaluation_type', opts.type);
+  // one table per query: a student number has digits, otherwise match the name
+  if (q) query = /\d/.test(q)
+    ? query.ilike('students.student_number', `%${q}%`)
+    : query.ilike('students.users.full_name', `%${q}%`);
+  const { data, error, count } = await query;
 
   if (error)
     return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load evaluations.' } };

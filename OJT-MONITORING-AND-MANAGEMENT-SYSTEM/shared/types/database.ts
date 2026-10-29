@@ -98,6 +98,8 @@ export interface DbCompany {
   longitude?: number | null;
   geofence_radius_meters?: number;
   geofence_enabled?: boolean;
+  max_interns?: number | null;
+  accepting_students?: boolean;
   created_at: string;
   updated_at: string;
 }

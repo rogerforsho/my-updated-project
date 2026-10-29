@@ -43,7 +43,8 @@ async function assertCoordinator() {
 
 export async function listAssignments(
   page = 1,
-  pageSize = 20
+  pageSize = 20,
+  search?: string
 ): Promise<AppResult<{ assignments: AssignmentDetail[]; total: number }>> {
   const { supabase, authorized } = await assertCoordinator();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
@@ -51,13 +52,14 @@ export async function listAssignments(
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  const { data, error, count } = await supabase
+  const q = search?.trim().replace(/[%_,()]/g, '');
+  let query = supabase
     .from('student_assignments')
     .select(`
       *,
-      students (
+      students${q ? '!inner' : ''} (
         student_number, course, year_level, status,
-        users ( full_name, email )
+        users${q ? '!inner' : ''} ( full_name, email )
       ),
       companies ( company_name ),
       company_branches ( branch_name, address ),
@@ -68,7 +70,12 @@ export async function listAssignments(
     `, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
+  // one table per query: a student number has digits, otherwise match the name
+  if (q) query = /\d/.test(q)
+    ? query.ilike('students.student_number', `%${q}%`)
+    : query.ilike('students.users.full_name', `%${q}%`);
 
+  const { data, error, count } = await query;
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load assignments.' } };
   return { data: { assignments: data as AssignmentDetail[], total: count ?? 0 }, error: null };
 }
@@ -136,6 +143,8 @@ export async function createAssignment(input: AssignmentInput): Promise<AppResul
     .select()
     .single();
 
+  if (error?.message.includes('not accepting new students'))
+    return { data: null, error: { code: 'FORBIDDEN', message: 'This company is not accepting new students.' } };
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to create assignment.' } };
 
   // Log Audit Trail

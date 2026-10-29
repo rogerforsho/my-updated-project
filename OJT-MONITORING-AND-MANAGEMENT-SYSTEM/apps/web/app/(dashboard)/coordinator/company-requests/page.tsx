@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { decideCompanyRequest, getCompanyRequestEvidenceUrl, listPendingCompanyRequests } from '@/src/services/companyRequests';
+import { useSearchPaging, SearchBox, PagerBar } from '@/src/components/ui/ListControls';
 import type { DbCompanyRequest } from '@ojt/shared';
 
 export default function CompanyRequestsPage() {
   const [rows, setRows] = useState<DbCompanyRequest[]>([]);
   const [selected, setSelected] = useState<DbCompanyRequest | null>(null);
+  const list = useSearchPaging(rows, (r) => `${r.requested_company_name} ${r.requested_branch_name} ${r.branch_address}`);
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const [feedback, setFeedback] = useState('');
@@ -48,14 +50,16 @@ export default function CompanyRequestsPage() {
     <h1 className="text-2xl font-bold text-slate-900">HTE Requests</h1>
     <p className="mt-1 text-sm text-slate-600">Verify the business and branch before approval. Approval creates an active HTE and its first branch.</p>
     {!!error && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+    <div className="mt-4"><SearchBox value={list.search} onChange={list.setSearch} placeholder="Search company, branch or address..." /></div>
     <div className="mt-6 space-y-3">
-      {rows.map((row) => <button key={row.request_id} onClick={() => setSelected(row)} className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left hover:border-emerald-700">
+      {list.visible.map((row) => <button key={row.request_id} onClick={() => setSelected(row)} className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left hover:border-emerald-700">
         <span className="block font-semibold text-slate-900">{row.requested_company_name} · {row.requested_branch_name}</span>
         <span className="mt-1 block text-sm text-slate-600">{row.branch_address} · submitted {new Date(row.created_at).toLocaleDateString()}</span>
         <span className="mt-2 block text-xs text-slate-500">{row.business_permit_path ? 'Business permit attached' : 'No business permit'} · {row.moa_path ? 'MOA copy attached' : 'No MOA copy'}</span>
       </button>)}
-      {!rows.length && <p className="rounded-xl bg-slate-50 p-6 text-sm text-slate-600">No pending HTE requests.</p>}
+      {!list.visible.length && <p className="rounded-xl bg-slate-50 p-6 text-sm text-slate-600">{list.search ? 'No requests match your search.' : 'No pending HTE requests.'}</p>}
     </div>
+    <div className="mt-4"><PagerBar {...list.pager} /></div>
     {selected && <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-3 sm:items-center">
       <section role="dialog" aria-modal="true" aria-labelledby="request-title" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
         <h2 id="request-title" className="text-xl font-bold">{selected.requested_company_name}</h2>

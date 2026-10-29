@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchPaging, SearchBox, PagerBar } from '@/src/components/ui/ListControls';
 import Alert from '@/src/components/ui/Alert';
 import Button from '@/src/components/ui/Button';
 import { Badge } from '@/src/components/ui/Badge';
@@ -8,6 +9,7 @@ import { decideEvaluationAppeal, listEvaluationAppeals, type EvaluationAppealFor
 
 export default function CoordinatorEvaluationAppealsPage() {
   const [appeals, setAppeals] = useState<EvaluationAppealForCoordinator[]>([]);
+  const list = useSearchPaging(appeals, (a) => `${a.students.users.full_name} ${a.students.student_number} ${a.students.course} ${a.status}`);
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [scores, setScores] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -47,11 +49,14 @@ export default function CoordinatorEvaluationAppealsPage() {
         <h1 className="text-2xl font-bold text-slate-900">Evaluation appeals</h1>
         <p className="text-sm text-slate-500 mt-1">Review appeals within your department. Decisions are recorded separately from the original evaluation.</p>
       </div>
+      <SearchBox value={list.search} onChange={list.setSearch} placeholder="Search student, ID, course or status..." />
       {error && <Alert type="error" message={error} />}
       {success && <Alert type="success" message={success} />}
       {loading ? <p className="py-16 text-center text-sm text-slate-500">Loading appeals…</p> : appeals.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">No evaluation appeals have been submitted.</div>
-      ) : appeals.map(appeal => (
+      ) : list.visible.length === 0 ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">No appeals match your search.</div>
+      ) : list.visible.map(appeal => (
         <article key={appeal.appeal_id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -83,7 +88,7 @@ export default function CoordinatorEvaluationAppealsPage() {
               </label>
               <div className="flex flex-wrap items-end justify-end gap-2">
                 <Button disabled={saving === appeal.appeal_id} onClick={() => decide(appeal, 'upheld')} className="bg-slate-700 text-white">Uphold original</Button>
-                <Button disabled={saving === appeal.appeal_id} onClick={() => decide(appeal, 'adjusted')} className="bg-[#0A3824] text-white">Adjust evaluation</Button>
+                <Button disabled={saving === appeal.appeal_id} onClick={() => decide(appeal, 'adjusted')} className="bg-[var(--cdm-green)] text-white">Adjust evaluation</Button>
               </div>
             </div>
           ) : (
@@ -94,6 +99,7 @@ export default function CoordinatorEvaluationAppealsPage() {
           )}
         </article>
       ))}
+      <PagerBar {...list.pager} />
     </div>
   );
 }

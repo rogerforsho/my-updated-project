@@ -81,7 +81,7 @@ export default function ClearanceActionModal({
         onClick={handleOpen}
         className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
           completedHours >= 486
-            ? 'bg-[#0A3824] text-[var(--cdm-sand)] hover:bg-[#092E1D] shadow-xs'
+            ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] hover:bg-[#092E1D] shadow-xs'
             : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
         }`}
       >
@@ -103,7 +103,7 @@ export default function ClearanceActionModal({
                 onClick={handleIssue}
                 loading={issuing}
                 disabled={!validFinalGrade || !validFinalizationDetails}
-                className="bg-[#0A3824] hover:bg-[#092E1D] text-[var(--cdm-sand)] font-bold shadow-md"
+                className="bg-[var(--cdm-green)] hover:bg-[#092E1D] text-[var(--cdm-sand)] font-bold shadow-md"
               >
                 {finalGradeNumber <= 3 ? 'Save Passing Grade & Finalize' : 'Save Failing Grade'}
               </Button>

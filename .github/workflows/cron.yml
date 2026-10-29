@@ -1,0 +1,26 @@
+# Hobby plan limits Vercel Cron to daily, so GitHub schedules these instead.
+# Scheduled workflows only run from the default branch.
+name: Scheduled jobs
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+env:
+  CRON_SECRET: ${{ secrets.CRON_SECRET }}
+  CRON_BASE_URL: ${{ secrets.CRON_BASE_URL }}
+
+jobs:
+  email-queue:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '*/5 * * * *' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" "$CRON_BASE_URL/api/internal/process-transactional-email"
+
+  auto-time-out:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '*/30 * * * *' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" "$CRON_BASE_URL/api/internal/auto-time-out"

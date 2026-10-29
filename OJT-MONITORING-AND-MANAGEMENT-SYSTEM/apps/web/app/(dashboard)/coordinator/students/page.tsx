@@ -6,6 +6,8 @@ import Button from '@/src/components/ui/Button';
 import { Badge } from '@/src/components/ui/Badge';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { Search, Users } from '@/src/components/ui/Icons';
+import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
+import { RowMenu } from '@/src/components/ui/RowMenu';
 import Modal from '@/src/components/ui/Modal';
 import { listActiveStudents, resetStudentPasswordToDefault } from '@/src/services/auth';
 
@@ -20,12 +22,11 @@ type ActiveStudent = {
   created_at: string;
 };
 
-const PAGE_SIZE = 20;
-
 export default function CoordinatorStudentsPage() {
   const [students, setStudents] = useState<ActiveStudent[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, changePageSize] = usePageSize();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,7 +44,7 @@ export default function CoordinatorStudentsPage() {
     let active = true;
     setLoading(true);
     setError('');
-    listActiveStudents(page, PAGE_SIZE, searchFilter).then((result) => {
+    listActiveStudents(page, pageSize, searchFilter).then((result) => {
       if (!active) return;
       if (result.error) {
         setError(result.error.message);
@@ -62,7 +63,7 @@ export default function CoordinatorStudentsPage() {
       setLoading(false);
     });
     return () => { active = false; };
-  }, [page, searchFilter]);
+  }, [page, pageSize, searchFilter]);
 
   async function confirmReset() {
     if (!resetTarget) return;
@@ -80,7 +81,7 @@ export default function CoordinatorStudentsPage() {
     setResetTarget(null);
   }
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto page-fade-in">
@@ -200,7 +201,7 @@ export default function CoordinatorStudentsPage() {
                       <p className="font-semibold text-slate-900 dark:text-white leading-tight">
                         {student.full_name}
                       </p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500 font-mono mt-0.5">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono tabular-nums mt-0.5">
                         {student.student_number}
                       </p>
                     </td>
@@ -226,9 +227,7 @@ export default function CoordinatorStudentsPage() {
                       })}
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <Button variant="outline" size="sm" onClick={() => { setNotice(''); setResetTarget(student); }}>
-                        Reset password
-                      </Button>
+                      <RowMenu items={[{ label: 'Reset password', onSelect: () => { setNotice(''); setResetTarget(student); } }]} />
                     </td>
                   </tr>
                 ))}
@@ -238,33 +237,7 @@ export default function CoordinatorStudentsPage() {
         )}
       </div>
 
-      {/* Pagination Bar */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2">
-          <span>
-            Showing Page <strong className="text-slate-900 dark:text-white">{page}</strong> of{' '}
-            <strong className="text-slate-900 dark:text-white">{totalPages}</strong>
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+      <PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={(n) => { changePageSize(n); setPage(1); }} />
     </div>
   );
 }

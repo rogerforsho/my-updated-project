@@ -37,7 +37,6 @@ The mobile attendance flow uses native face detection and requires an installed 
 ### Hardware & Security Evaluation Directives
 - **Hardware Constraint:** Must run cleanly on an Intel Core i5 / AMD Ryzen 5, **8 GB RAM**, 256 GB SSD machine.
 - **Security Reporting Standard:** Security must be described as **"security-related features were evaluated"** under ISO/IEC 25010:2023.
-- **Anti-Hallucination Rule:** Do not invent additional features, workflows, roles, technologies, or business rules not specified in the capstone manuscript.
 
 ## Agent skills
 

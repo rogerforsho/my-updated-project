@@ -2193,3 +2193,20 @@ test('successful logins are refunded from the login rate limit counter', async (
   const session = fs.readFileSync(path.join(root, 'apps/web/src/services/auth/session.ts'), 'utf8');
   assert.match(session, /releaseAuthActionLimit\('login'/);
 });
+
+test('Super Admin user list shows each account\'s department and filters by it', async () => {
+  const user = (id, role, category) => ({ user_id: id, full_name: id, email: `${id}@x.test`, role, account_category: category, account_status: 'active', created_at: '2026-01-01T00:00:00Z' });
+  const fixture = workflowFixture('Admin', { tables: {
+    users: [{ user_id: 'actor', role: 'Admin', account_status: 'active', full_name: 'actor', email: 'a@x.test', account_category: 'Super Admin', created_at: '2026-01-01T00:00:00Z' }, user('stu-ics', 'Student', 'OJT Student'), user('stu-ibe', 'Student', 'OJT Student'), user('co-ibe', 'Coordinator', 'OJT Coordinator'), user('sup', 'Supervisor', 'Supervisor')],
+    students: [{ user_id: 'stu-ics', course: 'BSIT' }, { user_id: 'stu-ibe', course: 'BSBA' }],
+    staff_capability_grants: [{ user_id: 'co-ibe', capability: 'academic_workflows', department_scope: 'IBE', revoked_at: null }],
+  } });
+  const admin = fixture.module('admin');
+  const all = await admin.listAllUsers();
+  assert.equal(all.error, null);
+  const byId = Object.fromEntries(all.data.users.map(row => [row.user_id, row.department]));
+  assert.deepEqual(byId, { actor: null, 'stu-ics': 'ICS', 'stu-ibe': 'IBE', 'co-ibe': 'IBE', sup: null });
+  const ibe = await admin.listAllUsers(1, 20, 'all', 'all', '', 'IBE');
+  assert.equal(ibe.error, null);
+  assert.deepEqual(ibe.data.users.map(row => row.user_id).sort(), ['co-ibe', 'stu-ibe']);
+});

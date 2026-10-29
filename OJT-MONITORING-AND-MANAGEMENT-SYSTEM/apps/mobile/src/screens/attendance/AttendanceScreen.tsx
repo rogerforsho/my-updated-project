@@ -4,7 +4,7 @@ import { getCachedAttendanceIdentity } from '../../lib/attendanceCache';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, ActivityIndicator,
-  ScrollView, StyleSheet, FlatList, RefreshControl, TextInput, Modal,
+  ScrollView, StyleSheet, FlatList, RefreshControl, TextInput, Modal, useWindowDimensions,
 } from 'react-native';
 import { FaceCamera, useCameraPermissions, useFaceCamera, useFaceValidation, type FaceRequirements } from '@rbayuokt/expo-face-vision';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -40,6 +40,28 @@ const SELFIE_REQUIREMENTS: FaceRequirements = {
   guide: { width: 0.56, height: 0.36, centerY: 0.5 },
 };
 
+// Tell the student exactly what the face check is waiting for, not one generic hint.
+const FACE_HINTS: Record<string, string> = {
+  NO_FACE: 'No face found. Look straight at the front camera.',
+  MULTIPLE_FACES: 'Only one face may be in the frame.',
+  FACE_TOO_SMALL: 'Move closer to the camera.',
+  MOVE_CLOSER: 'Move closer to the camera.',
+  FACE_TOO_LARGE: 'Move farther from the camera.',
+  MOVE_FARTHER: 'Move farther from the camera.',
+  MOVE_LEFT: 'Move a little to the left.',
+  MOVE_RIGHT: 'Move a little to the right.',
+  MOVE_UP: 'Move the phone up a little.',
+  MOVE_DOWN: 'Move the phone down a little.',
+  LOOK_FORWARD: 'Look straight at the camera.',
+  LOOK_LEFT: 'Look straight at the camera.',
+  LOOK_RIGHT: 'Look straight at the camera.',
+  OPEN_EYES: 'Open your eyes.',
+  TOO_DARK: 'Too dark. Move to a brighter spot.',
+  TOO_BRIGHT: 'Too bright. Avoid strong light behind you.',
+  TOO_BLURRY: 'Image is blurry. Hold the phone steady.',
+  HOLD_STILL: 'Hold still for a moment...',
+};
+
 export default function AttendanceScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<BottomTabNavigationProp<StudentTabParamList>>();
@@ -67,7 +89,17 @@ export default function AttendanceScreen() {
   const [scheduleProposal, setScheduleProposal] = useState<DbPracticumSchedule | null>(null);
   const capturingSelfie = useRef(false);
 
+  const { width: winW, height: winH } = useWindowDimensions();
+  const [cameraSlow, setCameraSlow] = useState(false);
+  useEffect(() => {
+    // Offer extra tips if the face check has not passed after a while.
+    if (step !== 'selfie') { setCameraSlow(false); return; }
+    const timer = setTimeout(() => setCameraSlow(true), 8000);
+    return () => clearTimeout(timer);
+  }, [step]);
+
   // GPS verification state
+  const [locationNotice, setLocationNotice] = useState<{ tone: 'info' | 'ok' | 'warn'; text: string } | null>(null);
   const [checkingLocation, setCheckingLocation] = useState(false);
   const [pendingLocationData, setPendingLocationData] = useState<LocationPayload | null>(null);
   const [outOfBoundsModal, setOutOfBoundsModal] = useState(false);
@@ -224,6 +256,7 @@ export default function AttendanceScreen() {
     setSuccess('');
     setCheckingLocation(true);
     setMode(targetMode);
+    setLocationNotice({ tone: 'info', text: 'Step 1 of 2: checking your location. This can take up to 12 seconds.' });
 
     try {
       const assignment = await getActiveAssignment();
@@ -294,6 +327,18 @@ export default function AttendanceScreen() {
       }
 
       // Within perimeter or remote work or geofence not enabled
+      const accuracy = locRes.coords.accuracy;
+      const accuracyNote = accuracy != null && accuracy > 50
+        ? ` GPS accuracy is low (about ${Math.round(accuracy)} m). Moving outdoors gives a better fix.`
+        : accuracy != null ? ` GPS accuracy: about ${Math.round(accuracy)} m.` : '';
+      setLocationNotice({
+        tone: accuracy != null && accuracy > 50 ? 'warn' : 'ok',
+        text: isRemoteWork
+          ? 'Location accepted (remote schedule, no workplace check needed). Step 2 of 2: take your selfie.'
+          : distanceMeters != null
+          ? `Location accepted: you are ${Math.round(distanceMeters)} m from ${assignment?.company_name ?? 'your workplace'} (allowed ${assignment?.geofence_radius_meters || 150} m).${accuracyNote} Step 2 of 2: take your selfie.`
+          : `Location accepted.${accuracyNote} Step 2 of 2: take your selfie.`,
+      });
       setPendingLocationData({
         latitude: locRes.coords.latitude,
         longitude: locRes.coords.longitude,
@@ -307,6 +352,7 @@ export default function AttendanceScreen() {
       setError(err?.message || 'Unable to acquire GPS location. Please ensure location services are enabled and try again.');
     } finally {
       setCheckingLocation(false);
+      setLocationNotice((n) => (n?.tone === 'info' ? null : n));
     }
   }
 
@@ -322,6 +368,12 @@ export default function AttendanceScreen() {
       satelliteTimestamp: tempLocationData.satelliteTimestamp,
     });
     setOutOfBoundsModal(false);
+    setLocationNotice({
+      tone: 'warn',
+      text: isUnavail
+        ? 'No GPS fix. Your record will be flagged for review. Step 2 of 2: take your selfie.'
+        : `You are outside the workplace area (${Math.round(tempLocationData.distanceMeters)} m away). Your record will be flagged for review. Step 2 of 2: take your selfie.`,
+    });
     setStep('selfie');
   }
 
@@ -427,18 +479,32 @@ export default function AttendanceScreen() {
           </View>
         </View>
 
-        {/* Face Oval Alignment Guide */}
+        {/* Location result from step 1 */}
+        {locationNotice && (
+          <View style={[s.locationBanner, { top: insets.top + 64 }, locationNotice.tone === 'warn' ? s.locationBannerWarn : s.locationBannerOk]}>
+            <Ionicons name={locationNotice.tone === 'warn' ? 'warning' : 'checkmark-circle'} size={16} color="#ffffff" />
+            <Text style={s.locationBannerText}>{locationNotice.text}</Text>
+          </View>
+        )}
+
+        {/* Face Oval Alignment Guide: same size and center as the region the face check validates */}
         <View style={s.faceGuideWrapper}>
-          <View style={s.faceOval} />
+          <View style={[s.faceOval, { width: winW * 0.56, height: winH * 0.36, borderRadius: winW * 0.28 },
+            faceReady && { borderColor: '#4ADE80', borderStyle: 'solid' }]} />
+        </View>
+        <View style={[s.faceGuideTextWrap, { top: winH * 0.5 + winH * 0.18 + 14 }]}>
           <Text style={s.faceGuideText}>
             {faceReady
-              ? 'One face detected. Capture when ready.'
-              : faceStatus === 'NO_FACE'
-                ? 'Place your face inside the oval.'
-                : faceStatus === 'MULTIPLE_FACES'
-                  ? 'Only one face may be inside the oval.'
-                  : 'Center your face inside the oval.'}
+              ? 'Face detected. Press the button to capture.'
+              : faceStatus == null
+                ? 'Starting the camera... the first start can take a few seconds.'
+                : FACE_HINTS[faceStatus] ?? 'Center your face inside the oval.'}
           </Text>
+          {!faceReady && cameraSlow && (
+            <Text style={s.faceGuideTip}>
+              Still checking. Face a light source, remove cap, mask or glasses glare, and hold the phone at eye level.
+            </Text>
+          )}
         </View>
 
         {/* Shutter Button */}
@@ -465,6 +531,11 @@ export default function AttendanceScreen() {
         <ActivityIndicator size="large" color="#0A3824" />
         <Text style={s.submittingText}>
           {mode === 'time_in' ? 'Recording Time In...' : 'Recording Time Out...'}
+        </Text>
+        <Text style={[s.submittingText, { fontSize: 12, fontWeight: '500', marginTop: 6, textAlign: 'center', paddingHorizontal: 32 }]}>
+          {isOffline
+            ? 'No internet: saving your selfie and location on this phone. It will sync automatically.'
+            : 'Uploading your selfie and location. Please keep the app open.'}
         </Text>
       </View>
     );
@@ -668,11 +739,18 @@ export default function AttendanceScreen() {
               {isGatewayCleared ? (
                 <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F4F6F2' }}>
                   {scheduleProposal ? (
-                    <View style={s.scheduleStatusBox}>
+                    <View style={[s.scheduleStatusBox, scheduleProposal.status === 'rejected' && s.scheduleStatusBoxAlert]}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Ionicons name="time" size={18} color="#0A3824" />
-                        <Text style={s.scheduleStatusTitle}>
-                          {scheduleProposal.status === 'approved' ? 'Practicum Schedule Approved' : 'Schedule Proposal Submitted'}
+                        <Ionicons
+                          name={scheduleProposal.status === 'rejected' ? 'alert-circle' : 'time'}
+                          size={18}
+                          color={scheduleProposal.status === 'rejected' ? '#B42318' : '#0A3824'}
+                        />
+                        <Text style={[s.scheduleStatusTitle, scheduleProposal.status === 'rejected' && { color: '#B42318' }]}>
+                          {scheduleProposal.status === 'approved' ? 'Practicum Schedule Approved'
+                            : scheduleProposal.status === 'rejected' ? 'Schedule Rejected: Action Needed'
+                            : scheduleProposal.status === 'modified' ? 'Coordinator Requested Changes'
+                            : 'Schedule Proposal Submitted'}
                         </Text>
                       </View>
                       <Text style={s.scheduleStatusSub}>
@@ -681,16 +759,22 @@ export default function AttendanceScreen() {
                       <Text style={s.scheduleStatusNote}>
                         {scheduleProposal.status === 'approved'
                           ? 'OJT Coordinator approved! Awaiting supervisor activation.'
+                          : scheduleProposal.status === 'rejected' || scheduleProposal.status === 'modified'
+                          ? `Coordinator feedback: ${scheduleProposal.coordinator_feedback?.trim() || 'No reason was given. Please revise your schedule and resubmit.'}`
                           : 'Under review by your OJT Coordinator for deployment.'}
                       </Text>
 
                       <TouchableOpacity
-                        style={s.scheduleModifyBtn}
+                        style={[s.scheduleModifyBtn, scheduleProposal.status === 'rejected' && s.scheduleModifyBtnAlert]}
                         onPress={() => setScheduleModalOpen(true)}
                         activeOpacity={0.85}
                       >
-                        <Ionicons name="create-outline" size={16} color="#0A3824" />
-                        <Text style={s.scheduleModifyBtnText}>View / Modify Schedule Proposal</Text>
+                        <Ionicons name="create-outline" size={16} color={scheduleProposal.status === 'rejected' ? '#FFFFFF' : '#0A3824'} />
+                        <Text style={[s.scheduleModifyBtnText, scheduleProposal.status === 'rejected' && { color: '#FFFFFF' }]}>
+                          {scheduleProposal.status === 'rejected' || scheduleProposal.status === 'modified'
+                            ? 'Revise & Resubmit Schedule'
+                            : 'View / Modify Schedule Proposal'}
+                        </Text>
                       </TouchableOpacity>
                     </View>
                   ) : (
@@ -825,7 +909,7 @@ export default function AttendanceScreen() {
                     </View>
                     <Text style={[s.btnSubtext, error ? s.btnDisabledSubtext : null]}>
                       {checkingLocation && mode === 'time_in'
-                        ? 'Connecting to satellites...'
+                        ? 'Checking your location. This can take up to 12 seconds...'
                         : error
                         ? 'Resolve the error message above to enable Time In'
                         : isOffline
@@ -863,7 +947,7 @@ export default function AttendanceScreen() {
                     </View>
                     <Text style={s.btnSubtextMuted}>
                       {checkingLocation && mode === 'time_out'
-                        ? 'Connecting to satellites...'
+                        ? 'Checking your location. This can take up to 12 seconds...'
                         : error
                         ? 'Resolve the error message above to enable Time Out'
                         : isOffline
@@ -1300,16 +1384,35 @@ const s = StyleSheet.create({
     borderStyle: 'dashed',
     backgroundColor: 'rgba(0,0,0,0.08)',
   },
+  faceGuideTextWrap: { position: 'absolute', left: 24, right: 24, alignItems: 'center', gap: 6 },
   faceGuideText: {
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
-    marginTop: 14,
+    textAlign: 'center',
     backgroundColor: 'rgba(0,0,0,0.6)',
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 6,
     borderRadius: 12,
+    overflow: 'hidden',
   },
+  faceGuideTip: {
+    color: '#ffffff',
+    fontSize: 11,
+    textAlign: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  locationBanner: {
+    position: 'absolute', left: 16, right: 16, flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12,
+  },
+  locationBannerOk: { backgroundColor: 'rgba(10,56,36,0.92)' },
+  locationBannerWarn: { backgroundColor: 'rgba(180,83,9,0.94)' },
+  locationBannerText: { flex: 1, color: '#ffffff', fontSize: 12, fontWeight: '600' },
   cameraOverlay: { position: 'absolute', bottom: 40, left: 0, right: 0, alignItems: 'center', gap: 20 },
   shutterOuter: { width: 76, height: 76, borderRadius: 38, borderWidth: 4, borderColor: '#ffffff', alignItems: 'center', justifyContent: 'center' },
   shutterInner: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#E4DBC4' },
@@ -1524,6 +1627,13 @@ const s = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     gap: 4,
+  },
+  scheduleStatusBoxAlert: {
+    backgroundColor: '#FEF3F2',
+    borderColor: '#F04438',
+  },
+  scheduleModifyBtnAlert: {
+    backgroundColor: '#B42318',
   },
   scheduleStatusTitle: {
     fontSize: 13,

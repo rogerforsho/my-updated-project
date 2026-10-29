@@ -67,7 +67,7 @@ export default async function CoordinatorProgressPage({ searchParams }: Props) {
               href={href}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 isSelected
-                  ? 'bg-[#0A3824] text-white shadow-sm'
+                  ? 'bg-[var(--cdm-green)] text-white shadow-sm'
                   : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
               }`}
             >
@@ -161,7 +161,7 @@ export default async function CoordinatorProgressPage({ searchParams }: Props) {
                                 isDone
                                   ? 'bg-emerald-500'
                                   : s.percentage >= 75
-                                  ? 'bg-[#0A3824]'
+                                  ? 'bg-[var(--cdm-green)]'
                                   : s.percentage >= 25
                                   ? 'bg-amber-500'
                                   : 'bg-slate-400'

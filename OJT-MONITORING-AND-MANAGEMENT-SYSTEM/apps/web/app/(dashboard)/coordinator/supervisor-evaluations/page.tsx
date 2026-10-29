@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchPaging, SearchBox, PagerBar } from '@/src/components/ui/ListControls';
 import Alert from '@/src/components/ui/Alert';
 import { Badge } from '@/src/components/ui/Badge';
 import { listSubmittedEvaluations, type SubmittedEvaluationForCoordinator } from '@/src/services/evaluations';
 
 export default function CoordinatorSupervisorEvaluationsPage() {
   const [rows, setRows] = useState<SubmittedEvaluationForCoordinator[]>([]);
+  const list = useSearchPaging(rows, (r) => `${r.students.users.full_name} ${r.students.student_number} ${r.students.course} ${r.supervisors?.users.full_name ?? ''}`);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -25,10 +27,13 @@ export default function CoordinatorSupervisorEvaluationsPage() {
         <h1 className="text-2xl font-bold text-slate-900">Supervisor evaluations</h1>
         <p className="text-sm text-slate-500 mt-1">Evaluations submitted by Supervisors for students in your department.</p>
       </div>
+      <SearchBox value={list.search} onChange={list.setSearch} placeholder="Search student, ID, course or supervisor..." />
       {error && <Alert type="error" message={error} />}
       {loading ? <p className="py-16 text-center text-sm text-slate-500">Loading evaluations…</p> : rows.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">No Supervisor evaluations have been submitted.</div>
-      ) : rows.map(row => (
+      ) : list.visible.length === 0 ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">No evaluations match your search.</div>
+      ) : list.visible.map(row => (
         <article key={row.evaluation_id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-2">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -41,6 +46,7 @@ export default function CoordinatorSupervisorEvaluationsPage() {
           <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">{row.feedback || 'No feedback provided.'}</p>
         </article>
       ))}
+      <PagerBar {...list.pager} />
     </div>
   );
 }

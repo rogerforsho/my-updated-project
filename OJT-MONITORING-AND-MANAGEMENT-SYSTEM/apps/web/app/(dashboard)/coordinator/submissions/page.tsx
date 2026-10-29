@@ -15,7 +15,9 @@ import {
   type GatewayComplianceSummary,
 } from '@/src/services/reports';
 import { getSignedDocumentUrl } from '@/src/services/storage';
+import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
 import { isCoordinatorReviewType, SUPERVISOR_REVIEW_REPORT_TYPES } from '@ojt/shared';
+
 
 export default function CoordinatorSubmissionsPage() {
   // Top-level tab: 'compliance' (Who needs requirements) vs 'feed' (Document review stream)
@@ -27,6 +29,10 @@ export default function CoordinatorSubmissionsPage() {
   const [complianceSearch, setComplianceSearch] = useState('');
   const [complianceFilter, setComplianceFilter] = useState<'all' | 'needs_requirements' | 'ready_for_review' | 'ready_for_placement' | 'deployed'>('needs_requirements');
   const [courseFilter, setCourseFilter] = useState<string>('all');
+  const [rosterPage, setRosterPage] = useState(1);
+  const [pageSize, changePageSize] = usePageSize();
+  const setPageSize = (n: number) => { changePageSize(n); setRosterPage(1); setReportPage(1); };
+  useEffect(() => { setRosterPage(1); }, [complianceSearch, courseFilter, complianceFilter]);
   const [inspectingStudent, setInspectingStudent] = useState<StudentGatewayStatus | null>(null);
   const [remindingStudentId, setRemindingStudentId] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -59,7 +65,7 @@ export default function CoordinatorSubmissionsPage() {
   // ─── Load Document Feed Data ───────────────────────────────────────────────
   const loadReports = useCallback(async (p: number) => {
     setLoadingReports(true);
-    const res = await listReportsForCoordinator(p, 20);
+    const res = await listReportsForCoordinator(p, pageSize, feedStatusFilter);
     setLoadingReports(false);
     if (res.error) {
       setError(res.error.message);
@@ -67,7 +73,7 @@ export default function CoordinatorSubmissionsPage() {
     }
     setReports(res.data!.reports);
     setTotalReports(res.data!.total);
-  }, []);
+  }, [feedStatusFilter, pageSize]);
 
   useEffect(() => {
     loadCompliance();
@@ -164,12 +170,11 @@ export default function CoordinatorSubmissionsPage() {
   }, [complianceData, complianceSearch, courseFilter, complianceFilter]);
 
   // ─── Filtered Document Feed ────────────────────────────────────────────────
-  const filteredReports = reports.filter(r => {
-    if (feedStatusFilter === 'all') return true;
-    return r.status === feedStatusFilter;
-  });
+  const filteredReports = reports;
 
-  const totalPages = Math.max(1, Math.ceil(totalReports / 20));
+  const totalPages = Math.max(1, Math.ceil(totalReports / pageSize));
+  // shortcut: roster is paged client-side over the full compliance summary, move server-side past a few thousand trainees
+
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto page-fade-in">
@@ -193,7 +198,7 @@ export default function CoordinatorSubmissionsPage() {
             onClick={() => setActiveTab('compliance')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'compliance'
-                ? 'bg-[#0A3824] text-[var(--cdm-sand)] shadow-sm'
+                ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -210,7 +215,7 @@ export default function CoordinatorSubmissionsPage() {
             onClick={() => setActiveTab('feed')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'feed'
-                ? 'bg-[#0A3824] text-[var(--cdm-sand)] shadow-sm'
+                ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] shadow-sm'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -305,8 +310,8 @@ export default function CoordinatorSubmissionsPage() {
               onClick={() => setComplianceFilter('deployed')}
               className={`p-4 rounded-2xl border transition-all cursor-pointer ${
                 complianceFilter === 'deployed'
-                  ? 'bg-[#0A3824]/10 border-[#0A3824]/30 ring-2 ring-[#0A3824]/30 shadow-sm'
-                  : 'bg-white border-slate-200/80 hover:border-[#0A3824]/20 hover:bg-[#0A3824]/5'
+                  ? 'bg-[var(--cdm-green)]/10 border-[#0A3824]/30 ring-2 ring-[#0A3824]/30 shadow-sm'
+                  : 'bg-white border-slate-200/80 hover:border-[#0A3824]/20 hover:bg-[var(--cdm-green)]/5'
               }`}
             >
               <div className="flex items-center justify-between">
@@ -411,7 +416,7 @@ export default function CoordinatorSubmissionsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredStudents.map(student => {
+                    {filteredStudents.slice((rosterPage - 1) * pageSize, rosterPage * pageSize).map(student => {
                       const percent = Math.round((student.submitted_count / student.total_required) * 100);
                       const isComplete = student.approved_count === student.total_required;
 
@@ -420,7 +425,7 @@ export default function CoordinatorSubmissionsPage() {
                           {/* Student Trainee Info */}
                           <td className="px-5 py-4">
                             <p className="font-bold text-slate-900">{student.full_name}</p>
-                            <p className="text-xs text-slate-400 font-mono mt-0.5">
+                            <p className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">
                               {student.student_number} • {student.course} (Yr {student.year_level})
                             </p>
                             <p className="text-[11px] text-slate-400 mt-0.5">{student.email}</p>
@@ -492,7 +497,7 @@ export default function CoordinatorSubmissionsPage() {
                           <td className="px-5 py-4">
                             {student.compliance_state === 'deployed' && (
                               <div>
-                                <Badge className="bg-[#0A3824]/10 text-[#0A3824] border-[#0A3824]/20 text-xs font-bold">
+                                <Badge className="bg-[var(--cdm-green)]/10 text-[#0A3824] border-[#0A3824]/20 text-xs font-bold">
                                   🏢 DEPLOYED
                                 </Badge>
                                 <p className="text-[11px] text-slate-500 font-medium mt-0.5 truncate max-w-[150px]">
@@ -551,6 +556,7 @@ export default function CoordinatorSubmissionsPage() {
                 </table>
               </div>
             )}
+            <div className="px-5 py-3 border-t border-slate-100"><PagerBar page={rosterPage} totalPages={Math.max(1, Math.ceil(filteredStudents.length / pageSize))} total={filteredStudents.length} setPage={setRosterPage} pageSize={pageSize} setPageSize={setPageSize} /></div>
           </div>
         </div>
       )}
@@ -569,10 +575,10 @@ export default function CoordinatorSubmissionsPage() {
               {(['all', 'submitted', 'approved', 'rejected'] as const).map(tab => (
                 <button
                   key={tab}
-                  onClick={() => setFeedStatusFilter(tab)}
+                  onClick={() => { setFeedStatusFilter(tab); setReportPage(1); }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer ${
                     feedStatusFilter === tab
-                      ? 'bg-[#0A3824] text-[var(--cdm-sand)] shadow-sm'
+                      ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] shadow-sm'
                       : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                   }`}
                 >
@@ -611,7 +617,7 @@ export default function CoordinatorSubmissionsPage() {
                       <tr key={r.report_id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="px-5 py-4">
                           <p className="font-bold text-slate-900">{r.students?.users?.full_name}</p>
-                          <p className="text-xs text-slate-400 font-mono mt-0.5">
+                          <p className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">
                             {r.students?.student_number} • {r.students?.course}
                           </p>
                         </td>
@@ -679,19 +685,7 @@ export default function CoordinatorSubmissionsPage() {
             )}
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4 text-sm text-slate-500">
-              <span>Page {reportPage} of {totalPages}</span>
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => setReportPage(p => Math.max(1, p - 1))} disabled={reportPage === 1}>
-                  Previous
-                </Button>
-                <Button variant="ghost" onClick={() => setReportPage(p => Math.min(totalPages, p + 1))} disabled={reportPage === totalPages}>
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
+          <div className="mt-4"><PagerBar page={reportPage} totalPages={totalPages} total={totalReports} setPage={setReportPage} pageSize={pageSize} setPageSize={setPageSize} /></div>
         </div>
       )}
 
@@ -843,7 +837,7 @@ export default function CoordinatorSubmissionsPage() {
               <Button
                 onClick={() => submitDecision('approved')}
                 loading={submittingAction}
-                className="bg-[#0A3824] hover:bg-[#092E1D] text-[var(--cdm-sand)] font-bold"
+                className="bg-[var(--cdm-green)] hover:bg-[#092E1D] text-[var(--cdm-sand)] font-bold"
               >
                 Approve & Sign Off
               </Button>

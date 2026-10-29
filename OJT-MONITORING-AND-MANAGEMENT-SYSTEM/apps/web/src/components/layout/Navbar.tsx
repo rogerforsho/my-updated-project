@@ -142,7 +142,7 @@ export default function Navbar({ user, isMenuOpen = false, onMenuToggle }: Navba
             aria-haspopup="true"
             className="flex items-center gap-2.5 p-1 sm:pr-2.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all cursor-pointer group focus:outline-none focus:ring-2 focus:ring-[#0A3824]/20 dark:focus:ring-emerald-500/20"
           >
-            <div className="w-8 h-8 rounded-full bg-[#0A3824] text-[#E4DBC4] font-bold text-xs flex items-center justify-center border border-emerald-900/30">
+            <div className="w-8 h-8 rounded-full bg-[var(--cdm-green)] text-[#E4DBC4] font-bold text-xs flex items-center justify-center border border-emerald-900/30">
               {user.full_name ? user.full_name[0].toUpperCase() : 'U'}
             </div>
             <div className="hidden sm:flex flex-col text-left">
@@ -162,7 +162,7 @@ export default function Navbar({ user, isMenuOpen = false, onMenuToggle }: Navba
               {/* Profile Card Summary Header */}
               <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#0A3824] text-[#E4DBC4] font-bold text-sm flex items-center justify-center shrink-0 border border-emerald-900/30">
+                  <div className="w-10 h-10 rounded-full bg-[var(--cdm-green)] text-[#E4DBC4] font-bold text-sm flex items-center justify-center shrink-0 border border-emerald-900/30">
                     {user.full_name ? user.full_name[0].toUpperCase() : 'U'}
                   </div>
                   <div className="min-w-0 flex-1">
