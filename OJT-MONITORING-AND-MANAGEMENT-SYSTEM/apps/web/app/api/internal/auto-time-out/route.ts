@@ -53,3 +53,5 @@ export async function POST(request: Request) {
 
   return Response.json({ timedOut, failed }, { status: 200, headers: NO_STORE });
 }
+
+export const GET = POST; // Vercel Cron issues GET

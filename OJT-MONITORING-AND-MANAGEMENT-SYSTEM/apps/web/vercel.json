@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/internal/process-transactional-email", "schedule": "*/5 * * * *" },
+    { "path": "/api/internal/auto-time-out", "schedule": "*/30 * * * *" }
+  ]
+}

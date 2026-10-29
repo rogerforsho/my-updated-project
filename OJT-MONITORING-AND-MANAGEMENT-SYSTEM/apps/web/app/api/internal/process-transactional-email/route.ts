@@ -22,3 +22,5 @@ export async function POST(request: Request) {
 
   return Response.json(result, { status: 200, headers: { 'Cache-Control': 'no-store' } });
 }
+
+export const GET = POST; // Vercel Cron issues GET
