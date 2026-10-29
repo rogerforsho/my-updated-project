@@ -1,0 +1,18 @@
+# EAS packs from the Git root, so this file must live here (the one in OJT-MONITORING-AND-MANAGEMENT-SYSTEM/ is not read).
+node_modules/
+.next/
+dist/
+.expo/
+.vercel/
+.claude/
+artifacts/
+.env
+.env.*
+!.env.example
+.staging-qa-credentials.txt
+OJT-MONITORING-AND-MANAGEMENT-SYSTEM/apps/desktop/release/
+OJT-MONITORING-AND-MANAGEMENT-SYSTEM/apps/mobile/android/
+OJT-MONITORING-AND-MANAGEMENT-SYSTEM/apps/mobile/ios/
+OJT-MONITORING-AND-MANAGEMENT-SYSTEM/apps/mobile/web-build/
+OJT-MONITORING-AND-MANAGEMENT-SYSTEM/output/
+OJT-MONITORING-AND-MANAGEMENT-SYSTEM/OJT-CDM/
