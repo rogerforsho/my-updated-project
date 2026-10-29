@@ -715,3 +715,8 @@ test('Supervisor bulk verify only includes clean logs, never flagged entries', (
   assert.doesNotMatch(page, /Verify this page/);
   assert.match(page, /r\.time_out_flag_reason/);
 });
+
+test('Vercel traces from the Git root so the builder finds apps/web (MODULE_NOT_FOUND noop.js)', () => {
+  const config = fs.readFileSync(path.join(root, 'apps/web/next.config.ts'), 'utf8');
+  assert.match(config, /outputFileTracingRoot: path\.resolve\(__dirname, process\.env\.VERCEL \? '\.\.\/\.\.\/\.\.' : '\.\.\/\.\.'\)/);
+});

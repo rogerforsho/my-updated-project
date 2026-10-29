@@ -31,7 +31,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: process.env.VERCEL ? undefined : 'standalone',
-  outputFileTracingRoot: path.resolve(__dirname, '../..'),
+  // Vercel resolves traced paths from the Git root, one level above the workspace root.
+  outputFileTracingRoot: path.resolve(__dirname, process.env.VERCEL ? '../../..' : '../..'),
   transpilePackages: ['@ojt/shared'],
   // 5 MB validated file plus multipart overhead. Keep the transport bounded.
   experimental: { serverActions: { bodySizeLimit: '6mb' } },
