@@ -1,0 +1,21 @@
+%%{init: {"theme":"base","themeVariables":{"primaryColor":"#e8f2ff","primaryTextColor":"#172b4d","primaryBorderColor":"#3976b8","lineColor":"#64748b","fontFamily":"Arial","fontSize":"16px"},"flowchart":{"curve":"basis","nodeSpacing":35,"rankSpacing":70}}}%%
+flowchart LR
+ S["OJT Student<br/>Mobile app"]
+ V["Supervisor<br/>Web / desktop"]
+ C["OJT Coordinator<br/>Web / desktop"]
+ A["Super Admin<br/>Web / desktop"]
+ X["Public certificate verifier"]
+ P(("0<br/>OJT Monitoring<br/>and Management<br/>System"))
+ S -->|"Registration and credentials; placement requests;<br/>attendance evidence; reports and incidents;<br/>evaluation appeals; information requests"| P
+ P -->|"Account status; placement and schedule decisions;<br/>attendance and progress; report feedback;<br/>evaluation and completion results; announcements"| S
+ V -->|"Credentials; onboarding response; attendance decisions;<br/>accomplishment decisions; evaluations;<br/>messages; information requests"| P
+ P -->|"Access and onboarding results; assigned-student records;<br/>review results; messages and notifications"| V
+ C -->|"Credentials; account reviews; placement and schedule decisions;<br/>requirements and incident responses; attendance exceptions;<br/>appeal decisions; final grades and completion decisions;<br/>announcements; messages; report requests"| P
+ P -->|"Access results; scoped student records and submissions;<br/>review and completion results; academic summaries;<br/>messages and notifications"| C
+ A -->|"Credentials; account and permission changes;<br/>system settings; audit requests; announcements"| P
+ P -->|"Access results; account and settings results;<br/>audit metadata; publication results"| A
+ X -->|"Certificate verification code"| P
+ P -->|"Certificate verification result"| X
+ classDef entity fill:#f8fafc,stroke:#64748b,color:#172b4d;
+ class S,V,C,A,X entity;
+

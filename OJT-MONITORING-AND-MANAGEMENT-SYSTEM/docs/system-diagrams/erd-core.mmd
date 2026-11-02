@@ -1,0 +1,160 @@
+erDiagram
+ direction LR
+ users ||--o| students : "has student profile"
+ users ||--o| supervisors : "has supervisor profile"
+ companies |o--o{ supervisors : "affiliates"
+ companies ||--o{ company_branches : "has"
+ students ||--o{ student_assignments : "receives"
+ companies ||--o{ student_assignments : "hosts"
+ company_branches ||--o{ student_assignments : "locates"
+ supervisors ||--o{ student_assignments : "supervises"
+ students ||--o{ company_requests : "requests HTE verification"
+ companies |o--o{ company_requests : "approved HTE"
+ company_branches |o--o{ company_requests : "approved branch"
+ students ||--o{ practicum_schedules : "proposes"
+ companies |o--o{ practicum_schedules : "selected HTE"
+ company_branches |o--o{ practicum_schedules : "selected branch"
+ students ||--o{ attendance : "logs"
+ student_assignments ||--o{ attendance : "covers"
+ students ||--o| internship_progress : "tracks"
+ students ||--o{ reports : "submits"
+ students ||--o{ incident_reports : "reports confidentially"
+ students ||--o{ evaluations : "receives"
+ supervisors ||--o{ evaluations : "writes"
+ evaluations ||--o{ evaluation_appeals : "may be appealed"
+ students ||--o{ evaluation_appeals : "files"
+ students ||--o| ojt_final_grades : "receives final grade"
+ users ||--o{ ojt_final_grades : "records"
+ students ||--o{ certificates : "receives"
+ users |o--o{ certificates : "issues"
+ users {
+  uuid user_id PK
+  text full_name
+  text email UK
+  text role
+  text account_status
+ }
+ students {
+  uuid student_id PK
+  uuid user_id FK,UK
+  text student_number UK
+  text course
+  int year_level
+  int required_hours
+  text status
+ }
+ supervisors {
+  uuid supervisor_id PK
+  uuid user_id FK,UK
+  uuid company_id FK
+  text position
+ }
+ companies {
+  uuid company_id PK
+  text company_name
+  text address
+  text status
+  int max_interns
+  boolean accepting_students
+ }
+ company_branches {
+  uuid branch_id PK
+  uuid company_id FK
+  text branch_name
+  numeric latitude
+  numeric longitude
+  int geofence_radius_meters
+  text status
+ }
+ student_assignments {
+  uuid assignment_id PK
+  uuid student_id FK
+  uuid company_id FK
+  uuid branch_id FK
+  uuid supervisor_id FK
+  date start_date
+  date end_date
+  text assignment_status
+ }
+ company_requests {
+  uuid request_id PK
+  uuid student_id FK
+  uuid company_id FK
+  uuid branch_id FK
+  text requested_company_name
+  text status
+ }
+ practicum_schedules {
+  uuid schedule_id PK
+  uuid student_id FK
+  uuid company_id FK
+  uuid branch_id FK
+  text work_modality
+  date start_date
+  date end_date
+  text status
+ }
+ attendance {
+  uuid attendance_id PK
+  uuid student_id FK
+  uuid assignment_id FK
+  date attendance_date
+  timestamptz time_in
+  timestamptz time_out
+  text verification_status
+  numeric credited_hours
+ }
+ internship_progress {
+  uuid progress_id PK
+  uuid student_id FK,UK
+  numeric completed_hours
+  numeric remaining_hours
+  text progress_status
+ }
+ reports {
+  uuid report_id PK
+  uuid student_id FK
+  text report_type
+  text file_path
+  text status
+  text supervisor_decision
+ }
+ incident_reports {
+  uuid incident_id PK
+  uuid student_id FK
+  text category
+  text description
+  text status
+  text coordinator_response
+ }
+ evaluations {
+  uuid evaluation_id PK
+  uuid student_id FK
+  uuid supervisor_id FK
+  text evaluation_type
+  numeric performance_score
+  jsonb rubric_scores
+ }
+ evaluation_appeals {
+  uuid appeal_id PK
+  uuid evaluation_id FK
+  uuid student_id FK
+  text appeal_reason
+  text status
+  numeric resolved_score
+ }
+ ojt_final_grades {
+  uuid student_id PK,FK
+  numeric final_grade
+  uuid recorded_by_user_id FK
+ }
+ certificates {
+  uuid certificate_id PK
+  uuid student_id FK
+  uuid issued_by_user_id FK
+  text verification_code UK
+  numeric hours_rendered
+  text status
+  timestamptz finalized_at
+ }
+

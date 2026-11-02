@@ -1,0 +1,92 @@
+erDiagram
+ direction LR
+ users ||--o| coordinators : "has coordinator profile"
+ users ||--o| admins : "has admin profile"
+ users ||--o{ staff_capability_grants : "receives scoped grants"
+ users |o--o{ announcements : "authors"
+ users |o--o{ notifications : "sends"
+ users ||--o{ notifications : "receives"
+ users |o--o{ audit_logs : "acts"
+ users ||--o{ chat_conversations : "coordinator participant"
+ users ||--o{ chat_conversations : "supervisor participant"
+ chat_conversations ||--o{ chat_messages : "contains"
+ users ||--o{ chat_messages : "sends"
+ students |o--o{ chat_messages : "optional student tag"
+ chat_conversations |o--o{ notifications : "related conversation"
+ companies ||--o{ work_schedules : "default work hours"
+ companies |o--o{ non_working_days : "company scope"
+ companies ||--o{ supervisor_invites : "invites supervisor"
+ users {
+  uuid user_id PK
+  text role
+ }
+ students {
+  uuid student_id PK
+ }
+ companies {
+  uuid company_id PK
+ }
+ coordinators {
+  uuid coordinator_id PK
+  uuid user_id FK,UK
+  text department
+ }
+ admins {
+  uuid admin_id PK
+  uuid user_id FK,UK
+ }
+ staff_capability_grants {
+  uuid grant_id PK
+  uuid user_id FK
+  text capability
+  text department_scope
+ }
+ announcements {
+  uuid announcement_id PK
+  uuid author_user_id FK
+  text title
+  text target_role
+  text target_department
+ }
+ notifications {
+  uuid notification_id PK
+  uuid sender_user_id FK
+  uuid receiver_user_id FK
+  uuid related_conversation_id FK
+  text message
+  text status
+ }
+ audit_logs {
+  uuid log_id PK
+  uuid actor_user_id FK
+  text action
+  text entity_type
+  text entity_id
+ }
+ chat_conversations {
+  uuid conversation_id PK
+  uuid coordinator_user_id FK
+  uuid supervisor_user_id FK
+ }
+ chat_messages {
+  uuid message_id PK
+  uuid conversation_id FK
+  uuid sender_user_id FK
+  uuid tagged_student_id FK
+  text content
+  text attachment_path
+ }
+ work_schedules {
+  uuid schedule_id PK
+  uuid company_id FK
+  int day_of_week
+ }
+ non_working_days {
+  uuid day_id PK
+  uuid company_id FK
+ }
+ supervisor_invites {
+  uuid invite_id PK
+  uuid company_id FK
+ }
+
