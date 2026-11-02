@@ -23,11 +23,15 @@ import {
   AlertTriangle,
   CheckCircle2,
   Download,
+  Mail,
+  Building2,
 } from '@/src/components/ui/Icons';
 import {
   updateUserAccountStatus,
   createSystemUser,
   deactivateSystemUser,
+  updateCoordinatorDepartments,
+  resendStaffInvite,
   listAllUsers,
   type UserManagementItem,
   type CreateSystemUserInput,
@@ -118,6 +122,13 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
   const [deleteTarget, setDeleteTarget] = useState<UserManagementItem | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [deleteReason, setDeleteReason] = useState('');
+
+  // Edit Coordinator departments modal state
+  const [deptTarget, setDeptTarget] = useState<UserManagementItem | null>(null);
+  const [deptSelection, setDeptSelection] = useState<Array<'ICS' | 'IBE'>>([]);
+  const [deptLoading, setDeptLoading] = useState(false);
+  const [deptError, setDeptError] = useState('');
 
   // Coordinator invitation state
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -297,7 +308,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
 
     setDeleteLoading(true);
     setDeleteError('');
-    const res = await deactivateSystemUser(deleteTarget.user_id);
+    const res = await deactivateSystemUser(deleteTarget.user_id, deleteReason);
     setDeleteLoading(false);
 
     if (res.error) {
@@ -312,6 +323,39 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
     setDeleteTarget(null);
     fetchUsers(page, roleFilter, statusFilter, searchQuery, departmentFilter);
     loadAudit();
+  };
+
+  const openDepartmentEditor = (u: UserManagementItem) => {
+    setDeptError('');
+    setDeptSelection((u.department?.split(', ') ?? []).filter((d): d is 'ICS' | 'IBE' => d === 'ICS' || d === 'IBE'));
+    setDeptTarget(u);
+  };
+
+  const handleSaveDepartments = async () => {
+    if (!deptTarget) return;
+    setDeptLoading(true);
+    setDeptError('');
+    const res = await updateCoordinatorDepartments(deptTarget.user_id, deptSelection);
+    setDeptLoading(false);
+    if (res.error) {
+      setDeptError(res.error.message);
+      return;
+    }
+    setMsg({ type: 'success', text: `Department access updated for ${deptTarget.full_name}.` });
+    setDeptTarget(null);
+    fetchUsers(page, roleFilter, statusFilter, searchQuery, departmentFilter);
+    loadAudit();
+  };
+
+  const handleResendInvite = async (u: UserManagementItem) => {
+    setLoadingId(u.user_id);
+    setMsg(null);
+    const res = await resendStaffInvite(u.user_id);
+    setLoadingId(null);
+    setMsg(res.error
+      ? { type: 'error', text: res.error.message }
+      : { type: 'success', text: `Setup link sent to ${u.email}.` });
+    if (!res.error) loadAudit();
   };
 
   const handleCreateStaff = async (e: React.FormEvent) => {
@@ -602,6 +646,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
                     ) : (
                       users.map((u) => {
                         const canApprove = u.account_status === 'pending' && u.role !== 'Student';
+                        const isStaff = u.role === 'Coordinator' || u.role === 'Supervisor';
                         const hasActions = canApprove || u.account_status === 'active' || u.account_status === 'inactive';
                         return (
                           <tr key={u.user_id} className="h-[52px] hover:bg-[#F7FAF6] dark:hover:bg-slate-800/50 transition-colors">
@@ -652,14 +697,24 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
                                   {menuUserId === u.user_id && (
                                     <>
                                       <button type="button" tabIndex={-1} aria-hidden="true" className="fixed inset-0 z-10 cursor-default" onClick={() => setMenuUserId(null)} />
-                                      <div role="menu" className="absolute right-0 mt-1 w-44 z-20 rounded-xl border border-[#DFE7DF] dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg py-1 text-left">
+                                      <div role="menu" className="absolute right-0 mt-1 w-52 z-20 rounded-xl border border-[#DFE7DF] dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg py-1 text-left">
                                         {canApprove && (
                                           <button type="button" role="menuitem" onClick={() => { setMenuUserId(null); handleStatusChange(u.user_id, 'active'); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-emerald-700 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
                                             <Check className="w-4 h-4" /> Approve account
                                           </button>
                                         )}
+                                        {u.account_status === 'active' && u.role === 'Coordinator' && (
+                                          <button type="button" role="menuitem" onClick={() => { setMenuUserId(null); openDepartmentEditor(u); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+                                            <Building2 className="w-4 h-4" /> Edit departments
+                                          </button>
+                                        )}
+                                        {u.account_status === 'active' && isStaff && (
+                                          <button type="button" role="menuitem" onClick={() => { setMenuUserId(null); handleResendInvite(u); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+                                            <Mail className="w-4 h-4" /> Resend setup link
+                                          </button>
+                                        )}
                                         {u.account_status === 'active' && (
-                                          <button type="button" role="menuitem" onClick={() => { setMenuUserId(null); setDeleteError(''); setDeleteTarget(u); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-700 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+                                          <button type="button" role="menuitem" onClick={() => { setMenuUserId(null); setDeleteError(''); setDeleteReason(''); setDeleteTarget(u); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-700 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
                                             <Trash2 className="w-4 h-4" /> Deactivate
                                           </button>
                                         )}
@@ -1016,6 +1071,18 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
             </div>
           )}
 
+          <label className="block space-y-1">
+            <span className="text-xs font-semibold text-slate-700">Reason (kept in the audit log)</span>
+            <textarea
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              maxLength={300}
+              rows={2}
+              placeholder="e.g. Resigned, left the institution"
+              className="w-full p-2.5 rounded-lg border border-slate-200 bg-white text-xs text-slate-900 outline-none focus:border-[#0A3824] focus:ring-1 focus:ring-[#0A3824]"
+            />
+          </label>
+
           {deleteError && (
             <div className="p-3 rounded-lg bg-red-50 text-red-700 text-xs font-medium border border-red-200">
               {deleteError}
@@ -1036,10 +1103,50 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
               type="button"
               variant="destructive"
               loading={deleteLoading}
+              disabled={!deleteReason.trim()}
               onClick={handleDeleteUser}
               className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold cursor-pointer"
             >
               Deactivate Account
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal: Edit Coordinator departments */}
+      <Modal title="Edit Department Access" open={!!deptTarget} onClose={() => { if (!deptLoading) setDeptTarget(null); }}>
+        <div className="space-y-4">
+          <p className="text-xs text-slate-600">
+            Departments <span className="font-semibold">{deptTarget?.full_name}</span> can manage. Removing a department is blocked while its students have active placements.
+          </p>
+          <fieldset className="space-y-2">
+            <legend className="text-xs font-semibold text-slate-700">Department access</legend>
+            {(['ICS', 'IBE'] as const).map(department => (
+              <label key={department} className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={deptSelection.includes(department)}
+                  onChange={event => setDeptSelection(event.target.checked
+                    ? [...deptSelection, department]
+                    : deptSelection.filter(item => item !== department))}
+                />
+                {department === 'ICS' ? 'Institute of Computing Studies (ICS)' : 'Institute of Business and Entrepreneurship (IBE)'}
+              </label>
+            ))}
+          </fieldset>
+          {deptError && (
+            <div role="alert" className="p-3 rounded-lg bg-red-50 text-red-700 text-xs font-medium border border-red-200">{deptError}</div>
+          )}
+          <div className="flex gap-2.5 pt-2">
+            <Button type="button" variant="ghost" disabled={deptLoading} onClick={() => setDeptTarget(null)} className="flex-1 cursor-pointer">Cancel</Button>
+            <Button
+              type="button"
+              loading={deptLoading}
+              disabled={deptSelection.length === 0}
+              onClick={handleSaveDepartments}
+              className="flex-1 bg-[#0A3824] hover:bg-[#092E1D] text-[var(--cdm-sand)] font-bold cursor-pointer"
+            >
+              Save Access
             </Button>
           </div>
         </div>

@@ -26,20 +26,46 @@ async function assertSuperAdmin() {
   };
 }
 
-// A Coordinator "has" the students of their granted departments; block removal while any of them has an active placement.
-async function coordinatorRemovalBlocked(service: ReturnType<typeof serviceClient>, userId: string): Promise<AppResult<null> | null> {
+type Service = ReturnType<typeof serviceClient>;
+const COORDINATOR_CAPABILITIES = ['academic_workflows', 'department_reports'];
+
+// A Coordinator "has" the students of their granted departments; block while any of those departments has an active placement.
+async function departmentStudentsBlocked(service: Service, departments: string[], action: string): Promise<AppResult<null> | null> {
+  for (const department of departments) {
+    const { count, error } = await restrictDepartment(
+      service.from('students').select('student_id, student_assignments!inner(assignment_id)', { count: 'exact', head: true })
+        .eq('student_assignments.assignment_status', 'active'),
+      department as 'ICS' | 'IBE');
+    if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not verify the Coordinator\'s active students.' } };
+    if (count) return { data: null, error: { code: 'FORBIDDEN', message: `This Coordinator still has ${count} active student(s) in ${department}. Complete or reassign their placements before ${action}.` } };
+  }
+  return null;
+}
+
+async function coordinatorRemovalBlocked(service: Service, userId: string): Promise<AppResult<null> | null> {
   const { data: grants, error } = await service.from('staff_capability_grants').select('department_scope')
     .eq('user_id', userId).eq('capability', 'academic_workflows').is('revoked_at', null);
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not verify the Coordinator\'s active students.' } };
-  for (const { department_scope } of grants ?? []) {
-    const { count, error: countError } = await restrictDepartment(
-      service.from('students').select('student_id, student_assignments!inner(assignment_id)', { count: 'exact', head: true })
-        .eq('student_assignments.assignment_status', 'active'),
-      department_scope as 'ICS' | 'IBE');
-    if (countError) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not verify the Coordinator\'s active students.' } };
-    if (count) return { data: null, error: { code: 'FORBIDDEN', message: `This Coordinator still has ${count} active student(s) in ${department_scope}. Complete or reassign their placements before deactivating the account.` } };
-  }
+  return departmentStudentsBlocked(service, (grants ?? []).map(grant => grant.department_scope), 'deactivating the account');
+}
+
+async function supervisorRemovalBlocked(service: Service, userId: string): Promise<AppResult<null> | null> {
+  const failure: AppResult<null> = { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not verify the Supervisor\'s active students.' } };
+  const { data: supervisor, error } = await service.from('supervisors').select('supervisor_id').eq('user_id', userId).maybeSingle();
+  if (error) return failure;
+  if (!supervisor) return null;
+  const { count, error: countError } = await service.from('student_assignments').select('assignment_id', { count: 'exact', head: true })
+    .eq('supervisor_id', supervisor.supervisor_id).eq('assignment_status', 'active');
+  if (countError) return failure;
+  if (count) return { data: null, error: { code: 'FORBIDDEN', message: `This Supervisor still supervises ${count} active student(s). Complete or reassign their placements before deactivating the account.` } };
   return null;
+}
+
+// Staff who still carry active students cannot be switched off.
+function removalBlocked(service: Service, role: string, userId: string) {
+  if (role === 'Coordinator') return coordinatorRemovalBlocked(service, userId);
+  if (role === 'Supervisor') return supervisorRemovalBlocked(service, userId);
+  return Promise.resolve(null);
 }
 
 export interface UserManagementItem {
@@ -254,8 +280,8 @@ export async function updateUserAccountStatus(
   if (user_id === user.id && status !== 'active') {
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'You cannot deactivate your own administrator account.' } };
   }
-  if (target.role === 'Coordinator' && status !== 'active') {
-    const blocked = await coordinatorRemovalBlocked(service, user_id);
+  if (status !== 'active') {
+    const blocked = await removalBlocked(service, target.role, user_id);
     if (blocked) return blocked;
   }
 
@@ -316,7 +342,8 @@ export async function getSystemOverview(): Promise<AppResult<{
   };
 }
 export async function deactivateSystemUser(
-  user_id: string
+  user_id: string,
+  reason?: string
 ): Promise<AppResult<null>> {
   const { authorized, user: adminUser } = await assertSuperAdmin();
   if (!authorized || !adminUser) {
@@ -339,10 +366,8 @@ export async function deactivateSystemUser(
   if (!targetUser) {
     return { data: null, error: { code: 'NOT_FOUND', message: 'User not found.' } };
   }
-  if (targetUser.role === 'Coordinator') {
-    const blocked = await coordinatorRemovalBlocked(service, user_id);
-    if (blocked) return blocked;
-  }
+  const blocked = await removalBlocked(service, targetUser.role, user_id);
+  if (blocked) return blocked;
 
   // Disable access without deleting the Auth identity or linked records.
   const { error: dbError } = await service
@@ -364,9 +389,93 @@ export async function deactivateSystemUser(
       user_name: targetUser.full_name,
       user_email: targetUser.email,
       user_role: targetUser.role,
+      ...(reason?.trim() && { reason: reason.trim().slice(0, 300) }),
     },
   });
 
+  return { data: null, error: null };
+}
+
+export async function updateCoordinatorDepartments(
+  user_id: string,
+  departmentScopes: Array<'ICS' | 'IBE'>
+): Promise<AppResult<null>> {
+  const { authorized, user } = await assertSuperAdmin();
+  if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
+
+  const next = [...new Set(departmentScopes ?? [])];
+  if (next.length === 0 || next.some(department => !['ICS', 'IBE'].includes(department)))
+    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Select at least one OJT Coordinator department.' } };
+
+  const service = serviceClient();
+  const { data: target } = await service.from('users').select('role, account_status').eq('user_id', user_id).maybeSingle();
+  if (!target) return { data: null, error: { code: 'NOT_FOUND', message: 'User account no longer exists.' } };
+  if (target.role !== 'Coordinator' || target.account_status !== 'active')
+    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Department access can only be edited on an active OJT Coordinator account.' } };
+
+  const { data: grants, error: grantError } = await service.from('staff_capability_grants').select('capability, department_scope')
+    .eq('user_id', user_id).in('capability', COORDINATOR_CAPABILITIES).is('revoked_at', null);
+  if (grantError) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not load the Coordinator\'s department access.' } };
+
+  const held = new Set((grants ?? []).map(grant => `${grant.capability}:${grant.department_scope}`));
+  const removed = [...new Set((grants ?? []).map(grant => grant.department_scope as string))].filter(department => !(next as string[]).includes(department));
+  const added = next.filter(department => COORDINATOR_CAPABILITIES.some(capability => !held.has(`${capability}:${department}`)));
+  if (removed.length === 0 && added.length === 0) return { data: null, error: null };
+
+  const blocked = await departmentStudentsBlocked(service, removed, 'removing that department');
+  if (blocked) return blocked;
+
+  // Revoke before granting: a failure part-way leaves less access, never more.
+  if (removed.length) {
+    const { error } = await service.from('staff_capability_grants')
+      .update({ revoked_at: new Date().toISOString(), revoked_by_user_id: user.id })
+      .eq('user_id', user_id).in('capability', COORDINATOR_CAPABILITIES).in('department_scope', removed).is('revoked_at', null);
+    if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to update department access.' } };
+  }
+  const missing = added.flatMap(department => COORDINATOR_CAPABILITIES
+    .filter(capability => !held.has(`${capability}:${department}`))
+    .map(capability => ({ user_id, capability, department_scope: department, granted_by_user_id: user.id })));
+  if (missing.length) {
+    const { error } = await service.from('staff_capability_grants').insert(missing);
+    if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to update department access.' } };
+  }
+  const { error: legacyError } = await service.from('coordinators').update({ department: next[0] }).eq('user_id', user_id);
+  if (legacyError) console.error('[updateCoordinatorDepartments] coordinators.department not synced:', user_id);
+
+  await recordAuditEvent({
+    actor_user_id: user.id,
+    action: 'COORDINATOR_DEPARTMENTS_UPDATED',
+    entity_type: 'user',
+    entity_id: user_id,
+    details: { departments: next, added, removed },
+  });
+  return { data: null, error: null };
+}
+
+export async function resendStaffInvite(user_id: string): Promise<AppResult<null>> {
+  const { authorized, user } = await assertSuperAdmin();
+  if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
+
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!siteUrl) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Account invitation is not configured.' } };
+  const service = serviceClient();
+  const { data: target } = await service.from('users').select('email, role, account_status').eq('user_id', user_id).maybeSingle();
+  if (!target) return { data: null, error: { code: 'NOT_FOUND', message: 'User account no longer exists.' } };
+  if (!['Coordinator', 'Supervisor'].includes(target.role) || target.account_status !== 'active')
+    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'A setup link can only be sent to an active Coordinator or Supervisor account.' } };
+
+  // Same one-time password link as the original invitation; it only ever goes to the account's own address.
+  const redirectTo = `${siteUrl.replace(/\/$/, '')}/auth/callback?next=${encodeURIComponent('/auth/set-password')}`;
+  const { error } = await service.auth.resetPasswordForEmail(target.email, { redirectTo });
+  if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to send the setup link.' } };
+
+  await recordAuditEvent({
+    actor_user_id: user.id,
+    action: 'STAFF_INVITE_RESENT',
+    entity_type: 'user',
+    entity_id: user_id,
+    details: { role: target.role, email: target.email },
+  });
   return { data: null, error: null };
 }
 

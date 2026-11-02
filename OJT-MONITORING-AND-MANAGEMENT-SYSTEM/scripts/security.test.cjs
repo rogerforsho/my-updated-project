@@ -1198,6 +1198,184 @@ test('Super Admin cannot deactivate a Coordinator who still has active students 
   assert.equal(ibeUser.account_status, 'inactive');
 });
 
+test('Super Admin cannot deactivate a Supervisor who still supervises active students', async () => {
+  const fixture = workflowFixture('Admin', { tables: {
+    supervisors: [{ supervisor_id: 'sup-busy', user_id: 'sv-busy' }, { supervisor_id: 'sup-free', user_id: 'sv-free' }],
+    student_assignments: [
+      { assignment_id: 'a1', supervisor_id: 'sup-busy', assignment_status: 'active' },
+      { assignment_id: 'a2', supervisor_id: 'sup-free', assignment_status: 'completed' },
+    ],
+  } });
+  const supervisor = id => ({ user_id: id, role: 'Supervisor', account_status: 'active', full_name: id, email: `${id}@example.test` });
+  const [busy, free, noProfile] = ['sv-busy', 'sv-free', 'sv-none'].map(supervisor);
+  fixture.tables.users.push(busy, free, noProfile);
+  const admin = fixture.module('admin');
+  for (const result of [await admin.deactivateSystemUser('sv-busy'), await admin.updateUserAccountStatus('sv-busy', 'inactive')]) {
+    assert.equal(result.error?.code, 'FORBIDDEN');
+    assert.match(result.error.message, /active student/i);
+  }
+  assert.equal(busy.account_status, 'active');
+  assert.equal(fixture.events.length, 0);
+  assert.equal((await admin.deactivateSystemUser('sv-free')).error, null, 'completed placements do not block');
+  assert.equal(free.account_status, 'inactive');
+  assert.equal((await admin.deactivateSystemUser('sv-none')).error, null, 'a Supervisor without a profile row has nothing to block on');
+  assert.equal((await admin.updateUserAccountStatus('sv-busy', 'active')).error, null, 'reactivation is never blocked');
+});
+
+test('deactivation records the Super Admin reason, trimmed and capped, in the audit event', async () => {
+  const cases = [['  Resigned  ', 'Resigned'], ['x'.repeat(400), 'x'.repeat(300)], ['   ', undefined], [undefined, undefined]];
+  for (const [input, expected] of cases) {
+    const fixture = workflowFixture('Admin');
+    fixture.tables.users.push({ user_id: 'target', role: 'Supervisor', account_status: 'active', full_name: 'Target', email: 'target@example.test' });
+    assert.equal((await fixture.module('admin').deactivateSystemUser('target', input)).error, null);
+    assert.equal(fixture.events[0].action, 'USER_DEACTIVATED');
+    assert.equal(fixture.events[0].details.reason, expected);
+    assert.equal('reason' in fixture.events[0].details, expected !== undefined);
+  }
+});
+
+function coordinatorDepartmentFixture(role = 'Admin', options = {}) {
+  const grants = (department, capabilities = ['academic_workflows', 'department_reports']) =>
+    capabilities.map(capability => ({ user_id: 'co', capability, department_scope: department, revoked_at: null }));
+  const fixture = workflowFixture(role, { ...options, tables: {
+    staff_capability_grants: [...grants('ICS'), ...(options.both ? grants('IBE') : [])],
+    coordinators: [{ user_id: 'co', department: 'ICS' }],
+    students: [
+      { student_id: 's-ics', course: 'BSIT', student_assignments: { assignment_status: options.icsActive ? 'active' : 'completed' } },
+      { student_id: 's-ibe', course: 'BSBA', student_assignments: { assignment_status: options.ibeActive ? 'active' : 'completed' } },
+    ],
+    ...options.tables,
+  } });
+  fixture.tables.users.push({ user_id: 'co', role: 'Coordinator', account_status: 'active', full_name: 'Co', email: 'co@example.test' });
+  const active = () => fixture.tables.staff_capability_grants.filter(grant => grant.user_id === 'co' && grant.revoked_at == null)
+    .map(grant => `${grant.capability}:${grant.department_scope}`).sort();
+  return { fixture, active, admin: fixture.module('admin') };
+}
+
+test('Super Admin can add a department to a Coordinator with both academic and report grants', async () => {
+  const { fixture, active, admin } = coordinatorDepartmentFixture();
+  const result = await admin.updateCoordinatorDepartments('co', ['ICS', 'IBE']);
+  assert.equal(result.error, null);
+  assert.deepEqual(active(), ['academic_workflows:IBE', 'academic_workflows:ICS', 'department_reports:IBE', 'department_reports:ICS']);
+  assert.equal(fixture.tables.staff_capability_grants.find(grant => grant.department_scope === 'IBE').granted_by_user_id, 'actor');
+  assert.equal(fixture.events.length, 1);
+  assert.equal(fixture.events[0].action, 'COORDINATOR_DEPARTMENTS_UPDATED');
+  assert.deepEqual(JSON.parse(JSON.stringify(fixture.events[0].details)), { departments: ['ICS', 'IBE'], added: ['IBE'], removed: [] });
+});
+
+test('removing a Coordinator department revokes its grants, keeps history and syncs the legacy column', async () => {
+  const { fixture, active, admin } = coordinatorDepartmentFixture('Admin', { both: true });
+  const result = await admin.updateCoordinatorDepartments('co', ['IBE']);
+  assert.equal(result.error, null);
+  assert.deepEqual(active(), ['academic_workflows:IBE', 'department_reports:IBE']);
+  const revoked = fixture.tables.staff_capability_grants.filter(grant => grant.revoked_at != null);
+  assert.equal(revoked.length, 2, 'revoked rows stay for the audit trail');
+  assert.ok(revoked.every(grant => grant.department_scope === 'ICS' && grant.revoked_by_user_id === 'actor'));
+  assert.equal(fixture.tables.coordinators[0].department, 'IBE');
+  assert.deepEqual(JSON.parse(JSON.stringify(fixture.events[0].details)), { departments: ['IBE'], added: [], removed: ['ICS'] });
+});
+
+test('removing a department with active students is blocked and changes nothing', async () => {
+  const { fixture, active, admin } = coordinatorDepartmentFixture('Admin', { both: true, icsActive: true });
+  const result = await admin.updateCoordinatorDepartments('co', ['IBE']);
+  assert.equal(result.error.code, 'FORBIDDEN');
+  assert.match(result.error.message, /active student.*ICS/i);
+  assert.equal(active().length, 4);
+  assert.equal(fixture.events.length, 0);
+  assert.equal(fixture.tables.coordinators[0].department, 'ICS');
+  // Keeping that department and dropping the other one is allowed.
+  assert.equal((await admin.updateCoordinatorDepartments('co', ['ICS'])).error, null);
+  assert.deepEqual(active(), ['academic_workflows:ICS', 'department_reports:ICS']);
+});
+
+test('department edit repairs a Coordinator that is missing one of the two grants and ignores no-ops', async () => {
+  const { fixture, active, admin } = coordinatorDepartmentFixture('Admin', { tables: {
+    staff_capability_grants: [{ user_id: 'co', capability: 'academic_workflows', department_scope: 'ICS', revoked_at: null }],
+  } });
+  assert.equal((await admin.updateCoordinatorDepartments('co', ['ICS'])).error, null);
+  assert.deepEqual(active(), ['academic_workflows:ICS', 'department_reports:ICS']);
+  const writes = fixture.writes.length;
+  const events = fixture.events.length;
+  assert.equal((await admin.updateCoordinatorDepartments('co', ['ICS', 'ICS'])).error, null);
+  assert.equal(fixture.writes.length, writes, 'unchanged selection writes nothing');
+  assert.equal(fixture.events.length, events, 'unchanged selection is not audited');
+});
+
+test('department edit rejects bad input, wrong targets and non-admins before changing anything', async () => {
+  const { fixture, active, admin } = coordinatorDepartmentFixture();
+  for (const bad of [[], ['XYZ'], ['ICS', 'XYZ'], undefined]) {
+    assert.equal((await admin.updateCoordinatorDepartments('co', bad)).error.code, 'VALIDATION_FAILURE');
+  }
+  assert.equal((await admin.updateCoordinatorDepartments('missing', ['ICS'])).error.code, 'NOT_FOUND');
+  fixture.tables.users.push({ user_id: 'sv', role: 'Supervisor', account_status: 'active' }, { user_id: 'off', role: 'Coordinator', account_status: 'inactive' });
+  assert.equal((await admin.updateCoordinatorDepartments('sv', ['ICS'])).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await admin.updateCoordinatorDepartments('off', ['ICS'])).error.code, 'VALIDATION_FAILURE', 'inactive Coordinators cannot be edited');
+  assert.deepEqual(active(), ['academic_workflows:ICS', 'department_reports:ICS']);
+  assert.equal(fixture.events.length, 0);
+
+  const nonAdmin = coordinatorDepartmentFixture('Coordinator');
+  const denied = await nonAdmin.admin.updateCoordinatorDepartments('co', ['ICS', 'IBE']);
+  assert.equal(denied.error.code, 'FORBIDDEN');
+  assert.equal(nonAdmin.fixture.serviceCalls, 0);
+  const aal1 = coordinatorDepartmentFixture('Admin', { aal: 'aal1' });
+  assert.equal((await aal1.admin.updateCoordinatorDepartments('co', ['IBE'])).error.code, 'FORBIDDEN');
+});
+
+test('department edit surfaces failed writes without claiming success or auditing', async () => {
+  for (const [table, op] of [['staff_capability_grants', 'update'], ['staff_capability_grants', 'insert']]) {
+    const { fixture, admin } = coordinatorDepartmentFixture('Admin', { both: true, fail: (t, o) => t === table && o === op ? 'db down' : null });
+    const selection = op === 'update' ? ['IBE'] : ['ICS', 'IBE'];
+    if (op === 'insert') fixture.tables.staff_capability_grants = fixture.tables.staff_capability_grants.filter(grant => grant.department_scope === 'ICS');
+    const result = await admin.updateCoordinatorDepartments('co', selection);
+    assert.equal(result.error.code, 'SERVER_FAILURE');
+    assert.equal(fixture.events.length, 0);
+  }
+});
+
+test('Super Admin can resend a setup link only to an active Coordinator or Supervisor', async () => {
+  const fixture = workflowFixture('Admin');
+  fixture.tables.users.push({ user_id: 'new-user', role: 'Coordinator', account_status: 'active', email: 'co@example.test' });
+  fixture.tables.users.push(
+    { user_id: 'sv', role: 'Supervisor', account_status: 'active', email: 'sv@example.test' },
+    { user_id: 'stu', role: 'Student', account_status: 'active', email: 'stu@example.test' },
+    { user_id: 'off', role: 'Coordinator', account_status: 'inactive', email: 'off@example.test' },
+  );
+  const admin = fixture.module('admin');
+  assert.equal((await admin.resendStaffInvite('new-user')).error, null);
+  assert.deepEqual(fixture.invites, ['co@example.test']);
+  assert.equal(fixture.events[0].action, 'STAFF_INVITE_RESENT');
+  assert.equal(fixture.events[0].entity_id, 'new-user');
+  for (const id of ['stu', 'off']) assert.equal((await admin.resendStaffInvite(id)).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await admin.resendStaffInvite('missing')).error.code, 'NOT_FOUND');
+  assert.equal(fixture.invites.length, 1, 'rejected targets receive no email');
+  assert.equal(fixture.events.length, 1);
+});
+
+test('resending a setup link fails closed for mail errors, non-admins and missing AAL2', async () => {
+  const withUser = (role, options) => {
+    const fixture = workflowFixture(role, options);
+    fixture.tables.users.push({ user_id: 'new-user', role: 'Coordinator', account_status: 'active', email: 'co@example.test' });
+    return fixture;
+  };
+  const smtp = withUser('Admin', { inviteError: 'smtp down' });
+  assert.equal((await smtp.module('admin').resendStaffInvite('new-user')).error.code, 'SERVER_FAILURE');
+  assert.equal(smtp.events.length, 0);
+  for (const fixture of [withUser('Coordinator'), withUser('Admin', { aal: 'aal1' })]) {
+    assert.equal((await fixture.module('admin').resendStaffInvite('new-user')).error.code, 'FORBIDDEN');
+    assert.equal(fixture.serviceCalls, 0);
+    assert.deepEqual(fixture.invites, []);
+  }
+});
+
+test('Super Admin UI exposes department editing, resend and a required deactivation reason', () => {
+  const ui = fs.readFileSync(path.join(root, 'apps/web/app/(dashboard)/admin/AdminClient.tsx'), 'utf8');
+  assert.match(ui, /u\.account_status === 'active' && u\.role === 'Coordinator'[\s\S]{0,400}Edit departments/);
+  assert.match(ui, /u\.account_status === 'active' && isStaff[\s\S]{0,400}Resend setup link/);
+  assert.match(ui, /deactivateSystemUser\(deleteTarget\.user_id, deleteReason\)/);
+  assert.match(ui, /disabled=\{!deleteReason\.trim\(\)\}/);
+  assert.match(ui, /disabled=\{deptSelection\.length === 0\}/);
+});
+
 test('Super Admin actions require an AAL2 session before service-role access', async () => {
   const fixture = workflowFixture('Admin', { aal: 'aal1' });
   const result = await fixture.module('admin').listAllUsers();
