@@ -1419,6 +1419,52 @@ test('trusted web actor requires an active public profile matching the Auth user
   assert.equal((await getTrustedActor()).user, null);
 });
 
+test('changing a password keeps the MFA-verified (aal2) session instead of downgrading it', async () => {
+  // Models Supabase Auth: a password sign-in on a client replaces that client's session with a fresh
+  // aal1 one, and updateUser on an aal1 session is refused for a user with a verified MFA factor.
+  const AAL2_REQUIRED = 'AAL2 session is required to update email or password when MFA is enabled.';
+  const sessionClient = () => {
+    const client = { aal: 'aal2', audits: [] };
+    client.auth = {
+      async getUser() { return { data: { user: { id: 'admin', email: 'admin@x.test' } }, error: null }; },
+      async signInWithPassword({ password }) {
+        if (password !== 'current-pass') return { data: null, error: { message: 'Invalid login credentials' } };
+        client.aal = 'aal1';
+        return { data: {}, error: null };
+      },
+      async updateUser() { return client.aal === 'aal2' ? { data: {}, error: null } : { data: null, error: { message: AAL2_REQUIRED } }; },
+    };
+    return client;
+  };
+  const run = async (currentPassword) => {
+    const main = sessionClient();
+    const audits = [];
+    const { changeUserPassword } = load('apps/web/src/services/auth/session.ts', {
+      'server-only': {},
+      'next/navigation': { redirect() {} },
+      '@/src/lib/supabase/server': { async createClient() { return main; } },
+      // A separate client has its own session, so signing in on it cannot touch `main`.
+      '@supabase/supabase-js': { createClient() { return sessionClient(); } },
+      './internal': {},
+      '@/src/lib/audit': { async recordAuditEvent(event) { audits.push(event.action); } },
+    }, { NEXT_PUBLIC_SUPABASE_URL: 'http://localhost:54321', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon' });
+    return { result: await changeUserPassword(currentPassword, 'New-Password-123!'), main, audits };
+  };
+
+  // First-time setup (no current password) never re-authenticates, so it already works.
+  const first = await run('');
+  assert.equal(first.result.error, null);
+  // Symptom reported by the Super Admin: with a current password the change fails and the session drops to aal1.
+  const withCurrent = await run('current-pass');
+  assert.equal(withCurrent.result.error, null, withCurrent.result.error?.message);
+  assert.equal(withCurrent.main.aal, 'aal2', 'verifying the current password must not downgrade the signed-in session');
+  assert.deepEqual(withCurrent.audits, ['PASSWORD_CHANGED']);
+  // A wrong current password is still rejected before anything changes.
+  const wrong = await run('wrong');
+  assert.equal(wrong.result.error.code, 'VALIDATION_FAILURE');
+  assert.equal(wrong.main.aal, 'aal2');
+});
+
 test('approved web workflows share trusted identity resolution while retaining their own authorization', () => {
   for (const service of ['announcements', 'attendance', 'certificates', 'evaluations', 'progress', 'reports', 'schedule']) {
     const source = fs.readFileSync(path.join(root, `apps/web/src/services/${service}.ts`), 'utf8');

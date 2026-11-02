@@ -1,4 +1,5 @@
 import 'server-only';
+import { createClient as createStatelessClient } from '@supabase/supabase-js';
 import { createClient } from '@/src/lib/supabase/server';
 import { authActionLimit, auditSubjectHash, releaseAuthActionLimit } from './internal';
 import { redirect } from 'next/navigation';
@@ -162,9 +163,17 @@ export async function changeUserPassword(currentPassword: string, newPassword: s
   if (!user || !user.email)
     return { data: null, error: { code: 'UNAUTHORIZED', message: 'You must be signed in to change your password.' } };
 
-  // Verify current password if supplied
+  // Verify current password if supplied. This must NOT use `supabase` (the cookie-backed session client):
+  // a password sign-in replaces that session with a fresh aal1 one, so the updateUser call below would
+  // fail with "AAL2 session is required..." for any MFA user (Super Admin) and the MFA gate would reappear.
+  // A throwaway client with no persisted session checks the password and leaves the real session intact.
   if (currentPassword) {
-    const { error: verifyErr } = await supabase.auth.signInWithPassword({
+    const verifier = createStatelessClient(
+      process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key',
+      { auth: { autoRefreshToken: false, persistSession: false } },
+    );
+    const { error: verifyErr } = await verifier.auth.signInWithPassword({
       email: user.email,
       password: currentPassword,
     });
