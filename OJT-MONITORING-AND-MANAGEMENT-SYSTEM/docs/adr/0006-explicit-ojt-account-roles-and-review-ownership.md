@@ -26,4 +26,4 @@ Supervisors approve or return daily accomplishment reports. Coordinators oversee
 
 Authorization must be enforced in server actions, APIs, route guards, and database policies. A Coordinator attendance decision and its required audit entry commit in one database transaction. Role labels, onboarding, attendance state, and document checklists must be consistent across web, mobile, desktop, SQL migrations, and tests. Historical migrations remain immutable; corrections are forward-only. A production data reset must not use `supabase db reset --linked` and must preserve a separately verified copy of Storage objects as well as the database.
 
-Supersedes the proposed OJT Staff consolidation in ADR 0005 and the role model in ADRs 0003 and 0004.
+Supersedes the proposed OJT Staff consolidation in ADR 0005 and the role model in ADRs 0003 and 0004 (those three ADRs were removed; see git history).

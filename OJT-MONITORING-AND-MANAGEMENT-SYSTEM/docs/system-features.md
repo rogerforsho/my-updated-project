@@ -1,6 +1,6 @@
 # OJT Monitoring System: Features by User Role
 
-This lists what the code actually contains. Sources: `docs/system-overview.md`, `docs/testing/feature-matrix.md`, `AGENTS.md`, `apps/`, and `supabase/migrations/`. It is based on static reading plus the loop's browser checks; items the matrix still marks "partial" are called out. The earlier version of this file was a wish list; what it promised but the code lacks is in the last section.
+This lists what the code actually contains. Sources: `docs/system-overview.md`, `docs/testing/web-checklist-2026-11-02.md`, `AGENTS.md`, `apps/`, and `supabase/migrations/`. It is based on static reading plus the loop's browser checks; items the matrix still marks "partial" are called out. The earlier version of this file was a wish list; what it promised but the code lacks is in the last section.
 
 Clients: Expo mobile app (students only), Next.js web portal (staff), a desktop wrapper that reuses the portal, and Supabase (Postgres, Auth, private Storage, RLS). Scope is 4th-year ICS and IBE students of Colegio de Montalban.
 
