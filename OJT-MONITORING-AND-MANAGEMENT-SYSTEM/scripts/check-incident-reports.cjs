@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 async function main() {
   const root = path.join(__dirname, '..');
   const file = '20261024001100_confidential_incident_reports.sql';
-  const migration = fs.readFileSync(path.join(root, 'database/migrations', file), 'utf8');
+  const migration = fs.readFileSync(path.join(root, 'supabase/migrations', file), 'utf8');
   assert.equal(fs.readFileSync(path.join(root, 'supabase/migrations', file), 'utf8'), migration, 'migration copies must match');
   const db = new PGlite();
   const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;

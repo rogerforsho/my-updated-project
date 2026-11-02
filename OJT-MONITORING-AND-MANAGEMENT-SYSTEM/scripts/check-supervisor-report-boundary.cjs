@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 
 async function main() {
   const db = new PGlite();
-  const migration = path.join(__dirname, '../database/migrations/20261020180000_supervisor_accomplishment_decisions.sql');
+  const migration = path.join(__dirname, '../supabase/migrations/20261020180000_supervisor_accomplishment_decisions.sql');
   const mirror = path.join(__dirname, '../supabase/migrations/20261020180000_supervisor_accomplishment_decisions.sql');
   const sql = fs.readFileSync(migration, 'utf8');
   const read = name => fs.readFileSync(path.join(__dirname, '../supabase/migrations', name), 'utf8');

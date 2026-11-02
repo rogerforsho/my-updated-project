@@ -64,7 +64,7 @@ async function main() {
         CREATE POLICY coordinator_update_users ON public.users FOR UPDATE TO authenticated USING (public.get_my_role() IN ('Coordinator', 'Admin')) WITH CHECK (public.get_my_role() IN ('Coordinator', 'Admin'))`);
     } else if (table !== 'certificates') await db.exec(`CREATE POLICY legacy_broad_access ON public.${table} FOR ALL TO authenticated USING (true) WITH CHECK (true)`);
   }
-  const sql = fs.readFileSync(path.join(__dirname, '../database/migrations/029_department_and_document_scope.sql'), 'utf8');
+  const sql = fs.readFileSync(path.join(__dirname, '../supabase/migrations/029_department_and_document_scope.sql'), 'utf8');
   await db.exec(sql);
   await db.exec(sql); // Idempotent retry.
   async function asUser(n, query) {

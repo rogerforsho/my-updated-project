@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 
 const read = (dir, file) => fs.readFileSync(path.join(__dirname, '..', dir, 'migrations', file), 'utf8');
 const migration = file => {
-  const sql = read('database', file);
+  const sql = read('supabase', file);
   assert.equal(read('supabase', file), sql, 'migration copies must match');
   return sql;
 };
@@ -40,7 +40,7 @@ async function main() {
     CREATE TABLE public.notifications (notification_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       sender_user_id uuid, receiver_user_id uuid, message text, status text NOT NULL DEFAULT 'unread');
   `);
-  await db.exec(read('database', '035_coordinator_supervisor_chat.sql'));
+  await db.exec(read('supabase', '035_coordinator_supervisor_chat.sql'));
   // Latest eligibility rule (20261019211849_four_account_roles.sql).
   await db.exec(`
     CREATE OR REPLACE FUNCTION public.chat_pair_is_eligible(p_coordinator_user_id uuid, p_supervisor_user_id uuid)

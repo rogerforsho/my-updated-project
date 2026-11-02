@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 
 const read = (dir, file) => fs.readFileSync(path.join(__dirname, '..', dir, 'migrations', file), 'utf8');
 const migration = file => {
-  const sql = read('database', file);
+  const sql = read('supabase', file);
   assert.equal(read('supabase', file), sql, 'migration copies must match');
   return sql;
 };

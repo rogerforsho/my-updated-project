@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 
 async function main() {
   const file = '20261024000500_pending_staff_invites.sql';
-  const sql = fs.readFileSync(path.join(__dirname, '../database/migrations', file), 'utf8');
+  const sql = fs.readFileSync(path.join(__dirname, '../supabase/migrations', file), 'utf8');
   assert.equal(fs.readFileSync(path.join(__dirname, '../supabase/migrations', file), 'utf8'), sql, 'migration copies must match');
   const db = new PGlite();
   await db.exec(`

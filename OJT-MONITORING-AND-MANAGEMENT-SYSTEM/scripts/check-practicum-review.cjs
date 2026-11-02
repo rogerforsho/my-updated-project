@@ -8,7 +8,7 @@ const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 async function main() {
   const root = path.join(__dirname, '..');
   const name = '20261022120000_atomic_practicum_schedule_review.sql';
-  const migration = fs.readFileSync(path.join(root, 'database/migrations', name), 'utf8');
+  const migration = fs.readFileSync(path.join(root, 'supabase/migrations', name), 'utf8');
   assert.equal(fs.readFileSync(path.join(root, 'supabase/migrations', name), 'utf8'), migration);
   const db = new PGlite();
   await db.exec(`

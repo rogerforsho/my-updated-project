@@ -20,6 +20,8 @@ export type SchedulePolicyResult =
   | { ok: true; value: ValidatedSchedulePolicy }
   | { ok: false; message: string };
 
+// Regulatory caps on a Practicum Schedule (CHED CMO 104, as cited in the user-facing errors below).
+// Daily hours are net of lunch, so a 9-hour shift with a 1-hour lunch is exactly at the limit.
 export const MAX_DAILY_HOURS = 8;
 export const MAX_WEEKLY_HOURS = 40;
 
@@ -35,7 +37,11 @@ function isCalendarDate(value: string): boolean {
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
-/** Pure schedule rules shared by the web and mobile submission adapters. */
+/**
+ * Pure Practicum Schedule rules shared by the web and mobile submission adapters (ADR 0001).
+ * No I/O: callers own the Supabase reads/writes and only pass the proposed schedule in.
+ * Returns the first rule broken, not all of them, so the UI shows one fix at a time.
+ */
 export function validateSchedulePolicy(input: SchedulePolicyInput): SchedulePolicyResult {
   if (!input.start_date || !isCalendarDate(input.start_date)) {
     return { ok: false, message: 'Enter a valid practicum start date.' };
@@ -52,6 +58,7 @@ export function validateSchedulePolicy(input: SchedulePolicyInput): SchedulePoli
   if (!Array.isArray(input.work_days) || input.work_days.length === 0) {
     return { ok: false, message: 'Please select at least one weekly work day.' };
   }
+  // Work days are 1 = Monday ... 6 = Saturday. Sunday (0 or 7) is deliberately not a valid practicum day.
   if (input.work_days.some(day => !Number.isInteger(day) || day < 1 || day > 6) ||
       new Set(input.work_days).size !== input.work_days.length) {
     return { ok: false, message: 'Select valid work days from Monday through Saturday.' };
@@ -63,10 +70,13 @@ export function validateSchedulePolicy(input: SchedulePolicyInput): SchedulePoli
     return { ok: false, message: 'Enter valid Time In and Time Out values.' };
   }
   if (startMin >= endMin) return { ok: false, message: 'Time In must be earlier than Time Out.' };
+  // Same-day shifts only, inside 06:00-21:00: overnight/graveyard shifts are prohibited for students.
   if (startMin < 6 * 60 || endMin > 21 * 60) {
     return { ok: false, message: 'Practicum shifts must fall between 6:00 AM and 9:00 PM (graveyard/overnight shifts are prohibited per CHED CMO 104).' };
   }
 
+  // An omitted lunch duration defaults to 60 minutes, but a positive lunch needs an explicit start time:
+  // the start is what Credited Hours later subtracts from attendance, so we never guess it (ADR 0001).
   const lunchMinutes = input.lunch_break_minutes ?? 60;
   const providedLunchStart = input.lunch_break_start?.trim() || null;
   if (!Number.isInteger(lunchMinutes) || lunchMinutes < 0 || lunchMinutes > 120) {

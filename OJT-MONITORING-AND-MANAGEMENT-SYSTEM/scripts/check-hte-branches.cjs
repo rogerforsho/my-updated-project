@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const ids = Array.from({ length: 10 }, (_, i) => `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`);
 async function main() {
   const root = path.join(__dirname, '..');
-  const migration = fs.readFileSync(path.join(root, 'database/migrations/20261020230000_hte_branches_and_requests.sql'), 'utf8');
+  const migration = fs.readFileSync(path.join(root, 'supabase/migrations/20261020230000_hte_branches_and_requests.sql'), 'utf8');
   assert.equal(fs.readFileSync(path.join(root, 'supabase/migrations/20261020230000_hte_branches_and_requests.sql'), 'utf8'), migration);
   const db = new PGlite();
   await db.exec(`
@@ -91,7 +91,7 @@ async function main() {
   const serviceReadMigration = fs.readdirSync(path.join(root, 'supabase/migrations')).find(name => name.endsWith('_attendance_branch_service_read.sql'));
   assert.ok(serviceReadMigration);
   const serviceReadSql = fs.readFileSync(path.join(root, 'supabase/migrations', serviceReadMigration), 'utf8');
-  assert.equal(serviceReadSql, fs.readFileSync(path.join(root, 'database/migrations', serviceReadMigration), 'utf8'));
+  assert.equal(serviceReadSql, fs.readFileSync(path.join(root, 'supabase/migrations', serviceReadMigration), 'utf8'));
   await db.exec(serviceReadSql);
   await db.exec(serviceReadSql);
   assert.equal((await db.query("SELECT has_table_privilege('service_role', 'public.company_branches', 'SELECT') AS allowed")).rows[0].allowed, true);
@@ -172,7 +172,7 @@ async function main() {
   assert.equal((await db.query(`SELECT count(*)::int AS n FROM public.notifications WHERE receiver_user_id='${ids[0]}'`)).rows[0].n, 1);
   assert.equal((await db.query(`SELECT count(*)::int AS n FROM public.audit_logs WHERE action='HTE_REQUEST_APPROVE'`)).rows[0].n, 1);
   // Radius 30..50 migration: clamps legacy rows, then enforces the range in the table and the RPC.
-  const radiusMigration = fs.readFileSync(path.join(root, 'database/migrations/20261024000700_limit_geofence_radius_30_50.sql'), 'utf8');
+  const radiusMigration = fs.readFileSync(path.join(root, 'supabase/migrations/20261024000700_limit_geofence_radius_30_50.sql'), 'utf8');
   assert.equal(fs.readFileSync(path.join(root, 'supabase/migrations/20261024000700_limit_geofence_radius_30_50.sql'), 'utf8'), radiusMigration);
   await db.exec(`UPDATE public.companies SET geofence_radius_meters = 60 WHERE company_id='${ids[3]}';
     UPDATE public.company_branches SET geofence_radius_meters = 4000 WHERE company_id='${ids[4]}' AND is_primary;`);

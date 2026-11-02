@@ -20,7 +20,7 @@ async function main(){
 
  GRANT ALL ON ALL TABLES IN SCHEMA storage TO anon,authenticated,service_role;
  `);
- const dir=path.join(__dirname,'../database/migrations');
+ const dir=path.join(__dirname,'../supabase/migrations');
  const migrationByPrefix=prefix=>{
    const name=fs.readdirSync(dir).find(file=>prefix==='035_'
      ? file.endsWith('_program_head_announcement_scope.sql')

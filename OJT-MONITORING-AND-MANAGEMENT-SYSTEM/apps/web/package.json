@@ -7,7 +7,8 @@
     "build": "next build",
     "build:web": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@sentry/nextjs": "11.8.0",

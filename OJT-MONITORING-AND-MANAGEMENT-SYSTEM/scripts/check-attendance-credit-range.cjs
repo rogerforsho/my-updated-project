@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 async function main() {
   const db = new PGlite();
   const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
-  const migration = path.join(__dirname, '../database/migrations/20261019070000_attendance_assignment_date_credit_guard.sql');
+  const migration = path.join(__dirname, '../supabase/migrations/20261019070000_attendance_assignment_date_credit_guard.sql');
   const mirror = path.join(__dirname, '../supabase/migrations/20261019070000_attendance_assignment_date_credit_guard.sql');
   const sql = fs.readFileSync(migration, 'utf8');
   assert.equal(fs.readFileSync(mirror, 'utf8'), sql, 'Supabase and database migrations must stay identical');

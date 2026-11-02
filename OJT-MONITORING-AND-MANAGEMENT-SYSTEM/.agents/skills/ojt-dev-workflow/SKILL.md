@@ -14,7 +14,7 @@ The workflow inspects current project state, identifies valid increments, and ve
 ## 1. Inspect Project State
 Before modifying code:
 1. Check application state in `apps/web` (Next.js) and `apps/mobile` (React Native/Expo).
-2. Check database migrations in `database/migrations` and types in `shared/types`.
+2. Check database migrations in `supabase/migrations` (the only migration tree) and types in `shared/types`.
 3. Verify compliance with non-negotiable rules in `.agents/rules/agents.md` and root `AGENTS.md`.
 
 ---

@@ -2067,11 +2067,9 @@ test('HTE geofence radius is limited to 30-50 m for companies and branches', asy
   assert.equal((await companies.createCompanyBranch(branch)).error.code, 'FORBIDDEN');
 });
 
-// Batch A: database security migrations. Each migration must exist in both trees.
+// Batch A: database security migrations. supabase/migrations is the single source of truth.
 function migrationSql(name) {
-  const a = fs.readFileSync(path.join(root, 'database/migrations', name), 'utf8');
-  assert.equal(fs.readFileSync(path.join(root, 'supabase/migrations', name), 'utf8'), a);
-  return a;
+  return fs.readFileSync(path.join(root, 'supabase/migrations', name), 'utf8');
 }
 const uid = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 

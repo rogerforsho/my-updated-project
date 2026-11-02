@@ -6,11 +6,11 @@ const assert = require('node:assert/strict');
 
 async function main() {
   const root = path.join(__dirname, '..');
-  const registrationMigration = fs.readFileSync(path.join(root, 'database/migrations/20261020200000_coordinator_registration_copy.sql'), 'utf8');
+  const registrationMigration = fs.readFileSync(path.join(root, 'supabase/migrations/20261020200000_coordinator_registration_copy.sql'), 'utf8');
   assert.equal(fs.readFileSync(path.join(root, 'supabase/migrations/20261020200000_coordinator_registration_copy.sql'), 'utf8'), registrationMigration);
-  const scheduleMigration = fs.readFileSync(path.join(root, 'database/migrations/20261020210000_finite_offsite_schedule_dates.sql'), 'utf8');
+  const scheduleMigration = fs.readFileSync(path.join(root, 'supabase/migrations/20261020210000_finite_offsite_schedule_dates.sql'), 'utf8');
   assert.equal(fs.readFileSync(path.join(root, 'supabase/migrations/20261020210000_finite_offsite_schedule_dates.sql'), 'utf8'), scheduleMigration);
-  const academicYearMigration = fs.readFileSync(path.join(root, 'database/migrations/20261021145644_remove_certificate_academic_year_default.sql'), 'utf8');
+  const academicYearMigration = fs.readFileSync(path.join(root, 'supabase/migrations/20261021145644_remove_certificate_academic_year_default.sql'), 'utf8');
   assert.equal(fs.readFileSync(path.join(root, 'supabase/migrations/20261021145644_remove_certificate_academic_year_default.sql'), 'utf8'), academicYearMigration);
 
   const db = new PGlite();

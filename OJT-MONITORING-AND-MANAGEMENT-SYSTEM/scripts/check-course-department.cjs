@@ -7,9 +7,9 @@ const assert = require('node:assert/strict');
 async function main() {
   const root = path.join(__dirname, '..');
   const file = '20261024001200_student_course_department_required.sql';
-  const migration = fs.readFileSync(path.join(root, 'database/migrations', file), 'utf8');
+  const migration = fs.readFileSync(path.join(root, 'supabase/migrations', file), 'utf8');
   assert.equal(fs.readFileSync(path.join(root, 'supabase/migrations', file), 'utf8'), migration, 'migration copies must match');
-  const courseDepartment = fs.readFileSync(path.join(root, 'database/migrations/029_department_and_document_scope.sql'), 'utf8')
+  const courseDepartment = fs.readFileSync(path.join(root, 'supabase/migrations/029_department_and_document_scope.sql'), 'utf8')
     .match(/CREATE OR REPLACE FUNCTION public\.course_department[\s\S]*?\$\$;/)[0];
   const { COURSE_DEPARTMENT } = await import('../shared/courses.ts'); // Node 23+ strips TS types natively
 

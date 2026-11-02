@@ -37,7 +37,7 @@ async function main() {
     );
   `);
 
-  const migration = fs.readFileSync(path.join(__dirname, '../database/migrations/20261020120000_safe_account_creation_and_role_labels.sql'), 'utf8');
+  const migration = fs.readFileSync(path.join(__dirname, '../supabase/migrations/20261020120000_safe_account_creation_and_role_labels.sql'), 'utf8');
   assert.equal(
     fs.readFileSync(path.join(__dirname, '../supabase/migrations/20261020120000_safe_account_creation_and_role_labels.sql'), 'utf8'),
     migration,
