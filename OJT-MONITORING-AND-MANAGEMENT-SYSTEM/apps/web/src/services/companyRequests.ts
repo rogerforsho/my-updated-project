@@ -11,7 +11,7 @@ async function coordinatorClient() {
   if (!user) return { supabase, user: null, allowed: false };
   const { data: profile } = await supabase.from('users').select('role, account_status').eq('user_id', user.id).maybeSingle();
   const { data: grant } = await supabase.from('staff_capability_grants').select('user_id')
-    .eq('user_id', user.id).eq('capability', 'academic_workflows').is('revoked_at', null).maybeSingle();
+    .eq('user_id', user.id).eq('capability', 'academic_workflows').is('revoked_at', null).limit(1).maybeSingle();
   return { supabase, user, allowed: profile?.role === 'Coordinator' && profile.account_status === 'active' && Boolean(grant) };
 }
 

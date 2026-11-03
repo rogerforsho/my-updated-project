@@ -34,6 +34,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/coordinator/companies': 'Partner Companies (HTEs)',
   '/coordinator/branches': 'Partner Companies (HTEs)',
   '/coordinator/company-requests': 'Partner Companies (HTEs)',
+  '/coordinator/map': 'Partner Companies (HTEs)',
   '/coordinator/supervisors': 'Company Supervisors',
   '/coordinator/assignments': 'Student Placement',
   '/coordinator/submissions': 'Report Submissions',

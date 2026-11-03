@@ -10,6 +10,7 @@ const sections: Record<Section, { href: string; label: string }[]> = {
     { href: '/coordinator/companies', label: 'Companies' },
     { href: '/coordinator/branches', label: 'Branches' },
     { href: '/coordinator/company-requests', label: 'Requests' },
+    { href: '/coordinator/map', label: 'Map' },
   ],
   evaluations: [
     { href: '/coordinator/supervisor-evaluations', label: 'Evaluations' },

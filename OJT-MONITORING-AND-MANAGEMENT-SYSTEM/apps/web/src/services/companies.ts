@@ -126,6 +126,40 @@ export async function listCompanyBranches(company_id: string): Promise<AppResult
   return { data: data as DbCompanyBranch[], error: null };
 }
 
+export interface MapBranch {
+  branch_id: string;
+  company_name: string;
+  branch_name: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+  placed: number;
+  max_interns: number | null;
+}
+
+export async function listMapBranches(): Promise<AppResult<MapBranch[]>> {
+  const { supabase, authorized } = await assertCoordinator();
+  if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
+  const { data, error } = await supabase.from('company_branches')
+    .select('branch_id, branch_name, address, latitude, longitude, companies(company_name, max_interns)')
+    .eq('status', 'active');
+  if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load map branches.' } };
+  const { data: placed } = await supabase.from('student_assignments')
+    .select('branch_id').eq('assignment_status', 'active')
+    .in('branch_id', (data ?? []).map((b) => b.branch_id));
+  const counts = new Map<string, number>();
+  for (const a of placed ?? []) counts.set(a.branch_id, (counts.get(a.branch_id) ?? 0) + 1);
+  const rows = (data ?? []).map((b) => {
+    const c = (Array.isArray(b.companies) ? b.companies[0] : b.companies) as { company_name: string; max_interns: number | null } | null;
+    return {
+      branch_id: b.branch_id, company_name: c?.company_name ?? '', branch_name: b.branch_name, address: b.address,
+      latitude: b.latitude == null ? null : Number(b.latitude), longitude: b.longitude == null ? null : Number(b.longitude),
+      placed: counts.get(b.branch_id) ?? 0, max_interns: c?.max_interns ?? null,
+    };
+  });
+  return { data: rows, error: null };
+}
+
 export async function createCompanyBranch(input: {
   company_id: string; branch_name: string; address: string; latitude: number; longitude: number; geofence_radius_meters?: number;
 }): Promise<AppResult<DbCompanyBranch>> {

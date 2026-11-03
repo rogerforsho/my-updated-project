@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useSearchPaging, SearchBox, PagerBar } from '@/src/components/ui/ListControls';
+import { getDepartmentFullName } from '@/src/lib/departments';
 import { getSignedDocumentUrl } from '@/src/services/storage';
 import {
   exportTraineeAttendanceCsv, listTraineeReports, setMyCompanyIntake,
@@ -161,7 +162,7 @@ export function TraineeBoard({ trainees, intake }: { trainees: SupervisedTrainee
   const filtered = trainees.filter((t) => matches(t, filter));
   const list = useSearchPaging(
     filtered,
-    (t) => `${t.full_name} ${t.student_number} ${t.course} ${STATUS_LABEL[t.placement.assignment_status] ?? ''} ${t.graduated ? 'graduated' : ''}`,
+    (t) => `${t.full_name} ${t.student_number} ${t.course} ${t.department ?? ''} ${STATUS_LABEL[t.placement.assignment_status] ?? ''} ${t.graduated ? 'graduated' : ''}`,
   );
   const graduated = trainees.filter((t) => t.graduated).length;
 
@@ -170,7 +171,7 @@ export function TraineeBoard({ trainees, intake }: { trainees: SupervisedTrainee
       {intake && <IntakeCard intake={intake} />}
       <p className="text-sm text-slate-600"><strong>{graduated}</strong> of your {trainees.length} trainees have graduated (completed placement with the required hours).</p>
       <div className="flex flex-wrap gap-2">
-        <SearchBox value={list.search} onChange={list.setSearch} placeholder="Search name, ID, course or status..." />
+        <SearchBox value={list.search} onChange={list.setSearch} placeholder="Search name, ID, course, department or status..." />
         <select aria-label="Filter trainees by status" value={filter} onChange={(e) => { setFilter(e.target.value as Filter); list.setPage(1); }}
           className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm">
           {FILTERS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -217,6 +218,7 @@ export function TraineeBoard({ trainees, intake }: { trainees: SupervisedTrainee
                   </span>
                 </label>
                 <div className="flex flex-wrap gap-1.5">
+                  {t.department && <span title={getDepartmentFullName(t.department)} className="rounded-full bg-teal-50 px-2.5 py-0.5 text-[11px] font-bold text-teal-800">{t.department}</span>}
                   <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-700">{STATUS_LABEL[t.placement.assignment_status] ?? t.placement.assignment_status}</span>
                   {t.graduated && <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">Graduated</span>}
                   {t.no_recent_attendance && <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">No attendance in 7 days</span>}

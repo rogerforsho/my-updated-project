@@ -22,13 +22,14 @@ function renderNavigation(section, pathname) {
   return renderToStaticMarkup(React.createElement(exports.default, { section }));
 }
 
-test('Partners tabs reach company, branch and request workflows and identify the current page', () => {
+test('Partners tabs reach company, branch, request and map workflows and identify the current page', () => {
   const html = renderNavigation('partners', '/coordinator/branches');
-  for (const href of ['companies', 'branches', 'company-requests']) {
+  for (const href of ['companies', 'branches', 'company-requests', 'map']) {
     assert.ok(html.includes(`href="/coordinator/${href}"`));
   }
   assert.match(html, /href="\/coordinator\/branches" aria-current="page"/);
-  assert.ok(!html.includes('/map'));
+  // The old standalone /map sidebar page stays removed; the map is a Partners tab only.
+  assert.ok(!html.includes('href="/map"'));
 });
 
 test('Evaluations tabs preserve both results and the appeal workflow', () => {

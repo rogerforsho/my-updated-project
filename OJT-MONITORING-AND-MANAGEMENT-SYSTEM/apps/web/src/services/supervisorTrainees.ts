@@ -20,6 +20,7 @@ export interface SupervisedTrainee {
   full_name: string;
   student_number: string;
   course: string;
+  department: 'ICS' | 'IBE' | null;
   /** Current placement (active one, otherwise the latest). */
   placement: PlacementEntry;
   history: PlacementEntry[];
@@ -129,6 +130,7 @@ export async function listSupervisedTrainees(): Promise<AppResult<SupervisedTrai
       full_name: user?.full_name ?? '',
       student_number: student?.student_number ?? '',
       course: student?.course ?? '',
+      department: dept,
       placement: current.entry,
       history: entries.map((e) => e.entry),
       completed_hours: done,

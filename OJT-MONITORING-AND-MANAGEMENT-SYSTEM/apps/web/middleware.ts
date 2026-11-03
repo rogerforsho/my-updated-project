@@ -7,7 +7,7 @@ const KNOWN_PATHS = new Set([
   '/', '/admin', '/api/internal/auto-time-out', '/api/internal/process-transactional-email', '/api/mobile/attendance', '/api/mobile/notifications', '/api/mobile/reports', '/api/mobile/registration/resubmit', '/api/mobile/schedule-proposals', '/api/registration/id-card', '/api/registration/submit', '/auth/callback', '/auth/callback/finish', '/auth/pending',
   '/auth/register', '/auth/mobile-only', '/auth/reset-password', '/auth/sign-in',
   '/coordinator/approvals', '/coordinator/assignments', '/coordinator/companies',
-  '/coordinator/progress', '/coordinator/reports', '/coordinator/students', '/coordinator/import', '/coordinator/incident-reports', '/coordinator/submissions', '/coordinator/messages', '/coordinator/notifications', '/coordinator/what-if',
+  '/coordinator/progress', '/coordinator/reports', '/coordinator/students', '/coordinator/import', '/coordinator/incident-reports', '/coordinator/submissions', '/coordinator/messages', '/coordinator/notifications', '/coordinator/what-if', '/coordinator/map',
   '/coordinator/supervisors', '/coordinator/non-working-days', '/dashboard', '/health', '/map', '/program-head',
   '/program-head/reports', '/ready', '/robots.txt', '/settings', '/sitemap.xml',
   '/supervisor/attendance', '/supervisor/evaluations', '/supervisor/reports',

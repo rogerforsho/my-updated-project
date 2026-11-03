@@ -38,6 +38,8 @@ type SubTab = 'check_in' | 'history';
 const SELFIE_REQUIREMENTS: FaceRequirements = {
   singleFace: true,
   guide: { width: 0.56, height: 0.36, centerY: 0.5 },
+  // Library default is 0.9, but a rectangular face box never fills an oval that much, so real faces were rejected.
+  minGuideCoverage: 0.7,
 };
 
 // Tell the student exactly what the face check is waiting for, not one generic hint.
