@@ -9,7 +9,7 @@ export default function PendingPage() {
       <div>
         <h1 className="text-xl font-black text-[#0A3824] font-serif">Registration Under Review</h1>
         <p className="text-xs text-slate-600 mt-1.5 leading-relaxed max-w-xs mx-auto">
-          If you just tapped the link in your email, your email is now confirmed. Your OJT Coordinator will review your registration next. If you haven&apos;t confirmed yet, open the email we sent and tap &quot;Confirm my email address.&quot;
+          If you just tapped the link in your email, your email is now confirmed. Opening this web page is only needed for this one step, so you can close it and go back to the CdM OJT mobile app. Your OJT Coordinator will review your registration next. If you haven&apos;t confirmed yet, open the email we sent and tap &quot;Confirm my email address.&quot;
         </p>
       </div>
       <div className="w-full rounded-xl bg-[#0A3824]/5 border border-[#0A3824]/20 px-5 py-4 text-left">
