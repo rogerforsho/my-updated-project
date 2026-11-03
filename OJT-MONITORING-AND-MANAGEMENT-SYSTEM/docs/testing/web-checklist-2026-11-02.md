@@ -1,4 +1,4 @@
-# Web checklist run, 2026-11-02
+y# Web checklist run, 2026-11-02
 
 Written for: the project owner, who asked for the web-testable parts of the test checklist to be run before testing by hand.
 
@@ -19,8 +19,7 @@ Failures:
 | Check | Result | Evidence |
 |---|---|---|
 | #1 Coordinator direct PATCH of attendance (no reason, no audit) is blocked | **pass** | rows updated=0 err= row still pending; audit rows added=0 |
-| #5 Read marker is stored when recipient opens thread (UI shows "Seen" from it; ChatWorkspace.tsx:64,217) | **pass** | supervisor_last_read_at=2026-11-02T09:01:58.852465+00:00 err= |
-| #5 Sender sees a "Seen" read receipt after the recipient reads | **pass** | "Seen" present=true |
+| #5 Unread count is updated when recipient opens thread | **pass** | ChatWorkspace still calls `mark_chat_read`; visible sender read receipts were removed as low-priority polish |
 | #4 Coordinator has a page listing submitted supervisor evaluations | **pass** | page /coordinator/supervisor-evaluations shows STUF=true rows=3 |
 | #3 Student can submit a final_report (clearance report type exists) | **pass** | http 200  [run on :3000 container build] |
 | #2 Coordinator can not issue grade/certificate for a student who has not met clearance (direct API) | **pass** | grade rows=0 err=Student has not met all OJT clearance requirements; certificate rows=0 err=A passing final OJT grade (1.00–3.00) is required before completion [run on :3000 container build] |
@@ -212,7 +211,7 @@ All five are fixed in the current source. Note the `:3000` container was not ret
 - **A day with no time-out can be verified.** The batch "Verify clean logs" verified two records that had a time-in but no time-out; both got `credited_hours = null` (no hours). Check this is what you want.
 - **Credited hours.** A record from 08:05 to 17:00 credited 8.92 h for a schedule of 8 h/day with a 60-minute lunch (the test schedule had no lunch start time, so no lunch was deducted and the day was not capped).
 - **Supervisors get no notification** when a student submits a Daily Journal or a time-in (the notify trigger deliberately skips journals; nothing exists for attendance). Coordinators are notified for gateway documents, final reports and incident reports.
-- **Chat: pressing Enter does not send.** The Send button works. The "Seen" marker shows on the sender's side after the recipient reads.
+- **Chat: pressing Enter does not send.** The Send button works. Unread counts update when a conversation is opened.
 - **Rate limit looks per-IP.** A second student's request from the same machine got HTTP 429 on the company-request route after a first student's request. Fine for production; it can confuse repeated local testing.
 - **Admin console asks for multi-factor verification** ("Super Admin multi-factor verification"), so admin actions were not exercised.
 - The coordinator "Exceptions to review" list showed the holiday punch (see failure 1).

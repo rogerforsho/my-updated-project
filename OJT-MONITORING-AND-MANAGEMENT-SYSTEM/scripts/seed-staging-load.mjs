@@ -55,12 +55,35 @@ async function main() {
     }
   }
 
+  // PostgREST returns at most 1000 rows per request, so page through them.
+  async function listLoadtestStudents() {
+    const all = [];
+    for (let from = 0; ; from += 1000) {
+      const rows = unwrap('Find loadtest students', await supabase.from('students').select('student_id')
+        .like('student_number', 'LT-%').order('student_id').range(from, from + 999));
+      all.push(...rows);
+      if (rows.length < 1000) return all;
+    }
+  }
+
+  if (process.argv.includes('--reset-today')) {
+    // Lets the same 300 students clock in again on the next load-test run.
+    const today = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+    const ids = await listLoadtestStudents();
+    console.log(`${apply ? 'Deleting' : 'Would delete'} loadtest attendance dated ${today} or later for ${ids.length} students.`);
+    if (!apply) return;
+    for (let i = 0; i < ids.length; i += 100) {
+      unwrap('Reset today', await supabase.from('attendance').delete().gte('attendance_date', today).in('student_id', ids.slice(i, i + 100).map((s) => s.student_id)));
+    }
+    return;
+  }
+
   if (cleanup) {
     const victims = await listLoadtestUsers();
     console.log(`${apply ? 'Deleting' : 'Would delete'} ${victims.length} ${LOADTEST_DOMAIN} accounts (and the companies named "LoadTest Company *").`);
     if (!apply) return;
     // Foreign keys block deleting users/companies that still have records, so remove dependents first.
-    const ids = unwrap('Find loadtest students', await supabase.from('students').select('student_id').like('student_number', 'LT-%'));
+    const ids = await listLoadtestStudents();
     for (let i = 0; i < ids.length; i += 25) {
       const chunk = ids.slice(i, i + 25).map((s) => s.student_id);
       for (const table of ['attendance', 'student_assignments', 'internship_progress']) {

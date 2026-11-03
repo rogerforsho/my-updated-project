@@ -9,6 +9,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { registerStudent } from '../../services/auth';
 import { uploadRegistrationIdCard } from '../../lib/storage';
+import { optimizeDocumentImage } from '../../lib/imageOptimizer';
 import { STUDENT_REGISTRATION_COURSES } from '@ojt/shared';
 
 type Props = { navigation: NativeStackNavigationProp<AuthStackParamList, 'Register'> };
@@ -43,10 +44,12 @@ export default function RegisterScreen({ navigation }: Props) {
           setError('Student ID image must be less than 5 MB.');
           return;
         }
+        // Vercel rejects request bodies over 4.5 MB, so shrink the photo before both sides are uploaded.
+        const optimized = await optimizeDocumentImage(asset.uri);
         const file = {
-          uri: asset.uri,
-          name: asset.name,
-          size: asset.size,
+          uri: optimized.uri,
+          name: `student-id-${side}.jpg`,
+          size: optimized.sizeBytes ?? asset.size,
         };
         if (side === 'front') setIdCardFront(file);
         else setIdCardBack(file);

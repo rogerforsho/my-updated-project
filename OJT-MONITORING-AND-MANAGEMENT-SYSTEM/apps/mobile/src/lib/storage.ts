@@ -215,11 +215,13 @@ export async function uploadRegistrationIdCard(
         return { data: null, error: { code: 'UNAUTHORIZED', message: 'Sign in again before uploading your corrected ID.' } };
       const headers = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined;
       const response = await fetch(uploadUrl, { method: 'POST', body: data, headers, signal: controller.signal });
+      if (response.status === 413) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Your ID photos are too large to upload. Choose smaller photos and try again.' } };
       const result = await response.json();
       if (!response.ok || result.error || !result.data?.front_path || !result.data?.back_path) return { data: null, error: { code: 'SERVER_FAILURE', message: result.error?.message || 'Unable to upload your ID. Please try again.' } };
       return { data: { front_path: result.data.front_path, back_path: result.data.back_path }, error: null };
     } finally { clearTimeout(timeout); }
-  } catch {
+  } catch (error) {
+    console.warn('[uploadRegistrationIdCard] upload failed:', error);
     return { data: null, error: { code: 'SERVER_FAILURE', message: 'Unable to upload your ID. Check your connection or contact your coordinator.' } };
   }
 }

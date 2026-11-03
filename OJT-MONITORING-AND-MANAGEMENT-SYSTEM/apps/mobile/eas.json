@@ -18,7 +18,10 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_APP_ENV": "preview"
+        "EXPO_PUBLIC_APP_ENV": "preview",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://xlkvjuwzcviicerpzdjz.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhsa3ZqdXd6Y3ZpaWNlcnB6ZGp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1OTIxMzgsImV4cCI6MjEwODE2ODEzOH0.iLkRuyNzhhJ4mMOrAB-axmAcdoPfO1rhP6yPlLYOXBs",
+        "EXPO_PUBLIC_WEB_URL": "https://my-updated-project-git-loop-integration-ojt-project.vercel.app"
       },
       "environment": "preview",
       "channel": "preview"

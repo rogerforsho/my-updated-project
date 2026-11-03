@@ -9,7 +9,7 @@ const ExpoSecureStoreAdapter = {
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-const appEnvironment = process.env.EXPO_PUBLIC_APP_ENV ?? 'development';
+const appEnvironment = process.env.EXPO_PUBLIC_APP_ENV ?? 'production';
 const supabaseProjectRef = supabaseUrl
   ? new URL(supabaseUrl).hostname.split('.')[0]
   : undefined;
