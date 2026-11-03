@@ -20,7 +20,7 @@ Attendance stores the device-captured event timestamp separately from server rec
 
 The required pre-deployment gateway documents are the Pre-OJT Orientation Certificate and Endorsement Letter. Student ID front/back images are registration evidence, not gateway requirements. HTE verification may collect a Business Permit and/or MOA copy, but the app does not create or sign MOAs. Students may request an existing or new HTE; the Coordinator verifies and finalizes the company, branch, and Supervisor. Multiple approved branches and explicitly time-limited WFH/off-site approvals are supported. GPS is review evidence and does not automatically reject an event; Wi-Fi SSIDs are not collected.
 
-Supervisors approve or return daily accomplishment reports. Coordinators oversee academic requirements and exceptions and assign final grades, without duplicating routine report approvals. Incident reports are Coordinator-only. Evaluation appeals preserve the original evaluation history. What-if scenarios are read-only and never apply speculative changes.
+Supervisors approve or return daily accomplishment reports. Coordinators oversee academic requirements and exceptions and assign final grades, without duplicating routine report approvals. Incident reports are Coordinator-only. Evaluation appeals preserve the original evaluation history. The former optional what-if page was read-only and never applied speculative changes; it was later removed from the coordinator UI.
 
 ## Consequences
 

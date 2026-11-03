@@ -14,6 +14,7 @@ import {
   listCompanies, createCompany, updateCompany, setCompanyStatus, deleteCompany,
   type CompanyInput, type CompanyWithSupervisors,
 } from '@/src/services/companies';
+import CoordinatorSectionNav from '@/src/components/coordinator/CoordinatorSectionNav';
 
 const LocationPickerMap = dynamic(
   () => import('@/src/components/companies/LocationPickerMap'),
@@ -163,6 +164,7 @@ export default function CoordinatorCompaniesPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto page-fade-in">
+      <CoordinatorSectionNav section="partners" />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>

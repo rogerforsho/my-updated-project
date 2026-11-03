@@ -8,6 +8,7 @@ import Link from 'next/link';
 import ClearanceActionModal from '@/src/components/coordinator/ClearanceActionModal';
 import { departmentScope } from '@/src/lib/department-scope';
 import { COURSE_DEPARTMENT, STUDENT_REGISTRATION_COURSES } from '@ojt/shared';
+import CoordinatorSectionNav from '@/src/components/coordinator/CoordinatorSectionNav';
 
 interface Props {
   searchParams: Promise<{ course?: string; status?: string; page?: string }>;
@@ -40,6 +41,7 @@ export default async function CoordinatorProgressPage({ searchParams }: Props) {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto page-fade-in">
+      <CoordinatorSectionNav section="progress" />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Cohort Progress Monitoring</h1>

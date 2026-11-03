@@ -1512,7 +1512,6 @@ test('role boundaries reject other roles, anonymous users, and inactive users be
     ['evaluations', 'overrideEvaluation', ['evaluation', 80, 'Reason'], ['Coordinator']],
     ['reports', 'sendRequirementReminder', ['student-user', ['Report']], ['Coordinator']],
     ['companies', 'setCompanyStatus', ['company', 'inactive'], ['Coordinator']],
-    ['companies', 'getDeploymentMapData', [], ['Coordinator']],
   ];
   for (const [module, method, args, allowed] of cases) {
     for (const role of [null, 'Student', 'Supervisor', 'Coordinator', 'ProgramHead', 'Admin']) {

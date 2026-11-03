@@ -35,7 +35,6 @@ export default function ChatWorkspace({ userId, role }: { userId: string; role: 
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
-  const [seenAt, setSeenAt] = useState<string | null>(null);
   const [taggable, setTaggable] = useState<TaggableStudent[]>([]);
   const [tagStudentId, setTagStudentId] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
@@ -61,7 +60,6 @@ export default function ChatWorkspace({ userId, role }: { userId: string; role: 
 
   const activeContact = contacts.find((contact) => contact.counterpart_user_id === activeContactId) ?? null;
   const conversationId = activeContact?.conversation_id ?? null;
-  const lastSeenMessageId = messages.filter((m) => m.sender_user_id === userId && seenAt && m.created_at <= seenAt).at(-1)?.message_id;
 
   const refreshMessages = useCallback(async (id: string) => {
     const { data, error: queryError } = await supabase.from('chat_messages')
@@ -77,11 +75,8 @@ export default function ChatWorkspace({ userId, role }: { userId: string; role: 
     });
     const { error: readError } = await supabase.rpc('mark_chat_read', { p_conversation_id: id }).abortSignal(AbortSignal.timeout(12000));
     if (readError) setError('Messages loaded, but their read status could not be updated. Please retry by reopening the conversation.');
-    const readColumn = role === 'Coordinator' ? 'supervisor_last_read_at' : 'coordinator_last_read_at';
-    const { data: conversation } = await supabase.from('chat_conversations').select(readColumn).eq('conversation_id', id).maybeSingle();
-    setSeenAt((conversation as Record<string, string | null> | null)?.[readColumn] ?? null);
     await refreshContacts();
-  }, [refreshContacts, role, supabase]);
+  }, [refreshContacts, supabase]);
 
   const loadOlderMessages = useCallback(async () => {
     if (!conversationId || !messages.length || loadingOlder || !hasOlderMessages) return;
@@ -132,10 +127,9 @@ export default function ChatWorkspace({ userId, role }: { userId: string; role: 
   }, [refreshContacts, supabase, userId]);
 
   useEffect(() => {
-    if (!conversationId) { setMessages([]); setHasOlderMessages(false); setSeenAt(null); return; }
+    if (!conversationId) { setMessages([]); setHasOlderMessages(false); return; }
     setMessages([]);
     setHasOlderMessages(false);
-    setSeenAt(null);
     void refreshMessages(conversationId);
     const channel = supabase.channel(`chat-${conversationId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `conversation_id=eq.${conversationId}` },
@@ -214,7 +208,7 @@ export default function ChatWorkspace({ userId, role }: { userId: string; role: 
                     {message.attachment_name && <button type="button" onClick={() => void openAttachment(message.message_id)}
                       className={`mt-1 block max-w-full truncate rounded-lg border px-2.5 py-1 text-left text-xs font-medium underline ${mine ? 'border-teal-500 text-white' : 'border-slate-200 text-teal-800'}`}>
                       📎 {message.attachment_name}</button>}
-                    <time className={`mt-1 block text-[10px] ${mine ? 'text-teal-100' : 'text-slate-400'}`} dateTime={message.created_at}>{new Date(message.created_at).toLocaleString()}{message.message_id === lastSeenMessageId && ' · Seen'}</time>
+                    <time className={`mt-1 block text-[10px] ${mine ? 'text-teal-100' : 'text-slate-400'}`} dateTime={message.created_at}>{new Date(message.created_at).toLocaleString()}</time>
                   </div>
                 </div>;
               })}

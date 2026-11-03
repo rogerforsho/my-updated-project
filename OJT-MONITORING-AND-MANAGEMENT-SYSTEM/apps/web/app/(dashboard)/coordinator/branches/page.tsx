@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createCompanyBranch, listCompanyBranches } from '@/src/services/companies';
 import { CompanyPicker } from '@/src/components/ui/CompanyPicker';
 import type { DbCompanyBranch } from '@ojt/shared';
+import CoordinatorSectionNav from '@/src/components/coordinator/CoordinatorSectionNav';
 
 export default function BranchesPage() {
   const [companyId, setCompanyId] = useState('');
@@ -30,6 +31,7 @@ export default function BranchesPage() {
   }
 
   return <main className="mx-auto max-w-5xl p-6 lg:p-8">
+    <CoordinatorSectionNav section="partners" />
     <h1 className="text-2xl font-bold text-slate-900">HTE Branches</h1>
     <p className="mt-1 text-sm text-slate-600">Add verified work locations. Attendance uses the assigned branch geofence.</p>
     {!!error && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}

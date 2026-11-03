@@ -188,16 +188,6 @@ test('MOA evidence is not treated as the required Endorsement Letter', () => {
   assert.equal(matchesDoc('MOA Endorsement', 'Endorsement Letter'), false);
 });
 
-test('what-if scenario estimates completion without rounding away existing hours or mutating data', () => {
-  const { simulateCompletion } = loader({})('shared/whatIf.ts');
-  assert.deepEqual(JSON.parse(JSON.stringify(simulateCompletion({
-    completedHours: 100, requiredHours: 486, plannedWeeklyHours: 40, missedWeeks: 2, asOfDate: '2026-10-20',
-  }))), { ok: true, weeksToCompletion: 12, projectedFinishDate: '2027-01-12', remainingHours: 386 });
-  assert.equal(simulateCompletion({ completedHours: 486, requiredHours: 486, plannedWeeklyHours: 40, missedWeeks: 1, asOfDate: '2026-10-20' }).ok, true);
-  assert.equal(simulateCompletion({ completedHours: 100, requiredHours: 486, plannedWeeklyHours: 41, missedWeeks: 0, asOfDate: '2026-10-20' }).ok, false);
-  assert.equal(simulateCompletion({ completedHours: 1, requiredHours: 400, plannedWeeklyHours: 35, missedWeeks: 0, asOfDate: '2026-02-30' }).ok, false);
-});
-
 test('zip writer builds a valid archive that standard tools can read back', () => {
   const { zipStore } = loader({}, { TextEncoder, Uint8Array, DataView, ArrayBuffer, Uint32Array })('apps/web/src/lib/zip.ts');
   const entries = [

@@ -9,5 +9,4 @@ export * from './gateway';
 export * from './attendanceDate';
 export * from './schedulePolicy';
 export * from './courses';
-export * from './whatIf';
 export * from './expectedEnd';

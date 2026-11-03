@@ -4,7 +4,7 @@ Status: agreed in a grilling session, 2026-10-28. Built on 2026-10-28: sections 
 
 Implementation notes:
 - Migration `20261028000100_non_working_days_and_company_intake.sql` adds `non_working_days`, `companies.max_interns`, `companies.accepting_students`, the intake trigger and the supervisor RPC.
-- `shared/expectedEnd.ts` computes the expected end date. `shared/whatIf.ts` is unchanged: it models a hypothetical weekly pace, which is a different question.
+- `shared/expectedEnd.ts` computes the expected end date. The optional hypothetical what-if page was later removed; expected-end projection remains the supported planning calculation.
 - The coordinator attendance page now has a read-only Timecard tab. The exception review (verify or reject with a reason) stays as a second tab, because removing it would drop an existing audited workflow.
 - Coordinator departments are checked in the browser only for the theme; data access still comes from row security.
 
@@ -19,7 +19,7 @@ Implementation notes:
 - Computed as remaining hours divided by the student's daily schedule hours.
 - Skips weekends, holidays and company days off.
 - Recomputed automatically when attendance changes.
-- One shared function used by web and mobile. It replaces the overlapping logic in `shared/whatIf.ts`.
+- One shared function used by web and mobile. It is the supported projected-end calculation used by both clients.
 - Rendered hours always count, including work on a holiday. Holidays only change the projected date. The existing hour-computation trigger stays untouched.
 
 ### 3. Holidays and days off
@@ -75,7 +75,7 @@ Implementation notes:
 - Coordinator-created supervisor accounts conflict with ADR 0006 (Super Admin handles account provisioning). Needs a new ADR and RLS or authorization changes.
 - The invite link needs an expiry and a single-use rule. Not decided yet.
 - The "7 days" inactivity threshold is a default and is not configurable.
-- I have not read the existing attendance page, `shared/whatIf.ts` or the per-role navigation. Check them before building.
+- This plan predates the coordinator navigation consolidation; the current menu and retained workflows are documented in `docs/plans/navigation-audit.md`.
 
 ## Suggested build order
 1. `non_working_days` table and the shared expected-end-date function.

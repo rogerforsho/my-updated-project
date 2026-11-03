@@ -1,6 +1,6 @@
 # Navigation audit
 
-Status: recommendation only, 2026-10-28. **Nothing has been hidden, merged or removed.** Approve, change or reject each line below first.
+Status: implemented, 2026-11-03. Optional analysis and the standalone map were removed; related workflows were consolidated into tabs.
 
 ## How this was judged
 
@@ -12,36 +12,34 @@ Excluded by `AGENTS.md`: job applications or recruitment, MOA transactions, payr
 
 | Page | In scope? | Evidence | Recommendation |
 |---|---|---|---|
-| `what-if` | Yes | ADR 0006: "What-if scenarios are read-only"; `system-features.md` lists it under Monitoring | **Keep.** Candidate to move under Progress as a tab. |
-| `map` (Deployment Map) | Yes | `system-features.md` lists "map view" under Monitoring | **Keep.** Needs the manuscript to confirm. |
+| `what-if` | No longer a standalone feature | Read-only hypothetical planning was low priority and excluded holidays and schedule changes | **Removed.** Old links redirect to Progress. |
+| `map` (Deployment Map) | No longer a standalone feature | Company and branch pages retain the location and geofence workflows | **Removed.** Old links redirect to Companies. |
 | `branches` (HTE Branches) | Yes | ADR 0006: multiple approved branches; attendance geofences depend on branches | **Keep.** Candidate to merge into Companies. |
 | `evaluations` (Evaluation Appeals) | Yes | ADR 0006: appeals preserve the original evaluation; Coordinator decides | **Keep.** Candidate to share a page with Supervisor Evaluations. |
 | `supervisor-evaluations` | Yes | Increment 7, performance evaluation | **Keep.** Same merge candidate as above. |
 | `incident-reports` | Yes | ADR 0006: Coordinator-only; `system-features.md` documents the confidential flow | **Keep.** Do not hide: it is the only route for a student concern. |
 
-None of the six is outside the documented scope. The clutter is the number of Coordinator menu items (21), not pages that do not belong.
+Branches, appeals, evaluations, and incident reports remain in scope; only the low-priority standalone analysis and map were removed. The clutter was the number of Coordinator menu items, not the underlying workflows.
 
 ## Menu consolidation (optional, only if you want fewer items)
 
-The Coordinator sidebar has 21 entries. Merging closely related pages would bring it to about 15 without removing any capability:
+The Coordinator sidebar now has 14 entries. Related lower-frequency workflows remain reachable through section tabs:
 
 | Merge | Into | Saves |
 |---|---|---|
-| Companies, HTE Branches, HTE Requests | one **Partners** page with tabs | 2 |
-| Supervisor Evaluations, Evaluation Appeals | one **Evaluations** page with tabs | 1 |
-| Progress, What-if Analysis | **Progress** with a What-if tab | 1 |
+| Companies, HTE Branches, HTE Requests | one **Partners** section with tabs | 2 |
+| Supervisor Evaluations, Evaluation Appeals | one **Evaluations** section with tabs | 1 |
+| Progress, Department Reports | one **Progress & Reports** section with tabs | 1 |
 | Holidays & Days Off, Attendance | leave separate (different jobs) | 0 |
-| Deployment Map | keep, or move under Companies as a tab | 0 to 1 |
+| Deployment Map | removed as a standalone page; company and branch location setup remains | 1 |
 
-Cost: each merge moves existing pages into tabs, so links, bookmarks and the route guards in `middleware.ts` need updating. This is a larger change than hiding items and is not needed to meet the manuscript.
+Old map and what-if URLs redirect to their replacement sections; the original partner, evaluation, report, and import routes remain available for bookmarks and direct links.
 
 ## Other roles
 
 - **Supervisor (6 items):** My Students, Attendance, Daily Reports, Evaluations, Messages, Notifications. All in scope. No change.
 - **Super Admin (1 item, 4 tabs):** Users, Announcements, Holidays, Audit Log. All in scope. No change.
 
-## Decisions needed
+## Result
 
-1. Keep all six flagged pages as they are? (Recommended: yes.)
-2. Do the menu consolidation above, or leave the 21-item menu?
-3. Confirm the manuscript lists the deployment map and holidays. Both are documented in `docs/system-features.md` or requested in the feedback notes, but neither can be checked against the manuscript from here.
+The coordinator sidebar now exposes the daily workflows directly while related lower-frequency workflows remain reachable from their section tabs. The manuscript still needs a separate review for final scope confirmation.

@@ -22,6 +22,7 @@ import {
   type StudentProgressDetail,
   type DepartmentSummaryData,
 } from '@/src/services/progress';
+import CoordinatorSectionNav from '@/src/components/coordinator/CoordinatorSectionNav';
 
 interface Props {
   summary: DepartmentSummaryData;
@@ -142,6 +143,7 @@ export default function DepartmentReportsClient({
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-7 page-fade-in max-w-7xl mx-auto">
+      <CoordinatorSectionNav section="progress" />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
         <div>

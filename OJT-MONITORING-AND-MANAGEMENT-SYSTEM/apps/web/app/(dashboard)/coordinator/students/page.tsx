@@ -10,6 +10,7 @@ import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
 import { RowMenu } from '@/src/components/ui/RowMenu';
 import Modal from '@/src/components/ui/Modal';
 import { listActiveStudents, resetStudentPasswordToDefault } from '@/src/services/auth';
+import Link from 'next/link';
 
 type ActiveStudent = {
   user_id: string;
@@ -102,7 +103,9 @@ export default function CoordinatorStudentsPage() {
         </div>
 
         {/* Search Input */}
-        <div className="relative w-full sm:w-72">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <Link href="/coordinator/import" className="rounded-xl bg-[var(--cdm-green)] px-3 py-2 text-xs font-bold text-white">Import CSV</Link>
+          <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
           <input
             type="text"
@@ -111,6 +114,7 @@ export default function CoordinatorStudentsPage() {
             onChange={(e) => { setSearchQuery(e.target.value); if (page !== 1) setPage(1); }}
             className="w-full pl-9 pr-4 py-2 rounded-xl text-xs bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#0A3824]/20 dark:focus:ring-emerald-500/20 focus:border-[#0A3824] dark:focus:border-emerald-600 transition-all shadow-2xs"
           />
+          </div>
         </div>
       </div>
 

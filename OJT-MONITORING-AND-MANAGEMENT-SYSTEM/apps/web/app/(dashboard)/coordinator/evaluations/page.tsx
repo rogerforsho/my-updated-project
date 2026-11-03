@@ -6,6 +6,7 @@ import Alert from '@/src/components/ui/Alert';
 import Button from '@/src/components/ui/Button';
 import { Badge } from '@/src/components/ui/Badge';
 import { decideEvaluationAppeal, listEvaluationAppeals, type EvaluationAppealForCoordinator } from '@/src/services/evaluations';
+import CoordinatorSectionNav from '@/src/components/coordinator/CoordinatorSectionNav';
 
 export default function CoordinatorEvaluationAppealsPage() {
   const [appeals, setAppeals] = useState<EvaluationAppealForCoordinator[]>([]);
@@ -44,6 +45,7 @@ export default function CoordinatorEvaluationAppealsPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-5xl mx-auto page-fade-in">
+      <CoordinatorSectionNav section="evaluations" />
       <div>
         <p className="text-[10px] font-black uppercase tracking-widest text-emerald-800">Academic review</p>
         <h1 className="text-2xl font-bold text-slate-900">Evaluation appeals</h1>

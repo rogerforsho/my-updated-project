@@ -19,10 +19,10 @@ There are four roles: OJT Student, Supervisor, OJT Coordinator, Super Admin. The
 - **Student accounts:** bulk import from CSV with a per-row error preview (all-or-nothing); one-click password reset to the student number, with a forced change at the next mobile sign-in.
 - **Companies (HTEs):** create companies and multiple branches with a map pin and geofence radius (30–50 m); decide student-submitted company requests with evidence view; create Supervisor accounts.
 - **Placement:** assign students to company, branch, supervisor, and dates; review student schedule proposals; reassign students; set status (verified for DROPPED/INC/TERMINATED-type changes).
-- **Monitoring:** department progress summary, attendance list, map view, submissions, and a "what-if" planning page.
+- **Monitoring:** department progress summary, attendance list, and submissions. Company and branch pages retain location and geofence setup.
 - **Attendance exceptions:** adjudicate or override attendance with an audited reason (atomic).
 - **Reports and evaluation:** review reports; view Supervisor evaluations; decide evaluation appeals as final arbiter; record the final OJT grade; clearance check (credited hours, approved final report, passing final evaluation); completion freezes attendance; issue certificates with public verification (`/verify-certificate`).
-- **Messages:** chat with Supervisors (read receipts), file attachments (PDF, DOCX, DOC, JPG, PNG, 10 MB) and tags for students of the shared placement; notifications.
+- **Messages:** chat with Supervisors, file attachments (PDF, DOCX, DOC, JPG, PNG, 10 MB) and tags for students of the shared placement; notifications.
 - **Incident reports:** receive confidential student concern reports, acknowledge them, and close them with a response the student can read.
 - Departmental reports page with export code (PDF/Excel output not fully verified).
 

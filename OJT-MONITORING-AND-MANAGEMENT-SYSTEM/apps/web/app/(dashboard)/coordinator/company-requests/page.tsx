@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { decideCompanyRequest, getCompanyRequestEvidenceUrl, listPendingCompanyRequests } from '@/src/services/companyRequests';
 import { useSearchPaging, SearchBox, PagerBar } from '@/src/components/ui/ListControls';
 import type { DbCompanyRequest } from '@ojt/shared';
+import CoordinatorSectionNav from '@/src/components/coordinator/CoordinatorSectionNav';
 
 export default function CompanyRequestsPage() {
   const [rows, setRows] = useState<DbCompanyRequest[]>([]);
@@ -47,6 +48,7 @@ export default function CompanyRequestsPage() {
   }
 
   return <main className="mx-auto max-w-5xl p-6 lg:p-8">
+    <CoordinatorSectionNav section="partners" />
     <h1 className="text-2xl font-bold text-slate-900">HTE Requests</h1>
     <p className="mt-1 text-sm text-slate-600">Verify the business and branch before approval. Approval creates an active HTE and its first branch.</p>
     {!!error && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
