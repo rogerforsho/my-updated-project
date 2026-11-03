@@ -22,8 +22,8 @@ export async function sendAccountStatusEmail({
 }: SendAccountStatusOptions): Promise<{ success: boolean; error?: string }> {
   const isApproved = status === 'active';
   const subject = isApproved
-    ? 'Colegio de Montalban OJT - Account Verified & Approved: Action Required'
-    : 'Colegio de Montalban OJT - Registration Status: Not Approved';
+    ? 'Your OJT registration is approved - next steps'
+    : 'Your OJT registration needs changes';
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -54,13 +54,13 @@ export async function sendAccountStatusEmail({
                 </span>
               </div>
               <h2 style="color: #0f172a; font-size: 20px; font-weight: 800; margin: 0 0 14px 0;">
-                Welcome, Trainee!
+                Welcome to OJT!
               </h2>
               <p style="color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 16px 0;">
                 Dear <strong style="color: #0A3824;">${escapeHtml(fullName)}</strong>,
               </p>
               <p style="color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;">
-                Your registration for the Colegio de Montalban OJT Practicum System has been officially reviewed and <strong>APPROVED</strong> by your Institute OJT Coordinator.
+                Your registration for the Colegio de Montalban OJT Practicum System has been reviewed and <strong>approved</strong> by your OJT Coordinator.
               </p>
 
               <!-- Mobile Login Guide -->
@@ -69,40 +69,40 @@ export async function sendAccountStatusEmail({
                   📱 Sign In Via Mobile App
                 </p>
                 <p style="color: #475569; font-size: 13px; line-height: 1.5; margin: 0;">
-                  Student interns access attendance and journal logs exclusively through the <strong>CdM OJT Mobile App</strong> using your registered email and password.
+                  Students use the <strong>CdM OJT Mobile App</strong> only. Sign in with the email and password you registered with. The web portal is not available to students.
                 </p>
               </div>
 
               <!-- Mandatory Requirement Notice -->
               <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 20px; margin: 0 0 24px 0;">
                 <h3 style="color: #92400e; font-size: 14px; font-weight: 700; margin: 0 0 8px 0;">
-                  ⚠️ Action Required: Feature Access Notice
+                  ⚠️ Before you can time in
                 </h3>
                 <p style="color: #78350f; font-size: 13px; line-height: 1.6; margin: 0 0 12px 0;">
-                  You can now sign in to the mobile app, but your <strong>Daily Attendance (Time In / Time Out)</strong> is currently <strong>LOCKED</strong>. Under institutional practicum rules, you must submit the following <strong>2 required pre-deployment documents</strong> directly inside the mobile app:
+                  You can now sign in, but <strong>Time In / Time Out</strong> stays locked until you upload these <strong>2 required documents</strong> in the mobile app (Reports tab) and your OJT Coordinator approves them:
                 </p>
                 <ol style="color: #78350f; font-size: 13px; line-height: 1.6; margin: 0; padding-left: 20px;">
                   <li><strong>Pre-OJT Orientation Certificate</strong></li>
                   <li><strong>Endorsement Letter</strong></li>
                 </ol>
                 <p style="color: #92400e; font-size: 12px; font-weight: 600; margin: 12px 0 0 0;">
-                  An OJT Coordinator reviews these documents before placement and attendance are enabled.
+                  After they are approved, propose your host company and work schedule in the app. Attendance opens once your Coordinator approves your placement and schedule.
                 </p>
               </div>
             ` : `
               <div style="display: inline-block; background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 9999px; padding: 4px 12px; margin-bottom: 16px;">
                 <span style="color: #b91c1c; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
-                  Registration Not Approved
+                  Changes Needed
                 </span>
               </div>
               <h2 style="color: #0f172a; font-size: 20px; font-weight: 800; margin: 0 0 14px 0;">
-                Account Status Update
+                Your registration needs changes
               </h2>
               <p style="color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 16px 0;">
                 Dear <strong style="color: #0A3824;">${escapeHtml(fullName)}</strong>,
               </p>
               <p style="color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;">
-                We regret to inform you that your registration for the Colegio de Montalban OJT Practicum System could not be approved at this time.
+                Your OJT Coordinator reviewed your registration for the Colegio de Montalban OJT Practicum System and could not approve it yet.
               </p>
 
               ${reason ? `
@@ -117,7 +117,7 @@ export async function sendAccountStatusEmail({
               ` : ''}
 
               <p style="color: #475569; font-size: 13px; line-height: 1.6; margin: 0 0 16px 0;">
-                If you believe this decision is in error or your student enrollment details were misentered, please consult directly with your Department OJT Coordinator (ICS or IBE Practicum Office).
+                <strong>What to do:</strong> open the CdM OJT Mobile App and sign in. You will be taken to a screen where you can correct your details and re-upload your student ID, then resubmit for review. If you think this is a mistake, contact your OJT Coordinator (ICS or IBE Practicum Office).
               </p>
             `}
 
