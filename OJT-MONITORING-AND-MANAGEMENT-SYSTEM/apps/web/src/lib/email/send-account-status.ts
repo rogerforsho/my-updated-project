@@ -170,7 +170,7 @@ export async function sendSupervisorWelcomeEmail({
   idempotencyKey,
 }: SendSupervisorWelcomeOptions): Promise<{ success: boolean; error?: string }> {
   const portalUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://ojt.cdm.edu.ph';
-  const subject = `Set up your CdM OJT Portal supervisor account (${companyName})`;
+  const subject = `Your CdM OJT supervisor account is ready (${companyName})`;
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -190,13 +190,18 @@ export async function sendSupervisorWelcomeEmail({
             <div style="display: inline-block; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 9999px; padding: 4px 12px; margin-bottom: 16px;">
               <span style="color: #047857; font-size: 12px; font-weight: 700; text-transform: uppercase;">✓ Supervisor Account Created</span>
             </div>
-            <h2 style="color: #0f172a; font-size: 20px; font-weight: 800; margin: 0 0 14px 0;">Welcome, Industry Mentor!</h2>
+            <h2 style="color: #0f172a; font-size: 20px; font-weight: 800; margin: 0 0 14px 0;">Welcome, Supervisor!</h2>
             <p style="color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 16px 0;">
               Dear <strong style="color: #0A3824;">${escapeHtml(fullName)}</strong>,
             </p>
             <p style="color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;">
-              An Industry Supervisor profile has been established for you representing <strong>${escapeHtml(companyName)}</strong> (${escapeHtml(position)}) in the Colegio de Montalban OJT Practicum System.
+              A supervisor account has been created for you at <strong>${escapeHtml(companyName)}</strong> (${escapeHtml(position)}) in the Colegio de Montalban OJT Practicum System. You will use it on the web portal to review the attendance, reports and evaluations of the students assigned to you.
             </p>
+            <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 14px 18px; margin: 0 0 20px 0;">
+              <p style="color: #78350f; font-size: 13px; line-height: 1.6; margin: 0;">
+                <strong>First step:</strong> choose your password using the link in the separate email titled <strong>&ldquo;Set or reset your CdM OJT password&rdquo;</strong>. It may already be in your inbox. Check your spam folder if you cannot find it.
+              </p>
+            </div>
             <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px; margin: 0 0 24px 0;">
               <h3 style="color: #0f172a; font-size: 13px; font-weight: 700; margin: 0 0 12px 0;">Your Account Details</h3>
               <p style="font-size: 13px; color: #475569; margin: 0 0 6px 0;"><strong>Web Portal:</strong> <a href="${portalUrl}/auth/sign-in" style="color: #0A3824; font-weight: 600;">${portalUrl}/auth/sign-in</a></p>
@@ -204,7 +209,7 @@ export async function sendSupervisorWelcomeEmail({
               <p style="font-size: 13px; color: #475569; margin: 0;"><strong>Employee ID:</strong> <span style="font-family: monospace; color: #0f172a;">${escapeHtml(employeeNumber)}</span></p>
             </div>
             <p style="color: #64748b; font-size: 12px; line-height: 1.5; margin: 20px 0 0 0; border-top: 1px solid #f1f5f9; padding-top: 16px;">
-              A separate one-time account invitation contains your password setup link. Use it to choose your own password. Contact your OJT Coordinator if you need a new invitation.
+              The password link works only once. If it has expired, contact your OJT Coordinator or the system administrator to have a new one sent.
             </p>
           </div>
         </div>
