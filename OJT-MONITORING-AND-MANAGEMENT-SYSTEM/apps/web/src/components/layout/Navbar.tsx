@@ -93,7 +93,7 @@ export default function Navbar({ user, isMenuOpen = false, onMenuToggle }: Navba
   const roleBadgeStyle = roleColor[user.role] || 'text-slate-700 bg-slate-100 dark:text-slate-300 dark:bg-slate-800 border-slate-200 dark:border-slate-700';
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-[var(--surface)]/95 backdrop-blur-md border-b border-[var(--line)] h-[68px] px-4 sm:px-6 lg:px-8 flex items-center justify-between transition-colors select-none">
+    <header className="sticky top-0 z-30 w-full bg-[var(--surface)]/95 backdrop-blur-md border-b border-[var(--line)] h-[68px] px-4 sm:px-6 flex items-center justify-between transition-colors select-none">
       {/* Left: Mobile Menu Toggle & Simplified Page Title (No breadcrumbs) */}
       <div className="flex items-center gap-3.5 min-w-0">
         <button
