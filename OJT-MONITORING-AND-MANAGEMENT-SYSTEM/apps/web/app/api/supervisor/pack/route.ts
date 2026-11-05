@@ -1,4 +1,5 @@
 import { getTrustedActor } from '@/src/lib/trusted-actor';
+import { resolveSupervisor } from '@/src/lib/supervisor-actor';
 import { getServiceClient } from '@/src/lib/supabase/service';
 import { readLimitedJson } from '@/src/lib/read-limited-json';
 import { recordAuditEvent } from '@/src/lib/audit';
@@ -29,8 +30,10 @@ export async function POST(request: Request) {
   const origin = request.headers.get('origin');
   if (origin && new URL(origin).host !== request.headers.get('host')) return json(403, 'Access denied.');
 
-  const { supabase, user, profile } = await getTrustedActor();
-  if (!user || profile?.role !== 'Supervisor') return json(403, 'Access denied.');
+  const actor = await getTrustedActor();
+  const { supabase, user } = actor;
+  const sup = await resolveSupervisor(actor);
+  if (sup.error || !user) return json(403, 'Access denied.');
 
   const limited = await authActionLimit('report_upload', user.id, 10, 3600, 'user');
   if (limited) return json(limited.code === 'RATE_LIMITED' ? 429 : 503, limited.message);
@@ -46,8 +49,7 @@ export async function POST(request: Request) {
     return json(400, 'Choose a date range of up to one year.');
   const ids = [...new Set(student_ids as string[])];
 
-  const { data: supervisorId } = await supabase.rpc('get_my_supervisor_id');
-  if (!supervisorId) return json(403, 'Access denied.');
+  const supervisorId = sup.supervisorId;
   const db = getServiceClient();
 
   const { data: owned } = await db.from('student_assignments').select('student_id').eq('supervisor_id', supervisorId).in('student_id', ids);
