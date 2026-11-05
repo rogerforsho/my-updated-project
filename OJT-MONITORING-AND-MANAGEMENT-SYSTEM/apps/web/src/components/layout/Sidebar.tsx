@@ -245,11 +245,11 @@ export default function Sidebar({ user, isOpen = false, onClose }: Props) {
                 aria-current={active ? 'page' : undefined}
                 className={`flex items-center gap-3 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
                   active
-                    ? 'bg-white/10 text-white shadow-2xs border border-white/15 font-bold'
+                    ? 'bg-white/15 text-white shadow-2xs border border-white/20 border-l-4 border-l-white font-bold'
                     : 'text-slate-400 hover:text-white hover:bg-white/5 active:scale-[0.99]'
                 }`}
               >
-                <IconComponent className={`w-4 h-4 shrink-0 transition-colors ${active ? 'text-[#E4DBC4]' : 'text-slate-400 group-hover:text-slate-200'}`} />
+                <IconComponent className={`w-4 h-4 shrink-0 transition-colors ${active ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`} />
                 <span className="truncate">{item.label}</span>
               </Link>
               )}

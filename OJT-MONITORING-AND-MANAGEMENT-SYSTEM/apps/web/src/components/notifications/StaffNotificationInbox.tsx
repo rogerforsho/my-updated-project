@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/src/lib/supabase/server';
+import { Bell } from '@/src/components/ui/Icons';
 
 const PAGE_SIZE = 50;
 
@@ -38,7 +39,10 @@ export default async function StaffNotificationInbox({ role, page = 1 }: { role:
 
   return <section className="mx-auto w-full max-w-4xl p-4 sm:p-6 lg:p-8 space-y-5">
     <header><h1 className="text-2xl font-bold text-slate-900">Notifications</h1><p className="mt-1 text-sm text-slate-500">System updates for your account. Chat alerts open the related conversation.</p></header>
-    {notifications.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">You have no notifications.</div> :
+    {notifications.length === 0 ? <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <span className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-slate-300"><Bell className="h-10 w-10" /></span>
+        <p className="text-sm font-medium text-slate-500">You have no notifications.</p>
+      </div> :
       <div className="space-y-3">{notifications.map((notification) => {
         const content = <div className={`rounded-xl border bg-white p-4 ${notification.status === 'unread' ? 'border-l-4 border-l-teal-600' : 'border-slate-200'}`}>
           <p className="text-sm text-slate-800">{notification.message}</p>
