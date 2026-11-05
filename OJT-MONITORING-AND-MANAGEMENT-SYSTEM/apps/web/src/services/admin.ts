@@ -3,7 +3,8 @@
 import { createClient } from '@/src/lib/supabase/server';
 import { getServiceClient } from '@/src/lib/supabase/service';
 import { recordAuditEvent } from '@/src/lib/audit';
-import { restrictDepartment, courseDepartment } from '@/src/lib/department-scope';
+import { restrictDepartment } from '@/src/lib/department-scope';
+import { courseDepartment } from '@/src/lib/departments';
 import crypto from 'crypto';
 import type { AppResult, UserRole, AccountStatus } from '@ojt/shared';
 

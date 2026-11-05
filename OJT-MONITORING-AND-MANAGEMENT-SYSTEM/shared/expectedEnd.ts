@@ -37,3 +37,22 @@ export function expectedEndDate(input: ExpectedEndInput): string | null {
   }
   return null;
 }
+
+/** Required practicum hours when a student has none set. */
+export const DEFAULT_REQUIRED_HOURS = 486;
+
+export interface NonWorkingDayRow {
+  day_date: string;
+  scope: string;
+  department: string | null;
+  company_id: string | null;
+}
+
+/**
+ * Dates that are non-working for a student: global, their department's, and company days for any of `companyIds`.
+ * Callers choose the company semantics: all of the student's assignments (history) or only the current one.
+ */
+export function nonWorkingDatesFor(rows: NonWorkingDayRow[], department: string | null, companyIds: string[]): Set<string> {
+  return new Set(rows.filter((d) => d.scope === 'global' || (d.scope === 'department' && d.department === department) ||
+    (d.scope === 'company' && d.company_id !== null && companyIds.includes(d.company_id))).map((d) => d.day_date));
+}
