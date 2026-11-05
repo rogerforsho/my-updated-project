@@ -1,9 +1,11 @@
 'use server';
 
 import { getTrustedActor } from '@/src/lib/trusted-actor';
+import { resolveSupervisor, supervisorOwnsStudent } from '@/src/lib/supervisor-actor';
 import { getServiceClient } from '@/src/lib/supabase/service';
 import { toCsv } from '@/src/lib/csv';
-import { expectedEndDate, type AppResult } from '@ojt/shared';
+import { courseDepartment } from '@/src/lib/departments';
+import { DEFAULT_REQUIRED_HOURS, expectedEndDate, nonWorkingDatesFor, type AppResult, type NonWorkingDayRow } from '@ojt/shared';
 
 export interface PlacementEntry {
   assignment_id: string;
@@ -43,25 +45,15 @@ export interface CompanyIntake {
   company_graduated: number;
 }
 
-const DEFAULT_REQUIRED_HOURS = 486;
 const INACTIVE_DAYS = 7;
-
-// Mirrors course_department() in the database.
-function departmentOf(course: string): 'ICS' | 'IBE' | null {
-  const c = course.toUpperCase();
-  if (/BSIT|BSCS|CPE|INFORMATION TECHNOLOGY|COMPUTER/.test(c)) return 'ICS';
-  if (/BSBA|BSENTREP|ENTREPRENEURSHIP|HUMAN RESOURCE|BSA|ACCOUNTANCY/.test(c)) return 'IBE';
-  return null;
-}
 
 const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] : v) ?? null;
 const isoDaysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
 
 async function supervisorContext() {
-  const { supabase, user, profile } = await getTrustedActor();
-  if (!user || profile?.role !== 'Supervisor') return null;
-  const { data: supervisorId } = await supabase.rpc('get_my_supervisor_id');
-  return supervisorId ? { supabase, supervisorId: supervisorId as string, userId: user.id } : null;
+  const actor = await getTrustedActor();
+  const sup = await resolveSupervisor(actor);
+  return sup.error ? null : { supabase: actor.supabase, supervisorId: sup.supervisorId, userId: actor.user!.id };
 }
 
 /**
@@ -120,10 +112,9 @@ export async function listSupervisedTrainees(): Promise<AppResult<SupervisedTrai
     const required = student?.required_hours ?? DEFAULT_REQUIRED_HOURS;
     const done = hours.get(student_id) ?? 0;
     const active = current.entry.assignment_status === 'active';
-    const dept = departmentOf(student?.course ?? '');
+    const dept = courseDepartment(student?.course);
     const plan = schedule.get(student_id);
-    const off = (offDays.data ?? []).filter((d) =>
-      d.scope === 'global' || (d.scope === 'department' && d.department === dept) || (d.scope === 'company' && d.company_id === current.row.company_id));
+    const off = nonWorkingDatesFor((offDays.data ?? []) as NonWorkingDayRow[], dept, [current.row.company_id as string]); // current placement only
 
     trainees.push({
       student_id,
@@ -138,7 +129,7 @@ export async function listSupervisedTrainees(): Promise<AppResult<SupervisedTrai
       graduated: entries.some((e) => e.entry.assignment_status === 'completed') && done >= required,
       no_recent_attendance: active && !attended.has(student_id),
       expected_end: active && plan
-        ? expectedEndDate({ remainingHours: Math.max(0, required - done), dailyHours: plan.daily_hours, workDays: plan.work_days, nonWorkingDates: off.map((d) => d.day_date as string), asOfDate: today })
+        ? expectedEndDate({ remainingHours: Math.max(0, required - done), dailyHours: plan.daily_hours, workDays: plan.work_days, nonWorkingDates: off, asOfDate: today })
         : null,
     });
   }
@@ -184,11 +175,7 @@ export async function setMyCompanyIntake(input: { max_interns: number | null; ac
   return { data: null, error: null };
 }
 
-async function ownsTrainee(supervisorId: string, studentId: string) {
-  const { count } = await getServiceClient().from('student_assignments')
-    .select('*', { count: 'exact', head: true }).eq('supervisor_id', supervisorId).eq('student_id', studentId);
-  return (count ?? 0) > 0;
-}
+const ownsTrainee = (supervisorId: string, studentId: string) => supervisorOwnsStudent(getServiceClient(), supervisorId, studentId);
 
 /** Files the trainee already uploaded; open each through getSignedDocumentUrl. */
 export async function listTraineeReports(student_id: string): Promise<AppResult<{ report_id: string; report_type: string; file_path: string; status: string; submission_date: string }[]>> {

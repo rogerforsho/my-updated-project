@@ -1,6 +1,7 @@
 'use server';
 
 import { getTrustedActor } from '@/src/lib/trusted-actor';
+import { resolveSupervisor, supervisorOwnsStudent } from '@/src/lib/supervisor-actor';
 
 import { getServiceClient } from '@/src/lib/supabase/service';
 import { toPublicSupabaseUrl } from '@/src/lib/supabase/public-url';
@@ -24,21 +25,16 @@ export async function listAttendanceForSupervisor(
   verificationFilter?: VerificationStatus,
   search?: string
 ): Promise<AppResult<{ records: AttendanceWithStudent[]; total: number }>> {
-  const { supabase, user, profile } = await getTrustedActor();
-  if (!user || profile?.role !== 'Supervisor' || profile?.account_status !== 'active')
-    return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
-
-  const { data: supervisorId } = await supabase.rpc('get_my_supervisor_id');
-  const supervisor = supervisorId ? { supervisor_id: supervisorId } : null;
-
-  if (!supervisor)
-    return { data: null, error: { code: 'NOT_FOUND', message: 'Supervisor profile not found.' } };
+  const actor = await getTrustedActor();
+  const { supabase, user } = actor;
+  const sup = await resolveSupervisor(actor);
+  if (sup.error) return { data: null, error: sup.error };
 
   // Get assigned student IDs first
   const { data: assignments } = await supabase
     .from('student_assignments')
     .select('student_id')
-    .eq('supervisor_id', supervisor.supervisor_id);
+    .eq('supervisor_id', sup.supervisorId);
 
   const studentIds = (assignments ?? []).map((a: { student_id: string }) => a.student_id);
   if (studentIds.length === 0)
@@ -78,15 +74,10 @@ export async function verifyAttendance(
   if (!['verified', 'rejected'].includes(verification_status))
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Invalid verification status.' } };
 
-  const { supabase, user, profile } = await getTrustedActor();
-  if (!user || profile?.role !== 'Supervisor' || profile?.account_status !== 'active')
-    return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
-
-  const { data: supervisorId } = await supabase.rpc('get_my_supervisor_id');
-  const supervisor = supervisorId ? { supervisor_id: supervisorId } : null;
-
-  if (!supervisor)
-    return { data: null, error: { code: 'NOT_FOUND', message: 'Supervisor profile not found.' } };
+  const actor = await getTrustedActor();
+  const { supabase, user } = actor;
+  const sup = await resolveSupervisor(actor);
+  if (sup.error) return { data: null, error: sup.error };
 
   // IDOR check - verify this attendance belongs to an assigned student
   const { data: record } = await supabase
@@ -98,15 +89,7 @@ export async function verifyAttendance(
   if (!record)
     return { data: null, error: { code: 'NOT_FOUND', message: 'Attendance record not found.' } };
 
-  const { data: assignment } = await supabase
-    .from('student_assignments')
-    .select('assignment_id')
-    .eq('student_id', record.student_id)
-    .eq('supervisor_id', supervisor.supervisor_id)
-    .eq('assignment_status', 'active')
-    .maybeSingle();
-
-  if (!assignment)
+  if (!(await supervisorOwnsStudent(supabase, sup.supervisorId, record.student_id, { activeOnly: true })))
     return { data: null, error: { code: 'FORBIDDEN', message: 'You are not assigned to this student.' } };
 
   if (record.verification_status !== 'pending')
@@ -132,20 +115,15 @@ export async function batchVerifyAttendance(attendanceIds: string[]): Promise<Ap
       attendanceIds.some(id => typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)))
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Choose between 1 and 20 visible attendance records.' } };
   const requestedIds = [...new Set(attendanceIds)];
-  const { supabase, user, profile } = await getTrustedActor();
-  if (!user || profile?.role !== 'Supervisor' || profile?.account_status !== 'active')
-    return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
-
-  const { data: supervisorId } = await supabase.rpc('get_my_supervisor_id');
-  const supervisor = supervisorId ? { supervisor_id: supervisorId } : null;
-
-  if (!supervisor)
-    return { data: null, error: { code: 'NOT_FOUND', message: 'Supervisor profile not found.' } };
+  const actor = await getTrustedActor();
+  const { supabase, user } = actor;
+  const sup = await resolveSupervisor(actor);
+  if (sup.error) return { data: null, error: sup.error };
 
   const { data: assignments, error: assignmentError } = await supabase
     .from('student_assignments')
     .select('student_id')
-    .eq('supervisor_id', supervisor.supervisor_id)
+    .eq('supervisor_id', sup.supervisorId)
     .eq('assignment_status', 'active');
   if (assignmentError)
     return { data: null, error: { code: 'SERVER_FAILURE', message: 'Unable to verify your assigned students.' } };
@@ -166,7 +144,7 @@ export async function batchVerifyAttendance(attendanceIds: string[]): Promise<Ap
     return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to batch verify attendance.' } };
 
   if (updated?.length) await recordAuditEvent({
-    actor_user_id: user.id, action: 'ATTENDANCE_BATCH_VERIFIED', entity_type: 'attendance',
+    actor_user_id: user!.id, action: 'ATTENDANCE_BATCH_VERIFIED', entity_type: 'attendance',
     details: { attendance_ids: updated.map(row => row.attendance_id) },
   });
 
