@@ -94,10 +94,10 @@ export default function PublicFooter() {
             </a>
             <span className="text-slate-300">•</span>
             <a
-              href="mailto:ojt-support@cdm.edu.ph"
+              href="mailto:vralphroger@gmail.com"
               className="hover:underline hover:text-slate-900"
             >
-              Support: ojt-support@cdm.edu.ph
+              Support: vralphroger@gmail.com
             </a>
           </div>
 
@@ -222,7 +222,7 @@ export default function PublicFooter() {
               <div>
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">5. Data Subject Rights & Contact</h4>
                 <p>
-                  Trainees have the right to inspect, correct, and request rectification of their practicum records. For inquiries, contact the Data Protection Officer at <span className="font-mono text-slate-800">dpo@cdm.edu.ph</span> or the Practicum Office at <span className="font-mono text-slate-800">ojt-support@cdm.edu.ph</span>.
+                  Trainees have the right to inspect, correct, and request rectification of their practicum records. For inquiries, contact the Data Protection Officer at <span className="font-mono text-slate-800">vralphroger@gmail.com</span> or the Practicum Office at <span className="font-mono text-slate-800">vralphroger@gmail.com</span>.
                 </p>
               </div>
             </div>
@@ -295,7 +295,7 @@ export default function PublicFooter() {
               <div>
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">4. Maintenance & Support</h4>
                 <p>
-                  The system operates 24/7 with scheduled maintenance announced in advance. For support tickets or login concerns, email <span className="font-mono text-slate-800">ojt-support@cdm.edu.ph</span> or <span className="font-mono text-slate-800">mis@cdm.edu.ph</span>.
+                  The system operates 24/7 with scheduled maintenance announced in advance. For support tickets or login concerns, email <span className="font-mono text-slate-800">vralphroger@gmail.com</span> or <span className="font-mono text-slate-800">vralphroger@gmail.com</span>.
                 </p>
               </div>
             </div>
@@ -465,7 +465,7 @@ export default function PublicFooter() {
 
             {/* Footer */}
             <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">Need support? Contact ojt-support@cdm.edu.ph</span>
+              <span className="text-[11px] text-slate-400">Need support? Contact vralphroger@gmail.com</span>
               <button
                 onClick={closeModal}
                 className="px-3.5 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium transition-colors cursor-pointer"

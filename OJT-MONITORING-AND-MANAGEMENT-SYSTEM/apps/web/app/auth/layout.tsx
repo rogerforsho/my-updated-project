@@ -98,7 +98,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
                 Desktop App (.exe)
               </a>
               <span>&bull;</span>
-              <a href="mailto:mis@cdm.edu.ph" className="hover:text-slate-700 transition-colors">
+              <a href="mailto:vralphroger@gmail.com" className="hover:text-slate-700 transition-colors">
                 Support
               </a>
             </div>
