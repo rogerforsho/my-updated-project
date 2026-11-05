@@ -80,6 +80,7 @@ export default function AttendanceScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [offlineCount, setOfflineCount] = useState(0);
+  const [blocked, setBlocked] = useState<{ count: number; reason: string | null }>({ count: 0, reason: null });
   const [isOffline, setIsOffline] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -125,12 +126,20 @@ export default function AttendanceScreen() {
     return () => subscription.remove();
   }, []);
 
+  // Items the server permanently rejected are "blocked": they are not pending sync, they need a coordinator.
+  function applyQueue(queue: Awaited<ReturnType<typeof getOfflineQueue>>, studentId?: string) {
+    const mine = queue.filter(item => item.student_id === studentId);
+    const blockedItems = mine.filter(item => item.blocked_reason);
+    setOfflineCount(mine.length - blockedItems.length);
+    setBlocked({ count: blockedItems.length, reason: blockedItems[0]?.blocked_reason ?? null });
+  }
+
   async function checkOfflineStatus() {
     const online = await isNetworkAvailable();
     setIsOffline(!online);
     const queue = await getOfflineQueue();
     const queueIdentity = await getCachedAttendanceIdentity();
-    setOfflineCount(queue.filter(item => item.student_id === queueIdentity?.student_id).length);
+    applyQueue(queue, queueIdentity?.student_id);
 
     if (online && queue.length > 0) {
       await handleSync();
@@ -210,7 +219,7 @@ export default function AttendanceScreen() {
     setTodayRecord(record);
     const queue = await getOfflineQueue();
     const queueIdentity = await getCachedAttendanceIdentity();
-    setOfflineCount(queue.filter(item => item.student_id === queueIdentity?.student_id).length);
+    applyQueue(queue, queueIdentity?.student_id);
     setLoading(false);
   }
 
@@ -627,6 +636,19 @@ export default function AttendanceScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0A3824']} />}
         >
+          {blocked.count > 0 && (
+            <View style={s.blockedBanner}>
+              <Text style={s.blockedBannerTitle}>
+                {blocked.count === 1
+                  ? 'Needs coordinator review: this record could not be saved'
+                  : `Needs coordinator review: ${blocked.count} records could not be saved`}
+              </Text>
+              <Text style={s.blockedBannerSub}>
+                {blocked.reason ? `${blocked.reason} ` : ''}Your photo and time are kept on this device.
+              </Text>
+            </View>
+          )}
+
           {/* Offline Sync Banner */}
           {offlineCount > 0 && (
             <View style={s.offlineBanner}>
@@ -1218,6 +1240,16 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 10,
   },
+  blockedBanner: {
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+  },
+  blockedBannerTitle: { fontSize: 13, fontWeight: '800', color: '#991b1b' },
+  blockedBannerSub: { fontSize: 11, color: '#b91c1c', marginTop: 2 },
   offlineBannerTextCol: { flex: 1 },
   offlineBannerTitle: { fontSize: 13, fontWeight: '800', color: '#92400e' },
   offlineBannerSub: { fontSize: 11, color: '#b45309', marginTop: 2 },
