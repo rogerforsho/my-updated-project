@@ -273,9 +273,10 @@ export async function updateUserAccountStatus(
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Invalid status.' } };
   }
   const service = serviceClient();
-  const { data: target } = await service.from('users').select('role').eq('user_id', user_id).maybeSingle();
+  const { data: target } = await service.from('users').select('role, account_status').eq('user_id', user_id).maybeSingle();
   if (!target) return { data: null, error: { code: 'NOT_FOUND', message: 'User account no longer exists.' } };
-  if (target.role === 'Student' && ['active', 'rejected'].includes(status)) {
+  // Reactivating an inactive Student is account access (Super Admin); approving or rejecting a registration stays with the Coordinator.
+  if (target.role === 'Student' && (status === 'rejected' || (status === 'active' && target.account_status !== 'inactive'))) {
     return { data: null, error: { code: 'FORBIDDEN', message: 'Student account approval and rejection belong to the OJT Coordinator.' } };
   }
   if (user_id === user.id && status !== 'active') {
