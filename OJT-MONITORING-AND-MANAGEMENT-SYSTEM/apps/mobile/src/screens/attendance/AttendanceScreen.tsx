@@ -680,6 +680,16 @@ export default function AttendanceScreen() {
             </View>
           )}
 
+          {/* shortcut: a failed assignment lookup also reads as "none", so pull-to-refresh corrects it; split the error case if students report false notices */}
+          {!isOffline && isGatewayCleared && !activeAssignment && (
+            <View style={s.alertSuccess}>
+              <Ionicons name="information-circle" size={18} color="#0A3824" />
+              <Text style={s.alertSuccessText}>
+                No company assigned yet. Time In with selfie unlocks once your coordinator assigns you to a company and supervisor.
+              </Text>
+            </View>
+          )}
+
           {/* Pre-Deployment Gateway Notice or Normal Today Status */}
           {(!activeAssignment || !isGatewayCleared) ? (
             <View style={s.gatewayCard}>
@@ -692,6 +702,8 @@ export default function AttendanceScreen() {
                   <Text style={s.gatewaySubtitle}>
                     {!isGatewayCleared
                       ? `Pre-Deployment Gateway Incomplete (${gatewayDocs.filter(d => d.status === 'approved').length}/2 Approved)`
+                      : scheduleProposal
+                      ? 'Gateway Cleared! Waiting for Company Assignment'
                       : 'Gateway Cleared! Set Up Practicum Work Schedule'}
                   </Text>
                 </View>
