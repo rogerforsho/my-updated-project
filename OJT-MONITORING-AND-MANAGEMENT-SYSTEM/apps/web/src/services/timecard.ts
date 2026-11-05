@@ -2,7 +2,8 @@
 
 import { getTrustedActor } from '@/src/lib/trusted-actor';
 import { toCsv } from '@/src/lib/csv';
-import type { AppResult } from '@ojt/shared';
+import { courseDepartment } from '@/src/lib/departments';
+import { nonWorkingDatesFor, type AppResult, type NonWorkingDayRow } from '@ojt/shared';
 
 export interface TimecardRow {
   key: string;
@@ -30,13 +31,6 @@ export interface TimecardFilter {
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] : v) ?? null;
-
-function departmentOf(course: string): 'ICS' | 'IBE' | null {
-  const c = course.toUpperCase();
-  if (/BSIT|BSCS|CPE|INFORMATION TECHNOLOGY|COMPUTER/.test(c)) return 'ICS';
-  if (/BSBA|BSENTREP|ENTREPRENEURSHIP|HUMAN RESOURCE|BSA|ACCOUNTANCY/.test(c)) return 'IBE';
-  return null;
-}
 
 async function coordinator() {
   const { supabase, user, profile } = await getTrustedActor();
@@ -127,10 +121,10 @@ async function absentDays(supabase: NonNullable<Awaited<ReturnType<typeof coordi
   ]);
   const workDays = new Set<number>((sched?.[0]?.work_days as number[] | undefined) ?? []);
   if (!workDays.size || !asg?.length) return [];
-  const dept = departmentOf(student?.course ?? '');
+  const dept = courseDepartment(student?.course);
   const { data: off } = await supabase.from('non_working_days').select('day_date, scope, department, company_id').gte('day_date', from).lte('day_date', to);
-  const closed = new Set((off ?? []).filter((d) => d.scope === 'global' || (d.scope === 'department' && d.department === dept) ||
-    (d.scope === 'company' && asg.some((a) => a.company_id === d.company_id))).map((d) => d.day_date as string));
+  // Any assignment: absences are judged across the whole placement history.
+  const closed = nonWorkingDatesFor((off ?? []) as NonWorkingDayRow[], dept, asg.map((a) => a.company_id as string));
   const present = new Set((recs ?? []).map((r) => r.attendance_date as string));
   const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
   const last = to < yesterday ? to : yesterday;
