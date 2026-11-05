@@ -4,10 +4,11 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { listMyCompanyRequests, submitCompanyRequest, type CompanyRequestInput } from '../services/companyRequests';
 import type { DbCompanyRequest } from '@ojt/shared';
+import BranchLocationPicker from './BranchLocationPicker';
 
 const empty: CompanyRequestInput = {
   requested_company_name: '', company_address: '', contact_person: '', contact_email: '', contact_number: '',
-  requested_branch_name: '', branch_address: '',
+  requested_branch_name: '', branch_address: '', branch_latitude: null, branch_longitude: null,
 };
 
 export default function CompanyRequestModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -16,6 +17,7 @@ export default function CompanyRequestModal({ visible, onClose }: { visible: boo
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [picking, setPicking] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -39,6 +41,7 @@ export default function CompanyRequestModal({ visible, onClose }: { visible: boo
   }
 
   async function submit() {
+    if (form.branch_latitude == null || form.branch_longitude == null) { setError('Pick the branch location on the map first.'); return; }
     setError(''); setSaving(true);
     const result = await submitCompanyRequest(form);
     setSaving(false);
@@ -58,6 +61,7 @@ export default function CompanyRequestModal({ visible, onClose }: { visible: boo
     </View>
   );
   const hasPendingRequest = requests.some((request) => request.status === 'pending');
+  const hasPin = form.branch_latitude != null && form.branch_longitude != null;
 
   return <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
     <View style={styles.overlay}><View style={styles.container}>
@@ -74,6 +78,18 @@ export default function CompanyRequestModal({ visible, onClose }: { visible: boo
         <Text style={styles.section}>Proposed branch</Text>
         {field('Branch name', 'requested_branch_name', 'e.g. Main Office')}
         {field('Branch address', 'branch_address', 'Work location address')}
+        <TouchableOpacity style={styles.upload} onPress={() => setPicking(true)} accessibilityRole="button" accessibilityLabel="Pick branch location on map">
+          <Ionicons name="location" size={18} color="#0A3824" />
+          <Text style={styles.uploadText}>{hasPin ? `Pinned: ${form.branch_latitude!.toFixed(5)}, ${form.branch_longitude!.toFixed(5)} (tap to change)` : 'Pick branch location on map'}</Text>
+        </TouchableOpacity>
+        {picking && <BranchLocationPicker visible initialQuery={form.branch_address}
+          initialPin={hasPin ? { latitude: form.branch_latitude!, longitude: form.branch_longitude! } : null}
+          onClose={() => setPicking(false)}
+          onConfirm={({ latitude, longitude, address }) => {
+            setForm((current) => ({ ...current, branch_latitude: latitude, branch_longitude: longitude,
+              branch_address: current.branch_address.trim() ? current.branch_address : (address ?? '').slice(0, 500) }));
+            setPicking(false);
+          }} />}
         <Text style={styles.helper}>Optional evidence. The system does not create or sign an MOA.</Text>
         {(['business_permit', 'moa'] as const).map((key) => <TouchableOpacity key={key} style={styles.upload} onPress={() => pickEvidence(key)}>
           <Ionicons name="attach" size={18} color="#0A3824" /><Text style={styles.uploadText}>{form[key]?.name ?? (key === 'moa' ? 'Attach MOA copy (optional)' : 'Attach business permit (optional)')}</Text>

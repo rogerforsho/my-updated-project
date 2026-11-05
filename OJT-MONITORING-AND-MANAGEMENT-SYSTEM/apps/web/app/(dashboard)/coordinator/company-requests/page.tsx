@@ -1,17 +1,24 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { decideCompanyRequest, getCompanyRequestEvidenceUrl, listPendingCompanyRequests } from '@/src/services/companyRequests';
 import { useSearchPaging, SearchBox, PagerBar } from '@/src/components/ui/ListControls';
 import type { DbCompanyRequest } from '@ojt/shared';
 import CoordinatorSectionNav from '@/src/components/coordinator/CoordinatorSectionNav';
 
+const LocationPickerMap = dynamic(() => import('@/src/components/companies/LocationPickerMap'), {
+  ssr: false,
+  loading: () => <div className="h-64 w-full animate-pulse rounded-xl bg-slate-100" />,
+});
+
 export default function CompanyRequestsPage() {
   const [rows, setRows] = useState<DbCompanyRequest[]>([]);
   const [selected, setSelected] = useState<DbCompanyRequest | null>(null);
   const list = useSearchPaging(rows, (r) => `${r.requested_company_name} ${r.requested_branch_name} ${r.branch_address}`);
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [radius, setRadius] = useState(50);
   const [feedback, setFeedback] = useState('');
   const [evidence, setEvidence] = useState<{ permit?: string; moa?: string }>({});
   const [error, setError] = useState('');
@@ -39,11 +46,11 @@ export default function CompanyRequestsPage() {
     setBusy(true); setError('');
     const result = await decideCompanyRequest({
       request_id: selected.request_id, decision, feedback,
-      latitude: Number(latitude), longitude: Number(longitude), radius: 50,
+      latitude: latitude ?? undefined, longitude: longitude ?? undefined, radius,
     });
     setBusy(false);
     if (result.error) { setError(result.error.message); return; }
-    setSelected(null); setFeedback(''); setLatitude(''); setLongitude('');
+    setSelected(null); setFeedback('');
     await load();
   }
 
@@ -54,7 +61,10 @@ export default function CompanyRequestsPage() {
     {!!error && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
     <div className="mt-4"><SearchBox value={list.search} onChange={list.setSearch} placeholder="Search company, branch or address..." /></div>
     <div className="mt-6 space-y-3">
-      {list.visible.map((row) => <button key={row.request_id} onClick={() => setSelected(row)} className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left hover:border-emerald-700">
+      {list.visible.map((row) => <button key={row.request_id} onClick={() => {
+        // Pre-fill from the student's suggested pin before the map mounts; the coordinator must still confirm it.
+        setLatitude(row.branch_latitude ?? null); setLongitude(row.branch_longitude ?? null); setRadius(50); setSelected(row);
+      }} className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left hover:border-emerald-700">
         <span className="block font-semibold text-slate-900">{row.requested_company_name} · {row.requested_branch_name}</span>
         <span className="mt-1 block text-sm text-slate-600">{row.branch_address} · submitted {new Date(row.created_at).toLocaleDateString()}</span>
         <span className="mt-2 block text-xs text-slate-500">{row.business_permit_path ? 'Business permit attached' : 'No business permit'} · {row.moa_path ? 'MOA copy attached' : 'No MOA copy'}</span>
@@ -74,16 +84,18 @@ export default function CompanyRequestsPage() {
           </dd></div>
         </dl>
         <p className="mt-5 text-sm font-semibold">Approved branch geofence pin (required)</p>
-        <div className="mt-2 grid grid-cols-2 gap-3">
-          <input aria-label="Latitude" value={latitude} onChange={(e) => setLatitude(e.target.value)} placeholder="Latitude" className="rounded-lg border p-2" />
-          <input aria-label="Longitude" value={longitude} onChange={(e) => setLongitude(e.target.value)} placeholder="Longitude" className="rounded-lg border p-2" />
+        <p className="mt-1 text-xs text-slate-500">{selected.branch_latitude != null ? 'The student suggested this pin. Verify it on the map and adjust if needed; your confirmed pin becomes the attendance geofence.' : 'The student did not pin a location. Search the address or click the map.'}</p>
+        <div className="mt-2">
+          <LocationPickerMap key={selected.request_id} latitude={latitude} longitude={longitude} radiusMeters={radius}
+            initialSearchQuery={selected.branch_address}
+            onLocationChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }} onRadiusChange={setRadius} />
         </div>
         <label className="mt-4 block text-sm font-semibold">Decision feedback</label>
         <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} maxLength={3000} rows={3} className="mt-2 w-full rounded-lg border p-2" placeholder="Required when rejecting; optional approval note" />
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button onClick={() => setSelected(null)} className="rounded-lg border px-4 py-2">Close</button>
           <button disabled={busy || !feedback.trim()} onClick={() => void decide('reject')} className="rounded-lg border border-red-300 px-4 py-2 text-red-700 disabled:opacity-50">Reject</button>
-          <button disabled={busy || !latitude.trim() || !longitude.trim()} onClick={() => void decide('approve')} className="rounded-lg bg-emerald-800 px-4 py-2 font-semibold text-white disabled:opacity-50">Approve HTE</button>
+          <button disabled={busy || latitude == null || longitude == null} onClick={() => void decide('approve')} className="rounded-lg bg-emerald-800 px-4 py-2 font-semibold text-white disabled:opacity-50">Approve HTE</button>
         </div>
       </section>
     </div>}

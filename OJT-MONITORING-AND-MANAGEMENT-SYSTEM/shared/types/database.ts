@@ -129,6 +129,8 @@ export interface DbCompanyRequest {
   contact_number: string;
   requested_branch_name: string;
   branch_address: string;
+  branch_latitude: number | null;
+  branch_longitude: number | null;
   business_permit_path: string | null;
   moa_path: string | null;
   status: CompanyRequestStatus;

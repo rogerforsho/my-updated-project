@@ -19,7 +19,7 @@ export async function listPendingCompanyRequests(): Promise<AppResult<DbCompanyR
   const { supabase, allowed } = await coordinatorClient();
   if (!allowed) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   const { data, error } = await supabase.from('company_requests')
-    .select('request_id, student_id, requested_company_name, company_address, contact_person, contact_email, contact_number, requested_branch_name, branch_address, business_permit_path, moa_path, status, feedback, company_id, branch_id, created_at')
+    .select('request_id, student_id, requested_company_name, company_address, contact_person, contact_email, contact_number, requested_branch_name, branch_address, branch_latitude, branch_longitude, business_permit_path, moa_path, status, feedback, company_id, branch_id, created_at')
     .eq('status', 'pending').order('created_at');
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not load HTE requests.' } };
   return { data: data as DbCompanyRequest[], error: null };

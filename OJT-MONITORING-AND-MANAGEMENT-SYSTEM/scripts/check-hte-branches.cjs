@@ -186,6 +186,24 @@ async function main() {
   assert.equal(defaults.rows.length, 2);
   for (const row of defaults.rows) assert.equal(row.column_default, '50', `${row.table_name} default`);
   assert.match((await db.query(`SELECT pg_get_functiondef('public.review_company_request(uuid,text,text,numeric,numeric,integer)'::regprocedure) AS d`)).rows[0].d, /p_radius NOT BETWEEN 30 AND 50/);
+  // Student-suggested branch pin: optional, paired, in range, and frozen once submitted.
+  const pinSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261105000100_company_request_branch_pin.sql'), 'utf8');
+  await db.exec(pinSql);
+  await db.exec(pinSql); // re-runnable
+  const pinInsert = (lat, lng) => `INSERT INTO public.company_requests(student_id,submitted_by,requested_company_name,company_address,contact_person,contact_email,contact_number,requested_branch_name,branch_address,branch_latitude,branch_longitude)
+    VALUES ('${ids[2]}','${ids[0]}','Pin HTE','5 Pin Road','Pin Contact','pin@example.test','123456','Pin Branch','6 Pin Road',${lat},${lng}) RETURNING request_id`;
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids[0]}',false); SET ROLE authenticated;`);
+  await assert.rejects(() => db.query(pinInsert('14.7', 'NULL')), /company_requests_branch_pin_check/);
+  await assert.rejects(() => db.query(pinInsert('91', '121.1')), /company_requests_branch_pin_check/);
+  const pinned = (await db.query(pinInsert('14.7315', '121.115'))).rows[0].request_id;
+  await db.exec('RESET ROLE');
+  // A coordinator decision cannot rewrite the student's pin; the same update without touching it is allowed.
+  await db.exec(`SELECT set_config('request.jwt.claim.sub','${ids[1]}',false);`);
+  await assert.rejects(() => db.exec(`UPDATE public.company_requests SET status='rejected', feedback='no', reviewed_by='${ids[1]}', branch_latitude=1 WHERE request_id='${pinned}'`), /Only an assigned OJT Coordinator/);
+  await db.exec(`UPDATE public.company_requests SET status='rejected', feedback='no', reviewed_by='${ids[1]}' WHERE request_id='${pinned}'`);
+  const kept = (await db.query(`SELECT branch_latitude, branch_longitude FROM public.company_requests WHERE request_id='${pinned}'`)).rows[0];
+  assert.equal(Number(kept.branch_latitude), 14.7315);
+  assert.equal(Number(kept.branch_longitude), 121.115);
   await db.close();
   console.log('PASS: HTE branch migration backfills assignments, restricts request decisions to the audited RPC, and keeps student evidence paths owned.');
 }

@@ -54,6 +54,12 @@ export async function POST(request: Request) {
     ['requested_company_name', 2, 200], ['company_address', 2, 500], ['contact_person', 2, 150],
     ['contact_email', 3, 254], ['contact_number', 5, 40], ['requested_branch_name', 1, 150], ['branch_address', 2, 500],
   ] as const;
+  // Optional student-suggested pin: both or neither, finite and in range. Advisory only.
+  const lat = input.branch_latitude ?? null, lng = input.branch_longitude ?? null;
+  const pinOk = (lat === null && lng === null) || (typeof lat === 'number' && typeof lng === 'number' &&
+    Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180);
+  if (!pinOk)
+    return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'The map pin for the branch is not valid. Pick the location again.' });
   if (fields.some(([key, min, max]) => !text(input[key], min, max)) ||
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(input.contact_email).trim()) ||
       ['business_permit_path', 'moa_path'].some((key) => input[key] != null &&
@@ -85,6 +91,8 @@ export async function POST(request: Request) {
     contact_number: String(input.contact_number).trim(),
     requested_branch_name: String(input.requested_branch_name).trim(),
     branch_address: String(input.branch_address).trim(),
+    branch_latitude: lat === null ? null : Number((lat as number).toFixed(7)),
+    branch_longitude: lng === null ? null : Number((lng as number).toFixed(7)),
     business_permit_path: (input.business_permit_path as string | null | undefined) ?? null,
     moa_path: (input.moa_path as string | null | undefined) ?? null,
   }).select('request_id, status, created_at').single();

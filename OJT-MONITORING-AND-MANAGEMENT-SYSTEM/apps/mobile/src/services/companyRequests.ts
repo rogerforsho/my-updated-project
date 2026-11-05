@@ -11,6 +11,8 @@ export interface CompanyRequestInput {
   contact_number: string;
   requested_branch_name: string;
   branch_address: string;
+  branch_latitude?: number | null;
+  branch_longitude?: number | null;
   business_permit?: { uri: string; name: string; mimeType?: string } | null;
   moa?: { uri: string; name: string; mimeType?: string } | null;
 }
@@ -19,7 +21,7 @@ export async function listMyCompanyRequests(): Promise<AppResult<DbCompanyReques
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { data: null, error: { code: 'UNAUTHORIZED', message: 'Sign in again to view HTE requests.' } };
   const { data, error } = await supabase.from('company_requests')
-    .select('request_id, student_id, requested_company_name, company_address, contact_person, contact_email, contact_number, requested_branch_name, branch_address, business_permit_path, moa_path, status, feedback, company_id, branch_id, created_at')
+    .select('request_id, student_id, requested_company_name, company_address, contact_person, contact_email, contact_number, requested_branch_name, branch_address, branch_latitude, branch_longitude, business_permit_path, moa_path, status, feedback, company_id, branch_id, created_at')
     .order('created_at', { ascending: false }).limit(20);
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not load HTE requests.' } };
   return { data: data as DbCompanyRequest[], error: null };
