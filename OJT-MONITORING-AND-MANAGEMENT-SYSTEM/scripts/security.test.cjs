@@ -1222,6 +1222,21 @@ test('Super Admin cannot deactivate a Supervisor who still supervises active stu
   assert.equal((await admin.updateUserAccountStatus('sv-busy', 'active')).error, null, 'reactivation is never blocked');
 });
 
+test('Super Admin can reactivate an inactive Student but still cannot approve or reject a Student registration', async () => {
+  const fixture = workflowFixture('Admin');
+  const student = (id, status) => ({ user_id: id, role: 'Student', account_status: status, full_name: id, email: `${id}@example.test` });
+  const [inactive, pending, rejected] = [student('st-off', 'inactive'), student('st-new', 'pending'), student('st-rej', 'rejected')];
+  fixture.tables.users.push(inactive, pending, rejected);
+  const admin = fixture.module('admin');
+  assert.equal((await admin.updateUserAccountStatus('st-off', 'active')).error, null, 'reactivation is account access, owned by Super Admin');
+  assert.equal(inactive.account_status, 'active');
+  for (const [id, row] of [['st-new', pending], ['st-rej', rejected]]) {
+    assert.equal((await admin.updateUserAccountStatus(id, 'active')).error?.code, 'FORBIDDEN');
+    assert.equal(row.account_status, id === 'st-new' ? 'pending' : 'rejected');
+  }
+  assert.equal((await admin.updateUserAccountStatus('st-new', 'rejected')).error?.code, 'FORBIDDEN');
+});
+
 test('deactivation records the Super Admin reason, trimmed and capped, in the audit event', async () => {
   const cases = [['  Resigned  ', 'Resigned'], ['x'.repeat(400), 'x'.repeat(300)], ['   ', undefined], [undefined, undefined]];
   for (const [input, expected] of cases) {
