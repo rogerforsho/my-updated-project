@@ -26,7 +26,7 @@ export interface AssignmentDetail extends DbStudentAssignment {
 async function assertCoordinator() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { supabase, user: null, role: '', authorized: false };
+  if (!user) return { supabase, user: null, role: '', authorized: false, scope: undefined };
   const { data } = await supabase
     .from('users')
     .select('role, account_status')
@@ -37,6 +37,7 @@ async function assertCoordinator() {
     supabase,
     user,
     role: data?.role ?? '',
+    scope,
     authorized: !scope.error && data?.role === 'Coordinator' && data?.account_status === 'active',
   };
 }
@@ -86,9 +87,9 @@ export async function createAssignment(input: AssignmentInput): Promise<AppResul
   if (!input.supervisor_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Supervisor is required.' } };
   if (!input.start_date) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Start date is required.' } };
 
-  const { supabase, user, role, authorized } = await assertCoordinator();
+  const { supabase, user, role, authorized, scope } = await assertCoordinator();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
-  if (!await canManageDepartmentStudent(supabase, user.id, role, input.student_id))
+  if (!await canManageDepartmentStudent(supabase, user.id, role, input.student_id, 'student_id', scope))
     return { data: null, error: { code: 'FORBIDDEN', message: 'Student is outside your department.' } };
   if (!input.branch_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'HTE branch is required.' } };
 
@@ -165,7 +166,7 @@ export async function updateAssignmentStatus(
 ): Promise<AppResult<null>> {
   if (!assignment_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Assignment ID is required.' } };
 
-  const { supabase, user, role, authorized } = await assertCoordinator();
+  const { supabase, user, role, authorized, scope } = await assertCoordinator();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   if (!await canManageDepartmentRecord(supabase, user.id, role, 'student_assignments', 'assignment_id', assignment_id))
     return { data: null, error: { code: 'FORBIDDEN', message: 'Assignment is outside your department.' } };
@@ -197,9 +198,9 @@ export async function updateStudentStatus(
   if (!(['dropped', 'inc', 'terminated'] as StudentStatus[]).includes(status))
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Status must be DROPPED, INC, or TERMINATED.' } };
 
-  const { supabase, user, role, authorized } = await assertCoordinator();
+  const { supabase, user, role, authorized, scope } = await assertCoordinator();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
-  if (!await canManageDepartmentStudent(supabase, user.id, role, student_id))
+  if (!await canManageDepartmentStudent(supabase, user.id, role, student_id, 'student_id', scope))
     return { data: null, error: { code: 'FORBIDDEN', message: 'Student is outside your department.' } };
 
   const { data: certificate } = await supabase
@@ -232,9 +233,9 @@ export async function reassignStudent(
   new_supervisor_id: string,
   start_date: string
 ): Promise<AppResult<DbStudentAssignment>> {
-  const { supabase, user, role, authorized } = await assertCoordinator();
+  const { supabase, user, role, authorized, scope } = await assertCoordinator();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
-  if (!await canManageDepartmentStudent(supabase, user.id, role, student_id))
+  if (!await canManageDepartmentStudent(supabase, user.id, role, student_id, 'student_id', scope))
     return { data: null, error: { code: 'FORBIDDEN', message: 'Student is outside your department.' } };
 
   // 1. Mark current active assignment as 'reassigned'

@@ -1,20 +1,11 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { DEPARTMENT_COURSE_PATTERNS } from '@/src/lib/departments';
+import { recordStudentId, studentInScope, type DepartmentRecordTable, type DepartmentScope, type RecordKeys } from '@/src/lib/department-access';
 
-// Keep these patterns aligned with course_department in migration 029.
-const patterns = {
-  ICS: ['BSIT', 'BSCS', 'BS-CPE', 'BSCPE', 'INFORMATION TECHNOLOGY', 'COMPUTER ENGINEERING', 'COMPUTER SCIENCE'],
-  IBE: ['BSBA', 'BSENTREP', 'ENTREPRENEURSHIP', 'HUMAN RESOURCE', 'BSA', 'ACCOUNTANCY'],
-};
+const patterns = DEPARTMENT_COURSE_PATTERNS;
 
-export function courseDepartment(course: string | null | undefined): 'ICS' | 'IBE' | null {
-  const text = (course ?? '').toUpperCase();
-  // ICS wins on ambiguous courses, as in course_department().
-  for (const department of ['ICS', 'IBE'] as const) if (patterns[department].some(pattern => text.includes(pattern))) return department;
-  return null;
-}
-
-export async function departmentScope(client: SupabaseClient, userId: string, role: string): Promise<{ department: 'ICS' | 'IBE' | null; departments: string[]; error: string | null }> {
+export async function departmentScope(client: SupabaseClient, userId: string, role: string): Promise<DepartmentScope> {
   if (role === 'Student') return { department: null, departments: [], error: null };
   if (role !== 'Coordinator') return { department: null, departments: [], error: 'OJT Coordinator access required.' };
   const { data, error } = await client.from('staff_capability_grants')
@@ -37,16 +28,14 @@ export function restrictDepartment<T extends { or(filters: string): T; not(colum
   return query;
 }
 
-export async function canManageDepartmentStudent(client: SupabaseClient, actorId: string, role: string, targetId: string, column: 'student_id' | 'user_id' = 'student_id') {
+// Pass `scope` when the caller already resolved it, to skip a second staff_capability_grants query.
+export async function canManageDepartmentStudent(client: SupabaseClient, actorId: string, role: string, targetId: string, column: 'student_id' | 'user_id' = 'student_id', scope?: DepartmentScope) {
   if (role !== 'Coordinator') return false;
-  const scope = await departmentScope(client, actorId, role);
-  if (scope.error) return false;
-  const { data, error } = await restrictDepartment(client.from('students').select('student_id').eq(column, targetId), scope.department).maybeSingle();
-  return !error && !!data;
+  return studentInScope(client, scope ?? await departmentScope(client, actorId, role), targetId, column, restrictDepartment);
 }
 
-export async function canManageDepartmentRecord(client: SupabaseClient, actorId: string, role: string, table: string, column: string, recordId: string) {
+export async function canManageDepartmentRecord<T extends DepartmentRecordTable>(client: SupabaseClient, actorId: string, role: string, table: T, column: RecordKeys[T], recordId: string) {
   if (role !== 'Coordinator') return false;
-  const { data, error } = await client.from(table).select('student_id').eq(column, recordId).maybeSingle();
-  return !error && !!data && await canManageDepartmentStudent(client, actorId, role, data.student_id);
+  const studentId = await recordStudentId(client, table, column, recordId);
+  return !!studentId && await canManageDepartmentStudent(client, actorId, role, studentId);
 }
