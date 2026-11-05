@@ -1,7 +1,7 @@
 import { getAttendanceIdentity } from './attendanceCache';
 import * as Network from 'expo-network';
 import { supabase } from './supabase';
-import { getOfflineQueue, removeOfflineQueueItem } from './offlineQueue';
+import { getOfflineQueue, markOfflineQueueItemBlocked, removeOfflineQueueItem } from './offlineQueue';
 import { syncAttendanceWorkflow, type QueuedAttendanceEvent } from './attendanceSyncWorkflow';
 import { postWebBff } from './webBff';
 import { uploadSelfieToStorage } from './storage';
@@ -111,6 +111,7 @@ async function syncQueue(): Promise<SyncResult> {
       return { updated: !result.error, error: result.error };
     },
     removeQueueItem: removeOfflineQueueItem,
+    markBlocked: markOfflineQueueItemBlocked,
     now: () => new Date().toISOString(),
   });
 }

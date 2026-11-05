@@ -14,6 +14,8 @@ export interface QueuedAttendanceEvent {
   distance_meters?: number | null;
   location_status?: 'verified' | 'flagged_out_of_bounds' | 'location_unavailable' | 'not_applicable';
   flag_reason?: string | null;
+  /** Set after a terminal server rejection: kept for the Coordinator, never re-submitted. */
+  blocked_reason?: string | null;
 }
 
 export interface SyncResult {
@@ -32,12 +34,18 @@ interface AttendanceSnapshot {
 export interface AttendanceSyncAdapter {
   findTimeIn(studentId: string, attendanceDate: string): Promise<{ data: AttendanceSnapshot | null; error?: unknown }>;
   uploadSelfie(item: QueuedAttendanceEvent): Promise<string | null>;
-  insertTimeIn(payload: Record<string, unknown>): Promise<{ error?: { message?: string } | null }>;
+  insertTimeIn(payload: Record<string, unknown>): Promise<{ error?: SyncError | null }>;
   findTimeOut(item: QueuedAttendanceEvent, studentId: string): Promise<{ data: AttendanceSnapshot | null; error?: unknown }>;
-  updateTimeOut(item: QueuedAttendanceEvent, storagePath: string): Promise<{ updated: boolean; error?: { message?: string } | null }>;
+  updateTimeOut(item: QueuedAttendanceEvent, storagePath: string): Promise<{ updated: boolean; error?: SyncError | null }>;
   removeQueueItem(id: string): Promise<void>;
+  markBlocked(id: string, reason: string): Promise<void>;
   now(): string;
 }
+
+type SyncError = { code?: string; message?: string };
+
+// Retrying cannot fix these; SERVER_FAILURE, rate limits and network errors stay retryable.
+const TERMINAL_CODES = ['VALIDATION_FAILURE', 'FORBIDDEN', 'DUPLICATE_REQUEST'];
 
 function sameInstant(left: string | null | undefined, right: string): boolean {
   const leftTime = left ? new Date(left).getTime() : NaN;
@@ -57,6 +65,13 @@ export async function syncAttendanceWorkflow(
 ): Promise<SyncResult> {
   let syncedCount = 0;
   const errors: string[] = [];
+  async function blockIfTerminal(item: QueuedAttendanceEvent, error: SyncError): Promise<boolean> {
+    if (!error.code || !TERMINAL_CODES.includes(error.code)) return false;
+    const reason = error.message || 'The server rejected this attendance record.';
+    await adapter.markBlocked(item.id, reason);
+    errors.push(reason);
+    return true;
+  }
 
   for (const item of queuedItems) {
     try {
@@ -71,6 +86,7 @@ export async function syncAttendanceWorkflow(
           continue;
         }
 
+        if (item.blocked_reason) { errors.push(item.blocked_reason); continue; }
         const storagePath = await adapter.uploadSelfie(item);
         if (!storagePath) {
           errors.push(`Failed to upload photo evidence for record on ${item.attendance_date}`);
@@ -93,6 +109,7 @@ export async function syncAttendanceWorkflow(
           synced_at: adapter.now(),
         });
         if (insertError) {
+          if (await blockIfTerminal(item, insertError)) continue;
           errors.push(`Failed to sync database record for ${item.attendance_date}: ${insertError.message || 'unknown database error'}`);
           continue;
         }
@@ -117,6 +134,7 @@ export async function syncAttendanceWorkflow(
           }
         }
 
+        if (item.blocked_reason) { errors.push(item.blocked_reason); continue; }
         const storagePath = await adapter.uploadSelfie(item);
         if (!storagePath) {
           errors.push(`Failed to upload time out photo for record on ${item.attendance_date}`);
@@ -124,6 +142,7 @@ export async function syncAttendanceWorkflow(
         }
         const { updated, error: updateError } = await adapter.updateTimeOut(item, storagePath);
         if (updateError) {
+          if (await blockIfTerminal(item, updateError)) continue;
           errors.push(`Failed to update time out for ${item.attendance_date}: ${updateError.message || 'unknown database error'}`);
           continue;
         }

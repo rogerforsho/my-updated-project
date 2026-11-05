@@ -86,6 +86,39 @@ async function loadActiveAssignment(
 
 // ─── Time In ──────────────────────────────────────────────────────────────────
 
+/** The one place a captured event becomes a queued item. Returns false when it could not be saved locally. */
+async function queueEvent(
+  type: 'time_in' | 'time_out',
+  student_id: string,
+  assignment_id: string,
+  attendance_id: string | undefined,
+  selfie_uri: string,
+  capturedAt: string,
+  attendanceDate: string,
+  locationData?: LocationPayload
+): Promise<boolean> {
+  try {
+    const savedPath = await saveImageToSandbox(selfie_uri, `${type}_${Date.now()}.jpg`);
+    await enqueueOfflineAttendance({
+      type,
+      student_id,
+      assignment_id,
+      attendance_id,
+      local_photo_uri: savedPath,
+      captured_at: capturedAt,
+      attendance_date: attendanceDate,
+      latitude: locationData?.latitude ?? null,
+      longitude: locationData?.longitude ?? null,
+      distance_meters: locationData?.distanceMeters ?? null,
+      location_status: locationData?.locationStatus ?? 'verified',
+      flag_reason: locationData?.flagReason ?? null,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function recordTimeIn(
   selfie_uri: string,
   locationData?: LocationPayload
@@ -116,25 +149,9 @@ export async function recordTimeIn(
     if (existing) {
       return { data: null, error: { code: 'DUPLICATE_REQUEST', message: 'You already have an attendance record for today.' } };
     }
-    try {
-      const savedPath = await saveImageToSandbox(selfie_uri, `time_in_${Date.now()}.jpg`);
-      await enqueueOfflineAttendance({
-        type: 'time_in',
-        student_id: student.student_id,
-        assignment_id: assignment.assignment_id,
-        local_photo_uri: savedPath,
-        captured_at: capturedAt,
-        attendance_date: today,
-        latitude: locationData?.latitude ?? null,
-        longitude: locationData?.longitude ?? null,
-        distance_meters: locationData?.distanceMeters ?? null,
-        location_status: locationData?.locationStatus ?? 'verified',
-        flag_reason: locationData?.flagReason ?? null,
-      });
+    if (await queueEvent('time_in', student.student_id, assignment.assignment_id, undefined, selfie_uri, capturedAt, today, locationData))
       return { data: { attendance_id: 'offline_pending', isOffline: true }, error: null };
-    } catch {
-      return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to save offline attendance.' } };
-    }
+    return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to save offline attendance.' } };
   }
 
   // Duplicate check when online
@@ -152,25 +169,9 @@ export async function recordTimeIn(
   const selfieResult = await uploadSelfieToStorage(selfie_uri, student.student_id, 'time_in');
   if (selfieResult.error) {
     // Fallback to offline queue if upload fails due to network drop
-    try {
-      const savedPath = await saveImageToSandbox(selfie_uri, `time_in_${Date.now()}.jpg`);
-      await enqueueOfflineAttendance({
-        type: 'time_in',
-        student_id: student.student_id,
-        assignment_id: assignment.assignment_id,
-        local_photo_uri: savedPath,
-        captured_at: capturedAt,
-        attendance_date: today,
-        latitude: locationData?.latitude ?? null,
-        longitude: locationData?.longitude ?? null,
-        distance_meters: locationData?.distanceMeters ?? null,
-        location_status: locationData?.locationStatus ?? 'verified',
-        flag_reason: locationData?.flagReason ?? null,
-      });
+    if (await queueEvent('time_in', student.student_id, assignment.assignment_id, undefined, selfie_uri, capturedAt, today, locationData))
       return { data: { attendance_id: 'offline_pending', isOffline: true }, error: null };
-    } catch {
-      return { data: null, error: selfieResult.error };
-    }
+    return { data: null, error: selfieResult.error };
   }
 
   const result = await postWebBff<{ attendance_id: string }>('/api/mobile/attendance', {
@@ -185,19 +186,10 @@ export async function recordTimeIn(
     location_status: locationData?.locationStatus ?? 'verified',
     flag_reason: locationData?.flagReason ?? null,
   });
-  if (result.error?.code === 'SERVER_FAILURE') {
-    try {
-      const savedPath = await saveImageToSandbox(selfie_uri, `time_in_${Date.now()}.jpg`);
-      await enqueueOfflineAttendance({
-        type: 'time_in', student_id: student.student_id, assignment_id: assignment.assignment_id,
-        local_photo_uri: savedPath, captured_at: capturedAt, attendance_date: today,
-        latitude: locationData?.latitude ?? null, longitude: locationData?.longitude ?? null,
-        distance_meters: locationData?.distanceMeters ?? null,
-        location_status: locationData?.locationStatus ?? 'verified', flag_reason: locationData?.flagReason ?? null,
-      });
-      return { data: { attendance_id: 'offline_pending', isOffline: true }, error: null };
-    } catch { /* Keep the server error when local recovery cannot be saved. */ }
-  }
+  // Keep the server error when local recovery cannot be saved.
+  if (result.error?.code === 'SERVER_FAILURE' &&
+      await queueEvent('time_in', student.student_id, assignment.assignment_id, undefined, selfie_uri, capturedAt, today, locationData))
+    return { data: { attendance_id: 'offline_pending', isOffline: true }, error: null };
   if (result.error || !result.data) return { data: null, error: result.error || { code: 'SERVER_FAILURE', message: 'Failed to record Time In.' } };
   return { data: { attendance_id: result.data.attendance_id, isOffline: false }, error: null };
 }
@@ -224,26 +216,9 @@ export async function recordTimeOut(
     if (!existing || existing.time_out) {
       return { data: null, error: { code: 'VALIDATION_FAILURE', message: existing ? 'Time Out has already been recorded for today.' : 'Record Time In before Time Out.' } };
     }
-    try {
-      const savedPath = await saveImageToSandbox(selfie_uri, `time_out_${Date.now()}.jpg`);
-      await enqueueOfflineAttendance({
-        type: 'time_out',
-        student_id: student.student_id,
-        assignment_id: '',
-        attendance_id: !attendance_id.startsWith('offline_') ? attendance_id : undefined,
-        local_photo_uri: savedPath,
-        captured_at: capturedAt,
-        attendance_date: today,
-        latitude: locationData?.latitude ?? null,
-        longitude: locationData?.longitude ?? null,
-        distance_meters: locationData?.distanceMeters ?? null,
-        location_status: locationData?.locationStatus ?? 'verified',
-        flag_reason: locationData?.flagReason ?? null,
-      });
+    if (await queueEvent('time_out', student.student_id, '', attendance_id.startsWith('offline_') ? undefined : attendance_id, selfie_uri, capturedAt, today, locationData))
       return { data: { isOffline: true }, error: null };
-    } catch {
-      return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to save offline Time Out.' } };
-    }
+    return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to save offline Time Out.' } };
   }
 
   const { data: record } = await supabase
@@ -263,26 +238,9 @@ export async function recordTimeOut(
 
   const selfieResult = await uploadSelfieToStorage(selfie_uri, student.student_id, 'time_out');
   if (selfieResult.error) {
-    try {
-      const savedPath = await saveImageToSandbox(selfie_uri, `time_out_${Date.now()}.jpg`);
-      await enqueueOfflineAttendance({
-        type: 'time_out',
-        student_id: student.student_id,
-        assignment_id: '',
-        attendance_id,
-        local_photo_uri: savedPath,
-        captured_at: capturedAt,
-        attendance_date: today,
-        latitude: locationData?.latitude ?? null,
-        longitude: locationData?.longitude ?? null,
-        distance_meters: locationData?.distanceMeters ?? null,
-        location_status: locationData?.locationStatus ?? 'verified',
-        flag_reason: locationData?.flagReason ?? null,
-      });
+    if (await queueEvent('time_out', student.student_id, '', attendance_id, selfie_uri, capturedAt, today, locationData))
       return { data: { isOffline: true }, error: null };
-    } catch {
-      return { data: null, error: selfieResult.error };
-    }
+    return { data: null, error: selfieResult.error };
   }
 
   const result = await postWebBff<null>('/api/mobile/attendance', {
@@ -297,19 +255,9 @@ export async function recordTimeOut(
     location_status: locationData?.locationStatus ?? 'verified',
     flag_reason: locationData?.flagReason ?? null,
   });
-  if (result.error?.code === 'SERVER_FAILURE') {
-    try {
-      const savedPath = await saveImageToSandbox(selfie_uri, `time_out_${Date.now()}.jpg`);
-      await enqueueOfflineAttendance({
-        type: 'time_out', student_id: student.student_id, assignment_id: '', attendance_id,
-        local_photo_uri: savedPath, captured_at: capturedAt, attendance_date: today,
-        latitude: locationData?.latitude ?? null, longitude: locationData?.longitude ?? null,
-        distance_meters: locationData?.distanceMeters ?? null,
-        location_status: locationData?.locationStatus ?? 'verified', flag_reason: locationData?.flagReason ?? null,
-      });
-      return { data: { isOffline: true }, error: null };
-    } catch { /* Keep the server error when local recovery cannot be saved. */ }
-  }
+  if (result.error?.code === 'SERVER_FAILURE' &&
+      await queueEvent('time_out', student.student_id, '', attendance_id, selfie_uri, capturedAt, today, locationData))
+    return { data: { isOffline: true }, error: null };
   if (result.error) return { data: null, error: result.error };
   return { data: { isOffline: false }, error: null };
 }

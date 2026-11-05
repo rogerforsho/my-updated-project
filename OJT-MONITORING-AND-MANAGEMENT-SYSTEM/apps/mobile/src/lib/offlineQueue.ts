@@ -21,6 +21,7 @@ export interface OfflineQueueItem {
   distance_meters?: number | null;
   location_status?: 'verified' | 'flagged_out_of_bounds' | 'location_unavailable' | 'not_applicable';
   flag_reason?: string | null;
+  blocked_reason?: string | null;
 }
 
 /**
@@ -117,6 +118,14 @@ export function enqueueOfflineAttendance(item: Omit<OfflineQueueItem, 'id' | 'cr
     const newItem: OfflineQueueItem = { ...item, id: 'offline_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7), created_at: new Date().toISOString() };
     await writeQueue([...queue, newItem], version);
     return newItem;
+  });
+}
+
+/** Marks an item as rejected by the server. The item and its photo stay on the device for the Coordinator. */
+export function markOfflineQueueItemBlocked(id: string, reason: string): Promise<void> {
+  return mutateQueue(async () => {
+    const { queue, version } = await readQueue();
+    await writeQueue(queue.map(q => q.id === id ? { ...q, blocked_reason: reason } : q), version);
   });
 }
 

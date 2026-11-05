@@ -1,20 +1,13 @@
-import { AUTO_TIME_OUT_REASON, getAttendanceDate, getPhilippineClock, isWithinGeofence } from '@ojt/shared';
+import { AUTO_TIME_OUT_REASON, getAttendanceDate, getPhilippineClock } from '@ojt/shared';
 import { authenticateMobileStudent, mobileBffFailure, type MobileSupabaseClient } from '@/src/lib/mobile-bff';
 import { getServiceClient } from '@/src/lib/supabase/service';
 import { authActionLimit } from '@/src/services/auth/internal';
 import { validateUploadedBytes } from '@/src/lib/uploadValidation';
 import { readLimitedJson } from '@/src/lib/read-limited-json';
+import { captureTimeFailure, deriveLocationEvidence, lateStatusFor, timeOutDecision, type AttendancePolicy } from '@/src/lib/attendance-recording';
 
 export const runtime = 'nodejs';
-type LocationStatus = 'verified' | 'flagged_out_of_bounds' | 'location_unavailable' | 'not_applicable';
 const MAX_SELFIE_SIZE = 5 * 1024 * 1024;
-// Small allowance for device/server clock drift; anything later is a future-dated entry.
-const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
-const FUTURE_FAILURE = { status: 400, code: 'VALIDATION_FAILURE', message: 'Attendance cannot be recorded for a future date or time.' } as const;
-
-function isFuture(value: string): boolean {
-  return new Date(value).getTime() > Date.now() + MAX_CLOCK_SKEW_MS;
-}
 
 function isTimestamp(value: unknown): value is string {
   return typeof value === 'string' && Number.isFinite(new Date(value).getTime());
@@ -28,15 +21,6 @@ function ownedSelfiePath(value: unknown, studentId: string, type: 'time_in' | 't
   return typeof value === 'string' && value.startsWith(`${studentId}/`) && value.split('/').length === 2 &&
     new RegExp(`^${type}_[a-zA-Z0-9_-]{1,100}\\.jpg$`, 'i').test(value.split('/')[1]);
 }
-
-type AttendancePolicy = {
-  companyId: string;
-  remote: boolean;
-  geofenceEnabled: boolean;
-  latitude: number | null;
-  longitude: number | null;
-  radiusMeters: number;
-};
 
 async function loadAttendancePolicy(
   service: ReturnType<typeof getServiceClient>,
@@ -99,43 +83,15 @@ async function hasValidSelfie(service: ReturnType<typeof getServiceClient>, path
   return !checked.error && Boolean(checked.data);
 }
 
-function deriveLocationEvidence(
-  latitude: number | null,
-  longitude: number | null,
-  policy: AttendancePolicy,
-  clientReason: unknown,
-): { latitude: number | null; longitude: number | null; distanceMeters: number | null; status: LocationStatus; flagReason: string | null } {
-  if (policy.remote)
-    return { latitude, longitude, distanceMeters: null, status: 'not_applicable', flagReason: null };
-  if (latitude === null || longitude === null) {
-    const reason = typeof clientReason === 'string' ? clientReason.trim().slice(0, 500) : '';
-    return { latitude: null, longitude: null, distanceMeters: null, status: 'location_unavailable', flagReason: reason || 'GPS location unavailable.' };
-  }
-  if (policy.geofenceEnabled && policy.latitude !== null && policy.longitude !== null) {
-    const result = isWithinGeofence(latitude, longitude, policy.latitude, policy.longitude, policy.radiusMeters);
-    if (!result.isWithin) {
-      const reason = typeof clientReason === 'string' ? clientReason.trim().slice(0, 500) : '';
-      return { latitude, longitude, distanceMeters: result.distanceMeters, status: 'flagged_out_of_bounds', flagReason: reason || 'Outside the designated workplace geofence.' };
-    }
-    return { latitude, longitude, distanceMeters: result.distanceMeters, status: 'verified', flagReason: null };
-  }
-  return { latitude, longitude, distanceMeters: null, status: 'verified', flagReason: null };
-}
-
 async function calculateLateStatus(
   supabase: MobileSupabaseClient,
   companyId: string,
   timeIn: string,
 ): Promise<'on_time' | 'late' | 'unknown'> {
-  const localTime = getPhilippineClock(new Date(timeIn));
-  const dayOfWeek = localTime.getUTCDay();
-  if (dayOfWeek === 0 || dayOfWeek === 6) return 'unknown';
   const { data: schedule, error } = await supabase.from('work_schedules')
-    .select('time_in_cutoff').eq('company_id', companyId).eq('day_of_week', dayOfWeek).maybeSingle();
-  if (error || !schedule?.time_in_cutoff) return 'unknown';
-  const [cutoffHour, cutoffMinute] = String(schedule.time_in_cutoff).split(':').map(Number);
-  const seconds = localTime.getUTCHours() * 3600 + localTime.getUTCMinutes() * 60 + localTime.getUTCSeconds();
-  return seconds > cutoffHour * 3600 + cutoffMinute * 60 ? 'late' : 'on_time';
+    .select('time_in_cutoff').eq('company_id', companyId)
+    .eq('day_of_week', getPhilippineClock(new Date(timeIn)).getUTCDay()).maybeSingle();
+  return lateStatusFor(timeIn, error ? null : schedule?.time_in_cutoff);
 }
 
 export async function POST(request: Request) {
@@ -177,9 +133,8 @@ export async function POST(request: Request) {
     if (typeof assignmentId !== 'string' || !isTimestamp(capturedAt) || typeof attendanceDate !== 'string' ||
         attendanceDate !== getAttendanceDate(new Date(capturedAt)) || !ownedSelfiePath(selfiePath, studentId, 'time_in'))
       return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Time In details are invalid.' });
-    if (isFuture(capturedAt)) return mobileBffFailure(FUTURE_FAILURE);
-    if ([0, 6].includes(getPhilippineClock(new Date(capturedAt)).getUTCDay()))
-      return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Attendance is only recorded on weekdays.' });
+    const timeFailure = captureTimeFailure(capturedAt, Date.now(), true);
+    if (timeFailure) return mobileBffFailure(timeFailure);
     if (!await hasValidSelfie(service, selfiePath))
       return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Upload a valid selfie before recording Time In.' });
 
@@ -230,7 +185,8 @@ export async function POST(request: Request) {
         (attendanceId != null && typeof attendanceId !== 'string') ||
         !ownedSelfiePath(selfiePath, studentId, 'time_out'))
       return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Time Out details are invalid.' });
-    if (isFuture(capturedAt)) return mobileBffFailure(FUTURE_FAILURE);
+    const timeFailure = captureTimeFailure(capturedAt, Date.now(), false);
+    if (timeFailure) return mobileBffFailure(timeFailure);
     if (!await hasValidSelfie(service, selfiePath))
       return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Upload a valid selfie before recording Time Out.' });
 
@@ -240,13 +196,9 @@ export async function POST(request: Request) {
     const { data: record, error: lookupError } = await query.maybeSingle();
     if (lookupError || !record)
       return mobileBffFailure({ status: 404, code: 'NOT_FOUND', message: 'Record Time In before Time Out.' });
-    const replacingAutoTimeOut = Boolean(record.time_out && record.verification_status === 'pending' &&
-      record.time_out_flag_reason === AUTO_TIME_OUT_REASON);
-    if (record.time_out && !replacingAutoTimeOut)
-      return mobileBffFailure({ status: 409, code: 'DUPLICATE_REQUEST', message: 'Time Out has already been recorded for today.' });
-    if (new Date(capturedAt).getTime() < new Date(record.time_in).getTime())
-      return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Time Out cannot be earlier than Time In.' });
-
+    const decision = timeOutDecision(record, capturedAt);
+    if ('failure' in decision) return mobileBffFailure(decision.failure);
+    const { replacingAutoTimeOut } = decision;
     const policy = await loadAttendancePolicy(service, studentId, record.assignment_id, attendanceDate);
     if (!policy || policy === 'unavailable')
       return mobileBffFailure({ status: 503, code: 'SERVER_FAILURE', message: 'Could not verify the attendance location policy.' });
