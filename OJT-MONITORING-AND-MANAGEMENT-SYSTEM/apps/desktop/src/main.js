@@ -34,7 +34,7 @@ function getDesktopConfig() {
     console.error('Error reading desktop-config.json:', e);
   }
   return {
-    productionUrl: 'https://ojt-monitoring-and-management-syste.vercel.app/auth/sign-in',
+    productionUrl: 'https://my-updated-project-git-loop-integration-ojt-project.vercel.app/auth/sign-in',
     developmentUrl: 'http://localhost:3000/auth/sign-in',
   };
 }
