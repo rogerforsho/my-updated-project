@@ -6,7 +6,7 @@ import { Readable } from 'node:stream';
 export const dynamic = 'force-dynamic';
 
 const GITHUB_RELEASES_URL =
-  'https://github.com/rogerforsho/OJT-MONITORING-AND-MANAGEMENT-SYSTEM/releases';
+  'https://github.com/rogerforsho/my-updated-project/releases';
 
 export async function GET(
   _request: Request,
