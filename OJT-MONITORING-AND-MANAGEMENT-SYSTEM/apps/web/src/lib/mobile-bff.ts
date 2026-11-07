@@ -62,9 +62,9 @@ interface MobileBffDatabase {
         { student_id: string; report_type: string; file_path: string; status: string; remarks?: string | null }
       >;
       notifications: BffTable<
-        { notification_id: string; receiver_user_id: string; status: 'unread' | 'read' },
+        { notification_id: string; receiver_user_id: string; status: 'unread' | 'read'; archived_at: string | null },
         Partial<{ notification_id: string; receiver_user_id: string; status: 'unread' | 'read' }>,
-        { status?: 'unread' | 'read' }
+        { status?: 'unread' | 'read'; archived_at?: string | null }
       >;
       company_requests: BffTable<
         { request_id: string; student_id: string; submitted_by: string; status: string; created_at: string },
