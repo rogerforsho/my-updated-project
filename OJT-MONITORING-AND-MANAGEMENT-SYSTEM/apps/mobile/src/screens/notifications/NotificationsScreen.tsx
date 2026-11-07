@@ -5,7 +5,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { listStudentFeed, markNotificationRead, type MobileFeedItem } from '../../services/notifications';
+import { listStudentFeed, markNotificationRead, markAllNotificationsRead, archiveNotification, type MobileFeedItem } from '../../services/notifications';
+import SwipeToArchive from '../../components/SwipeToArchive';
 
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
@@ -14,18 +15,42 @@ export default function NotificationsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState<'all' | 'announcements' | 'alerts'>('all');
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
-    const res = await listStudentFeed();
+    const res = await listStudentFeed(0);
     if (res.error) {
       setError(res.error.message);
     } else {
-      setFeed(res.data || []);
+      setFeed(res.data?.items ?? []);
+      setHasMore(res.data?.hasMore ?? false);
+      setPage(0);
     }
     setLoading(false);
     setRefreshing(false);
   }, []);
+
+  const loadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const res = await listStudentFeed(page + 1);
+    if (res.error) {
+      setError(res.error.message);
+    } else {
+      const next = res.data?.items ?? [];
+      // A swipe-archive shifts later rows up, so a page can repeat items already shown.
+      setFeed(prev => {
+        const seen = new Set(prev.map(f => f.id));
+        return [...prev, ...next.filter(f => !seen.has(f.id))];
+      });
+      setHasMore(res.data?.hasMore ?? false);
+      setPage(page + 1);
+    }
+    setLoadingMore(false);
+  };
 
   useEffect(() => {
     load();
@@ -37,18 +62,28 @@ export default function NotificationsScreen() {
   };
 
   const handleItemPress = async (item: MobileFeedItem) => {
-    if (item.type === 'notification' && item.status === 'unread') {
+    if (item.personal && item.status === 'unread') {
       await markNotificationRead(item.id);
       setFeed(prev => prev.map(f => f.id === item.id ? { ...f, status: 'read' } : f));
     }
   };
 
   const handleMarkAllRead = async () => {
-    const unreadAlerts = feed.filter(f => f.type === 'notification' && f.status === 'unread');
-    for (const item of unreadAlerts) {
-      await markNotificationRead(item.id);
+    const res = await markAllNotificationsRead();
+    if (res.error) {
+      setError(res.error.message);
+      return;
     }
-    setFeed(prev => prev.map(f => ({ ...f, status: 'read' })));
+    setFeed(prev => prev.map(f => f.personal ? { ...f, status: 'read' } : f));
+  };
+
+  const handleArchive = async (item: MobileFeedItem) => {
+    setFeed(prev => prev.filter(f => f.id !== item.id));
+    const res = await archiveNotification(item.id);
+    if (res.error) {
+      setError(res.error.message);
+      setFeed(prev => [...prev, item].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    }
   };
 
   const filteredFeed = feed.filter(item => {
@@ -58,6 +93,8 @@ export default function NotificationsScreen() {
   });
 
   const unreadCount = feed.filter(f => f.type === 'notification' && f.status === 'unread').length;
+  // shortcut: only loaded rows are counted, so unread items on unloaded older pages don't show the button until loaded; fine for typical volumes.
+  const hasUnread = feed.some(f => f.personal && f.status === 'unread');
 
   if (loading) {
     return (
@@ -76,11 +113,11 @@ export default function NotificationsScreen() {
             <Text style={s.headerKicker}>Colegio de Montalban OJT</Text>
             <Text style={s.title}>Notices & Alerts</Text>
           </View>
-          {unreadCount > 0 && (
-            <TouchableOpacity onPress={handleMarkAllRead} style={s.markAllBtn} activeOpacity={0.8}>
+          {hasUnread && (
+            <TouchableOpacity onPress={handleMarkAllRead} accessibilityRole="button" accessibilityLabel="Mark all as read" style={s.markAllBtn} activeOpacity={0.8}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Ionicons name="checkmark-done" size={14} color="#0A3824" />
-                <Text style={s.markAllText}>Mark all read</Text>
+                <Text style={s.markAllText}>Mark all as read</Text>
               </View>
             </TouchableOpacity>
           )}
@@ -154,6 +191,9 @@ export default function NotificationsScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={s.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0A3824']} />}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color="#0A3824" style={{ marginVertical: 12 }} /> : null}
         ListEmptyComponent={
           <View style={s.emptyBox}>
             <Ionicons name="notifications-off-outline" size={44} color="#879687" style={{ marginBottom: 8 }} />
@@ -167,11 +207,13 @@ export default function NotificationsScreen() {
           const isAnnouncement = item.type === 'announcement';
           const isUnread = item.status === 'unread';
 
-          return (
+          const card = (
             <TouchableOpacity
               onPress={() => handleItemPress(item)}
               activeOpacity={0.85}
               style={[s.feedCard, isUnread && s.feedCardUnread]}
+              accessibilityActions={item.personal ? [{ name: 'archive', label: 'Archive' }] : undefined}
+              onAccessibilityAction={() => handleArchive(item)}
             >
               <View style={s.cardTop}>
                 <View style={s.tagRow}>
@@ -194,6 +236,7 @@ export default function NotificationsScreen() {
               <Text style={s.feedMessage}>{item.message}</Text>
             </TouchableOpacity>
           );
+          return item.personal ? <SwipeToArchive onArchive={() => handleArchive(item)}>{card}</SwipeToArchive> : card;
         }}
       />
     </View>

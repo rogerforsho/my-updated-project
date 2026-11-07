@@ -248,6 +248,8 @@ export interface DbNotification {
   notification_date: string;
   status: NotificationStatus;
   related_conversation_id?: string | null;
+  /** Set when the student swipe-archives the notice; archived rows are hidden from the mobile feed. */
+  archived_at?: string | null;
 }
 
 export type ProgressStatus = 'not_started' | 'in_progress' | 'completed';

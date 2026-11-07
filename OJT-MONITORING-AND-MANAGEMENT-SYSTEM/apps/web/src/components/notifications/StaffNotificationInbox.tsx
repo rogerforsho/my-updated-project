@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/src/lib/supabase/server';
 import { Bell } from '@/src/components/ui/Icons';
+import { MarkAllReadButton, MarkReadCard } from '@/src/components/notifications/StaffNotificationActions';
 
 const PAGE_SIZE = 50;
 
@@ -35,10 +36,13 @@ export default async function StaffNotificationInbox({ role, page = 1 }: { role:
     <p className="mt-1 text-sm text-red-800">We could not load your notifications. Refresh the page to try again.</p>
   </section>;
   const notifications = result.data ?? [];
+  const { count: unreadCount } = await supabase.from('notifications').select('notification_id', { count: 'exact', head: true })
+    .eq('receiver_user_id', user.id).eq('status', 'unread').abortSignal(AbortSignal.timeout(12000));
   const chatPath = role === 'Coordinator' ? '/coordinator/messages' : '/supervisor/messages';
 
   return <section className="mx-auto w-full max-w-4xl p-4 sm:p-6 lg:p-8 space-y-5">
-    <header><h1 className="text-2xl font-bold text-slate-900">Notifications</h1><p className="mt-1 text-sm text-slate-500">System updates for your account. Chat alerts open the related conversation.</p></header>
+    <header className="flex items-start justify-between gap-3"><div><h1 className="text-2xl font-bold text-slate-900">Notifications</h1><p className="mt-1 text-sm text-slate-500">System updates for your account. Chat alerts open the related conversation.</p></div>
+      {(unreadCount ?? 0) > 0 && <MarkAllReadButton userId={user.id} />}</header>
     {notifications.length === 0 ? <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)]">
         <span className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-slate-300"><Bell className="h-10 w-10" /></span>
         <p className="text-sm font-medium text-slate-500">You have no notifications.</p>
@@ -49,7 +53,7 @@ export default async function StaffNotificationInbox({ role, page = 1 }: { role:
           <time className="mt-1 block text-xs text-slate-500" dateTime={notification.notification_date}>{new Date(notification.notification_date).toLocaleString()}</time>
           {notification.status === 'unread' && <span className="mt-2 inline-block rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-800">Unread</span>}
         </div>;
-        return notification.related_conversation_id ? <Link key={notification.notification_id} href={`${chatPath}?conversation=${notification.related_conversation_id}`} className="block rounded-xl outline-none focus:ring-2 focus:ring-teal-600">{content}</Link> : <div key={notification.notification_id}>{content}</div>;
+        return notification.related_conversation_id ? <Link key={notification.notification_id} href={`${chatPath}?conversation=${notification.related_conversation_id}`} className="block rounded-xl outline-none focus:ring-2 focus:ring-teal-600">{content}</Link> : notification.status === 'unread' ? <MarkReadCard key={notification.notification_id} notificationId={notification.notification_id}>{content}</MarkReadCard> : <div key={notification.notification_id}>{content}</div>;
       })}</div>}
     {count > PAGE_SIZE && <nav aria-label="Notification pages" className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
       {currentPage > 1 ? <Link className="text-sm font-medium text-teal-800 hover:underline" href={`?page=${currentPage - 1}`}>Previous</Link> : <span />}
