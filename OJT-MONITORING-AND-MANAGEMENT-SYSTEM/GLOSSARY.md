@@ -57,8 +57,16 @@ A review of a student's registration that determines whether their system accoun
 _Avoid_: OJT requirements review
 
 **Pre-deployment Requirements**:
-Information and supporting materials an active student submits before OJT placement.
-_Avoid_: Student account registration (when referring to pre-deployment submissions)
+The four documents an active student needs approved before proposing a schedule or being placed: Parent/Guardian Consent Waiver (notarized; photo or PDF), Medical Certificate, Pre-OJT Orientation Certificate and Endorsement Letter. Students already placed with an active assignment are exempt from documents added later.
+_Avoid_: Student account registration (when referring to pre-deployment submissions); Gateway credentials; MOA (out of scope)
+
+**Required Hours**:
+The practicum hours a student must complete, set by program: BSIT 486, BS-CPE 240, BSBA-HRM 300, BSENTREP 300. A student's own `required_hours` wins, otherwise the program's value applies.
+_Avoid_: Target hours, 486-hour track (only BSIT is 486)
+
+**Practicum Window**:
+The start-to-end date range of a schedule or assignment. It needs an end date, lasts at most 5 calendar months, and must leave room to reach the Required Hours.
+_Avoid_: Open-ended practicum
 
 **Pre-deployment Review**:
 A review of a student's submitted pre-deployment requirements to determine whether they are ready for placement.
