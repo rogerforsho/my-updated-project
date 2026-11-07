@@ -4,16 +4,19 @@ import type { ReactNode } from 'react';
 import PublicFooter from '@/src/components/layout/PublicFooter';
 
 const programs = [
-  { code: 'ICS', title: 'Institute of Computing Studies', copy: 'For 4th-year students completing their OJT practicum.' },
-  { code: 'IBE', title: 'Institute of Business and Entrepreneurship', copy: 'For 4th-year students completing their OJT practicum.' },
+  { code: 'ICS', title: 'Institute of Computing Studies', copy: 'For 4th-year students completing their OJT practicum. BSIT: 486 hours · BS-CPE: 240 hours.' },
+  { code: 'IBE', title: 'Institute of Business and Entrepreneurship', copy: 'For 4th-year students completing their OJT practicum. BSBA-HRM: 300 hours · BSENTREP: 300 hours.' },
 ];
 
 const capabilities = [
   ['01', 'GPS-verified attendance', 'Students log attendance with location verification and selfie evidence.'],
   ['02', 'Offline attendance logging', 'Mobile attendance records sync automatically when internet returns.'],
-  ['03', 'Rendered-hour tracking', 'Students can follow progress toward the 486 required hours, with OJT Coordinator verification.'],
+  ['03', 'Rendered-hour tracking', 'Students can follow progress toward the required hours for their program (240–486), with OJT Coordinator verification.'],
   ['04', 'Digital reports and evaluations', 'Supervisors use standardized 5-point rubrics to assess competencies, punctuality, and work ethics.'],
 ];
+
+const requirements = ['Parent/Guardian Consent Waiver (photo or PDF, notarized)', 'Medical Certificate', 'Pre-OJT Orientation Certificate', 'Endorsement Letter'];
+const contact = [['OJT Office', '[TBD]'], ['Office hours', '[TBD]'], ['School email', '[TBD]'], ['Coordinator', '[TBD]']];
 
 const resources = [
   { label: 'Desktop client', title: 'Windows Desktop Application', copy: 'Windows access for OJT Coordinator, admins, and supervisors, with system tray integration.', href: '/downloads/CdM-OJT-Portal-Setup-1.0.0.exe', action: 'Download client' },
@@ -92,6 +95,12 @@ export default function SoftForestLanding({
           </div>
         </section>
 
+        <section className="border-b border-[var(--line)] bg-[var(--surface)] py-4">
+          <div className="mx-auto flex max-w-7xl flex-wrap justify-center gap-x-8 gap-y-2 px-4 text-xs font-bold text-[var(--cdm-olive)] sm:px-6 lg:px-8">
+            <span>BSIT 486 h · BS-CPE 240 h · BSBA-HRM 300 h · BSENTREP 300 h</span><span>GPS + selfie attendance</span><span>Works offline, syncs later</span><span>RA 10173 data privacy</span><span>ISO/IEC 25010:2023 evaluated</span>
+          </div>
+        </section>
+
         {gettingStarted}
 
         <section id="programs" className="border-b border-[var(--line)] bg-[var(--surface)] py-14 sm:py-16">
@@ -125,6 +134,21 @@ export default function SoftForestLanding({
         </section>
 
         {helpSection}
+
+        <section id="requirements" className="border-b border-[var(--line)] bg-[var(--background)] py-14 sm:py-16">
+          <div className="mx-auto grid max-w-7xl gap-4 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+            <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
+              <SectionLabel>Before deployment</SectionLabel><h2 className="mt-2 text-lg font-extrabold">Required documents</h2>
+              <ol className="mt-4 grid gap-2 text-sm">{requirements.map((text, i) => <li key={text} className="flex gap-3"><span className="text-[10px] font-bold text-[var(--cdm-olive)]">0{i + 1}</span>{text}</li>)}</ol>
+              <p className="mt-4 text-xs leading-5 text-[var(--text-muted)]">Your OJT Coordinator reviews each document. The practicum schedule you propose may span at most 5 months.</p>
+            </div>
+            <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
+              <SectionLabel>Need help?</SectionLabel><h2 className="mt-2 text-lg font-extrabold">Talk to the OJT Office</h2>
+              <dl className="mt-4 grid gap-3 text-xs sm:grid-cols-2">{contact.map(([k, v]) => <div key={k}><dt className="font-bold">{k}</dt><dd className="text-[var(--text-muted)]">{v}</dd></div>)}</dl>
+              <p className="mt-4 text-xs leading-5 text-[var(--text-muted)]">For 4th-year ICS and IBE students only. Not for job applications, payroll, MOAs, or other year levels.</p>
+            </div>
+          </div>
+        </section>
 
         <section className="bg-[var(--background)] py-12 sm:py-14">
           <div className="mx-auto flex max-w-7xl flex-col gap-5 rounded-[1.75rem] border border-[var(--line)] bg-[var(--surface)] px-5 py-7 sm:px-8 sm:py-9 lg:flex-row lg:items-center lg:justify-between lg:px-10">
