@@ -549,7 +549,7 @@ export default function AssignmentsPage() {
             <div className="p-3.5 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider">
-                  CHED CMO 104 Compliance Summary
+                  Schedule Rules Summary
                 </span>
                 <span className="text-[11px] font-semibold text-emerald-700 bg-white px-2 py-0.5 rounded-full border border-emerald-300">
                   {selectedProposal.work_modality.toUpperCase()}
@@ -639,7 +639,7 @@ export default function AssignmentsPage() {
                 required
               />
               <Input
-                label="Expected End Date (Optional)"
+                label="End Date (required, at most 5 months after start)"
                 type="date"
                 value={reviewForm.end_date}
                 onChange={e => setReviewForm(f => ({ ...f, end_date: e.target.value }))}
@@ -806,10 +806,11 @@ export default function AssignmentsPage() {
 
           {/* End Date */}
           <Input
-            label="Expected End Date (Optional)"
+            label="End Date (required, at most 5 months after start)"
             type="date"
             value={form.end_date}
             onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))}
+            required
           />
 
           {(() => {

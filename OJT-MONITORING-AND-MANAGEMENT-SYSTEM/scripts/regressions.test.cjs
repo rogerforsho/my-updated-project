@@ -163,7 +163,7 @@ test('shared schedule policy normalizes lunch input and enforces the same-day ca
   const validateSchedulePolicy = loader({})('shared/schedulePolicy.ts').validateSchedulePolicy;
   const base = {
     work_days: [1, 2, 3, 4, 5], time_in: '08:00', time_out: '17:00',
-    lunch_break_minutes: 60, lunch_break_start: '12:00', start_date: '2026-10-12',
+    lunch_break_minutes: 60, lunch_break_start: '12:00', start_date: '2026-10-12', end_date: '2027-02-12',
   };
   assert.deepEqual(JSON.parse(JSON.stringify(validateSchedulePolicy(base))), {
     ok: true,
@@ -176,7 +176,9 @@ test('shared schedule policy normalizes lunch input and enforces the same-day ca
   assert.equal(validateSchedulePolicy({ ...base, work_days: [1, 1] }).ok, false);
   assert.equal(validateSchedulePolicy({ ...base, time_out: '07:59' }).ok, false);
   assert.equal(validateSchedulePolicy({ ...base, time_out: '16:00', work_days: [1, 2, 3, 4], lunch_break_minutes: 0, lunch_break_start: '' }).ok, true);
-  assert.equal(validateSchedulePolicy({ ...base, work_modality: 'remote' }).ok, false);
+  assert.equal(validateSchedulePolicy({ ...base, end_date: undefined }).ok, false, 'an end date is required for every modality');
+  assert.equal(validateSchedulePolicy({ ...base, end_date: '2027-03-13' }).ok, false, 'longer than 5 months');
+  assert.equal(validateSchedulePolicy({ ...base, work_modality: 'remote', end_date: undefined }).ok, false);
   assert.equal(validateSchedulePolicy({ ...base, work_modality: 'hybrid', end_date: '2026-10-11' }).ok, false);
   assert.equal(validateSchedulePolicy({ ...base, work_modality: 'remote', end_date: '2026-10-31' }).ok, true);
   assert.equal(validateSchedulePolicy({ ...base, start_date: '2026-02-29' }).ok, false);
@@ -227,7 +229,7 @@ test('mobile schedule proposal sends policy-normalized lunch interval to the BFF
   const schedule = f.load('apps/mobile/src/services/schedule.ts');
   const result = await schedule.submitScheduleProposal({
     work_days: [1, 2, 3, 4, 5], time_in: '08:00', time_out: '17:00',
-    lunch_break_minutes: undefined, lunch_break_start: '12:00', start_date: '2026-10-12',
+    lunch_break_minutes: undefined, lunch_break_start: '12:00', start_date: '2026-10-12', end_date: '2027-02-12',
     work_modality: 'onsite',
   });
   assert.equal(result.error, null);

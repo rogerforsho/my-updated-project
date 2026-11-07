@@ -332,7 +332,7 @@ export default function ScheduleProposalModal({ visible, onClose, onSubmitted }:
                       color={isChedCompliant ? "#0A3824" : "#b91c1c"}
                     />
                     <Text style={[s.complianceTitle, { color: isChedCompliant ? '#0A3824' : '#b91c1c' }]}>
-                      {isChedCompliant ? 'CHED CMO 104 Compliant' : 'Guidelines Non-Compliant'}
+                      {isChedCompliant ? 'Schedule Meets Practicum Rules' : 'Schedule Needs Changes'}
                     </Text>
                   </View>
 
@@ -377,7 +377,7 @@ export default function ScheduleProposalModal({ visible, onClose, onSubmitted }:
                     />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.label}>Expected End Date (Optional)</Text>
+                    <Text style={s.label}>End Date (required, max 5 months)</Text>
                     <TextInput
                       style={s.input}
                       value={endDate}

@@ -1,5 +1,5 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import { getGatewayStatus, validateSchedulePolicy, type WorkModality } from '@ojt/shared';
+import { getGatewayStatus, resolveRequiredHours, validateScheduleFeasibility, validateSchedulePolicy, type WorkModality } from '@ojt/shared';
 import { readLimitedJson } from '@/src/lib/read-limited-json';
 
 export const runtime = 'nodejs';
@@ -62,9 +62,14 @@ export async function POST(request: Request) {
     return failure('FORBIDDEN', 'Only active student accounts can submit schedules.', 403);
 
   const { data: student, error: studentError } = await supabase.from('students')
-    .select('student_id').eq('user_id', user.id).maybeSingle();
+    .select('student_id, course, required_hours').eq('user_id', user.id).maybeSingle();
   if (studentError || !student)
     return failure('NOT_FOUND', 'Student profile not found.', 404);
+  const feasibility = validateScheduleFeasibility({
+    start_date: input.start_date as string, end_date: input.end_date as string, work_days: input.work_days as number[],
+    daily_hours: policy.value.daily_hours, required_hours: resolveRequiredHours(student.required_hours, student.course),
+  });
+  if (!feasibility.ok) return failure('VALIDATION_FAILURE', feasibility.message, 400);
 
   const { data: reports, error: reportsError } = await supabase.from('reports')
     .select('report_type').eq('student_id', student.student_id).eq('status', 'approved');

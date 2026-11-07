@@ -174,7 +174,7 @@ async function main() {
   const assignmentRows = studentIds.map((student_id, i) => {
     const c = companyRows[i % companyRows.length];
     return { student_id, company_id: c.company_id, branch_id: branchOf[c.company_id],
-      supervisor_id: supervisors[i % companyRows.length], start_date: iso(start), assignment_status: 'active' };
+      supervisor_id: supervisors[i % companyRows.length], start_date: iso(start), end_date: iso(new Date(+start + 120 * 864e5)), assignment_status: 'active' };
   });
   const assignments = [];
   for (let i = 0; i < assignmentRows.length; i += BATCH) {

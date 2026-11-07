@@ -4,7 +4,7 @@ import { createClient } from '@/src/lib/supabase/server';
 import { departmentScope, canManageDepartmentStudent, canManageDepartmentRecord } from '@/src/lib/department-scope';
 import { recordAuditEvent } from '@/src/lib/audit';
 import { checkStudentGatewayStatus } from './reports';
-import { GATEWAY_DOCUMENT_SPECS, matchesDoc } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, matchesDoc, practicumWindowError } from '@ojt/shared';
 import type { AppResult, DbStudentAssignment, AssignmentStatus, StudentStatus } from '@ojt/shared';
 
 export interface AssignmentInput {
@@ -86,6 +86,8 @@ export async function createAssignment(input: AssignmentInput): Promise<AppResul
   if (!input.company_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Company is required.' } };
   if (!input.supervisor_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Supervisor is required.' } };
   if (!input.start_date) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Start date is required.' } };
+  const windowError = practicumWindowError(input.start_date, input.end_date);
+  if (windowError) return { data: null, error: { code: 'VALIDATION_FAILURE', message: windowError } };
 
   const { supabase, user, role, authorized, scope } = await assertCoordinator();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
@@ -146,6 +148,7 @@ export async function createAssignment(input: AssignmentInput): Promise<AppResul
 
   if (error?.message.includes('not accepting new students'))
     return { data: null, error: { code: 'FORBIDDEN', message: 'This company is not accepting new students.' } };
+  if (error?.code === '22023') return { data: null, error: { code: 'VALIDATION_FAILURE', message: error.message } };
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to create assignment.' } };
 
   // Log Audit Trail

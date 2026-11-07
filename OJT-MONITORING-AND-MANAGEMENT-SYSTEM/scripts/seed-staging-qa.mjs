@@ -226,6 +226,7 @@ try {
     branch_id: branchId,
     supervisor_id: supervisor.supervisor_id,
     start_date: new Date().toISOString().slice(0, 10),
+    end_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
     assignment_status: 'active',
   }));
   const assignments = unwrap('Create synthetic assignments', await supabase.from('student_assignments')

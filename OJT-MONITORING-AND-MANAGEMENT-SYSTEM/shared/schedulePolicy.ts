@@ -24,6 +24,51 @@ export type SchedulePolicyResult =
 // Daily hours are net of lunch, so a 9-hour shift with a 1-hour lunch is exactly at the limit.
 export const MAX_DAILY_HOURS = 8;
 export const MAX_WEEKLY_HOURS = 40;
+/** A practicum may last at most this many calendar months (CHED CMO 104 / SIPP). Mirrors enforce_practicum_window() in the database. */
+export const MAX_PRACTICUM_MONTHS = 5;
+
+/** The date `months` after `isoDate`, clamped to the last day of that month (Aug 31 + 5 months = Jan 31, Sep 30 + 5 = Feb 28). */
+export function addMonthsClamped(isoDate: string, months: number): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const target = m - 1 + months;
+  const year = y + Math.floor(target / 12);
+  const month = ((target % 12) + 12) % 12;
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(Math.min(d, lastDay)).padStart(2, '0')}`;
+}
+
+/** Error text when the practicum window is missing or longer than the cap; null when it is fine. Dates are already valid YYYY-MM-DD. */
+export function practicumWindowError(startDate: string, endDate: string | null | undefined): string | null {
+  if (!endDate) return `Enter the practicum end date. A practicum can last at most ${MAX_PRACTICUM_MONTHS} months.`;
+  const latest = addMonthsClamped(startDate, MAX_PRACTICUM_MONTHS);
+  if (endDate > latest) {
+    return `A practicum can last at most ${MAX_PRACTICUM_MONTHS} months. For a ${startDate} start, the latest end date is ${latest}.`;
+  }
+  return null;
+}
+
+/**
+ * Can the schedule reach the required hours inside the window? Counts scheduled weekdays from start to end;
+ * holidays are not known here, so this is a lenient check (it never rejects a schedule that could finish).
+ */
+export function validateScheduleFeasibility(input: {
+  start_date: string; end_date: string; work_days: number[]; daily_hours: number; required_hours: number;
+}): { ok: true } | { ok: false; message: string } {
+  const cursor = new Date(`${input.start_date}T00:00:00.000Z`);
+  const end = new Date(`${input.end_date}T00:00:00.000Z`);
+  let days = 0;
+  for (; cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+    if (input.work_days.includes(cursor.getUTCDay())) days++;
+  }
+  const hours = Math.round(days * input.daily_hours * 100) / 100;
+  if (hours < input.required_hours) {
+    return {
+      ok: false,
+      message: `This schedule gives about ${hours} hours between ${input.start_date} and ${input.end_date}, but ${input.required_hours} hours are required. Add work days or lengthen the shift (up to ${MAX_DAILY_HOURS} hours a day) so the hours fit within ${MAX_PRACTICUM_MONTHS} months.`,
+    };
+  }
+  return { ok: true };
+}
 
 function parseTimeToMinutes(value: string): number {
   const match = /^(\d{2}):(\d{2})$/.exec(value);
@@ -52,9 +97,8 @@ export function validateSchedulePolicy(input: SchedulePolicyInput): SchedulePoli
   if (input.end_date && input.end_date < input.start_date) {
     return { ok: false, message: 'Practicum end date must be on or after the start date.' };
   }
-  if ((input.work_modality === 'remote' || input.work_modality === 'hybrid') && !input.end_date) {
-    return { ok: false, message: 'Remote and hybrid schedules need an end date for coordinator review.' };
-  }
+  const windowError = practicumWindowError(input.start_date, input.end_date);
+  if (windowError) return { ok: false, message: windowError };
   if (!Array.isArray(input.work_days) || input.work_days.length === 0) {
     return { ok: false, message: 'Please select at least one weekly work day.' };
   }

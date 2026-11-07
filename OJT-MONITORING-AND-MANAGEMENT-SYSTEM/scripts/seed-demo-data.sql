@@ -77,10 +77,10 @@ BEGIN
   -- students 1-50 -> the local supervisor; 51-90 -> demo supervisors
   FOR i IN 1..90 LOOP
     IF i <= 50 THEN
-      INSERT INTO student_assignments (student_id, company_id, supervisor_id, start_date, branch_id) VALUES (st_ids[i], local_co, local_sup, current_date - 60, local_br);
+      INSERT INTO student_assignments (student_id, company_id, supervisor_id, start_date, end_date, branch_id) VALUES (st_ids[i], local_co, local_sup, current_date - 60, current_date + 85, local_br);
     ELSE
-      INSERT INTO student_assignments (student_id, company_id, supervisor_id, start_date, branch_id)
-      VALUES (st_ids[i], co_ids[1 + (i % 30)], sup_ids[1 + (i % 30)], current_date - 60, br_ids[1 + (i % 30)]);
+      INSERT INTO student_assignments (student_id, company_id, supervisor_id, start_date, end_date, branch_id)
+      VALUES (st_ids[i], co_ids[1 + (i % 30)], sup_ids[1 + (i % 30)], current_date - 60, current_date + 85, br_ids[1 + (i % 30)]);
     END IF;
   END LOOP;
 
@@ -100,8 +100,8 @@ BEGIN
   -- Schedules (Mon-Fri, 8h), hours, and ~3 weeks of attendance for the first 60 students.
   -- Every 6th student has no attendance in the last 10 days; every 7th skips a day now and then (absent rows).
   FOR i IN 1..60 LOOP
-    INSERT INTO practicum_schedules (student_id, company_id, work_modality, work_days, time_in, time_out, lunch_break_minutes, daily_hours, weekly_hours, start_date, status)
-    VALUES (st_ids[i], CASE WHEN i <= 50 THEN local_co ELSE co_ids[1 + (i % 30)] END, 'on_site', ARRAY[1,2,3,4,5], '08:00', '17:00', 60, 8, 40, current_date - 60, 'approved');
+    INSERT INTO practicum_schedules (student_id, company_id, work_modality, work_days, time_in, time_out, lunch_break_minutes, daily_hours, weekly_hours, start_date, end_date, status)
+    VALUES (st_ids[i], CASE WHEN i <= 50 THEN local_co ELSE co_ids[1 + (i % 30)] END, 'on_site', ARRAY[1,2,3,4,5], '08:00', '17:00', 60, 8, 40, current_date - 60, current_date + 85, 'approved');
     INSERT INTO internship_progress (student_id, completed_hours, remaining_hours, progress_status)
     VALUES (st_ids[i], CASE WHEN i BETWEEN 41 AND 45 THEN (SELECT required_hours FROM students WHERE student_id = st_ids[i]) ELSE 40 + i * 5 END,
             CASE WHEN i BETWEEN 41 AND 45 THEN 0 ELSE greatest(0, (SELECT required_hours FROM students WHERE student_id = st_ids[i]) - (40 + i * 5)) END,

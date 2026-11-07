@@ -234,12 +234,12 @@ test('mobile schedules require all four approved gateway documents before saving
   const fixture = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }], reports: [] } });
   const route = load('apps/web/app/api/mobile/schedule-proposals/route.ts', {
     '@supabase/supabase-js': { createClient: () => fixture.client },
-    '@ojt/shared': { ...load('shared/schedulePolicy.ts'), ...load('shared/gateway.ts') },
+    '@ojt/shared': { ...load('shared/schedulePolicy.ts'), ...load('shared/gateway.ts'), ...load('shared/courses.ts') },
   }, { NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test' });
   const request = () => new Request('https://portal.test/api/mobile/schedule-proposals', {
     method: 'POST', headers: { authorization: 'Bearer test', 'content-type': 'application/json' },
     body: JSON.stringify({ work_modality: 'on_site', work_days: [1,2,3,4,5], time_in: '08:00', time_out: '17:00',
-      lunch_break_minutes: 60, lunch_break_start: '12:00', start_date: '2026-10-26' }),
+      lunch_break_minutes: 60, lunch_break_start: '12:00', start_date: '2026-10-26', end_date: '2027-01-26' }),
   });
   for (const report_type of ['Parent/Guardian Consent Waiver', 'Medical Certificate', 'Pre-OJT Orientation Certificate', 'Endorsement Letter']) {
     const response = await route.POST(request());
@@ -259,12 +259,12 @@ test('students already placed with an active assignment are exempt from the gate
   } });
   const route = load('apps/web/app/api/mobile/schedule-proposals/route.ts', {
     '@supabase/supabase-js': { createClient: () => fixture.client },
-    '@ojt/shared': { ...load('shared/schedulePolicy.ts'), ...load('shared/gateway.ts') },
+    '@ojt/shared': { ...load('shared/schedulePolicy.ts'), ...load('shared/gateway.ts'), ...load('shared/courses.ts') },
   }, { NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test' });
   const response = await route.POST(new Request('https://portal.test/api/mobile/schedule-proposals', {
     method: 'POST', headers: { authorization: 'Bearer test', 'content-type': 'application/json' },
     body: JSON.stringify({ work_modality: 'on_site', work_days: [1,2,3,4,5], time_in: '08:00', time_out: '17:00',
-      lunch_break_minutes: 60, lunch_break_start: '12:00', start_date: '2026-10-26' }),
+      lunch_break_minutes: 60, lunch_break_start: '12:00', start_date: '2026-10-26', end_date: '2027-01-26' }),
   }));
   assert.equal(response.status, 200);
 });
@@ -540,7 +540,7 @@ test('OJT Coordinator approvals, grading, assignments, and schedule reviews reje
       ['reports', 'reviewReport', ['report', 'approved']],
       ['reports', 'sendRequirementReminder', ['foreign-user', ['Report']]],
       ['evaluations', 'overrideEvaluation', ['evaluation', 90, 'Review']],
-      ['assignments', 'createAssignment', [{ student_id: 'foreign', company_id: 'company', supervisor_id: 'supervisor', start_date: '2026-10-06' }]],
+      ['assignments', 'createAssignment', [{ student_id: 'foreign', company_id: 'company', supervisor_id: 'supervisor', start_date: '2026-10-06', end_date: '2027-01-06' }]],
       ['assignments', 'updateAssignmentStatus', ['assignment', 'completed']],
       ['assignments', 'updateStudentStatus', ['foreign', 'dropped']],
       ['assignments', 'reassignStudent', ['foreign', 'company', 'supervisor', '2026-10-06']],
@@ -564,14 +564,14 @@ test('OJT Coordinator can approve, assign, and review their department without m
       reports: [{ report_id: 'report', student_id: 'own', report_type: 'Pre-OJT Orientation Certificate', status: 'submitted' }],
       evaluations: [{ evaluation_id: 'evaluation', student_id: 'own', performance_score: 60 }],
       supervisors: [{ supervisor_id: 'supervisor', company_id: 'company' }],
-      practicum_schedules: [{ schedule_id: 'schedule', student_id: 'own', status: 'pending' }],
+      practicum_schedules: [{ schedule_id: 'schedule', student_id: 'own', status: 'pending', work_days: [1, 2, 3, 4, 5], daily_hours: 8, start_date: '2026-10-06', end_date: '2027-01-06' }],
     } });
     assert.equal((await fixture.module('auth').updateStudentAccountStatus('student-user', 'active')).error, null);
     assert.equal((await fixture.module('reports').reviewReport('report', 'approved')).error, null);
     assert.equal((await fixture.module('evaluations').overrideEvaluation('evaluation', 90, 'Review')).error.code, 'VALIDATION_FAILURE');
-    assert.equal((await fixture.module('assignments').createAssignment({ student_id: 'own', company_id: 'company', branch_id: 'branch', supervisor_id: 'supervisor', start_date: '2026-10-06' })).error, null);
+    assert.equal((await fixture.module('assignments').createAssignment({ student_id: 'own', company_id: 'company', branch_id: 'branch', supervisor_id: 'supervisor', start_date: '2026-10-06', end_date: '2027-01-06' })).error, null);
     assert.equal((await fixture.module('schedule').reviewPracticumSchedule('schedule', 'approve', {
-      company_id: 'company', branch_id: 'branch', supervisor_id: 'supervisor', start_date: '2026-10-06',
+      company_id: 'company', branch_id: 'branch', supervisor_id: 'supervisor', start_date: '2026-10-06', end_date: '2027-01-06',
     })).error, null);
     assert.equal(fixture.tables.users[1].account_status, 'active');
     assert.equal(fixture.tables.reports[0].status, 'approved');
@@ -608,7 +608,7 @@ test('web schedule insert persists the policy-normalized lunch interval', async 
   } });
   const result = await fixture.module('schedule').submitPracticumSchedule({
     work_days: [1, 2, 3, 4, 5], time_in: '08:00', time_out: '17:00',
-    lunch_break_minutes: undefined, lunch_break_start: '12:00', start_date: '2026-10-12',
+    lunch_break_minutes: undefined, lunch_break_start: '12:00', start_date: '2026-10-12', end_date: '2027-02-12',
     work_modality: 'onsite',
   });
   assert.equal(result.error, null);
@@ -1491,7 +1491,7 @@ test('core student, OJT Coordinator, and supervisor service paths return useful 
     students: [{ student_id: 'student', course: 'BSIT' }],
     supervisors: [{ supervisor_id: 'supervisor', company_id: 'company' }],
   } });
-  const assignment = await coordinator.module('assignments').createAssignment({ student_id: 'student', supervisor_id: 'supervisor', company_id: 'company', branch_id: 'branch', start_date: '2026-10-05' });
+  const assignment = await coordinator.module('assignments').createAssignment({ student_id: 'student', supervisor_id: 'supervisor', company_id: 'company', branch_id: 'branch', start_date: '2026-10-05', end_date: '2027-01-05' });
   assert.equal(assignment.error, null);
   assert.equal(coordinator.tables.student_assignments[0].assignment_status, 'active');
 

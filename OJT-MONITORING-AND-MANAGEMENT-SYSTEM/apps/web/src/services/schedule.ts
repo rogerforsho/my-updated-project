@@ -5,7 +5,7 @@ import { getTrustedActor } from '@/src/lib/trusted-actor';
 import { canManageDepartmentStudent } from '@/src/lib/department-scope';
 import { recordAuditEvent } from '@/src/lib/audit';
 import { checkStudentGatewayStatus } from './reports';
-import { GATEWAY_DOCUMENT_SPECS, validateSchedulePolicy } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, practicumWindowError, resolveRequiredHours, validateScheduleFeasibility, validateSchedulePolicy } from '@ojt/shared';
 import type { AppResult, DbPracticumSchedule, WorkModality } from '@ojt/shared';
 
 
@@ -45,7 +45,7 @@ export async function submitPracticumSchedule(
 
   const { data: student } = await supabase
     .from('students')
-    .select('student_id')
+    .select('student_id, course, required_hours')
     .eq('user_id', user.id)
     .single();
 
@@ -75,6 +75,11 @@ export async function submitPracticumSchedule(
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: policy.message } };
   }
   const { lunch_break_minutes: lunchMinutes, lunch_break_start: lunchStart, daily_hours: dailyHours, weekly_hours: weeklyHours } = policy.value;
+  const feasibility = validateScheduleFeasibility({
+    start_date: input.start_date!, end_date: input.end_date!, work_days: input.work_days,
+    daily_hours: dailyHours, required_hours: resolveRequiredHours(student.required_hours, student.course),
+  });
+  if (!feasibility.ok) return { data: null, error: { code: 'VALIDATION_FAILURE', message: feasibility.message } };
 
   // 4. Upsert or Insert schedule proposal
   const { data: existing } = await supabase
@@ -245,6 +250,19 @@ export async function reviewPracticumSchedule(
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Invalid schedule decision.' } };
   if (action === 'approve' && (!reviewData?.company_id || !reviewData.branch_id || !reviewData.supervisor_id))
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Choose the HTE, approved branch, and Supervisor before approval.' } };
+  if (action === 'approve') {
+    // The approved window (as edited here) must respect the 5-month cap and still fit the required hours.
+    const start = reviewData?.start_date || schedule.start_date;
+    const end = reviewData?.end_date || schedule.end_date;
+    const windowError = practicumWindowError(start, end);
+    if (windowError) return { data: null, error: { code: 'VALIDATION_FAILURE', message: windowError } };
+    const { data: owner } = await supabase.from('students').select('course, required_hours').eq('student_id', schedule.student_id).maybeSingle();
+    const feasibility = validateScheduleFeasibility({
+      start_date: start, end_date: end, work_days: schedule.work_days,
+      daily_hours: Number(schedule.daily_hours), required_hours: resolveRequiredHours(owner?.required_hours, owner?.course),
+    });
+    if (!feasibility.ok) return { data: null, error: { code: 'VALIDATION_FAILURE', message: feasibility.message } };
+  }
 
   const { error } = await supabase.rpc('coordinator_review_practicum_schedule', {
     p_schedule_id: schedule_id,
