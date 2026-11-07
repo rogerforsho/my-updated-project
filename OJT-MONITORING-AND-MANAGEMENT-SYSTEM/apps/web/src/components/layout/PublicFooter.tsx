@@ -139,9 +139,6 @@ export default function PublicFooter() {
             <span className="text-slate-400">
               ISO/IEC 25010:2023 Evaluated
             </span>
-            <span className="text-slate-400">
-              System Status: Operational (v1.2.0)
-            </span>
           </div>
 
           {/* Row 3: Institutional Copyright & Office Info */}
@@ -199,7 +196,7 @@ export default function PublicFooter() {
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">2. Purpose of Data Processing</h4>
                 <p>Data collected is strictly utilized to:</p>
                 <ul className="list-disc list-inside mt-1 space-y-1 text-slate-600">
-                  <li>Validate student completion of mandatory practicum duty hours (300–600 hours).</li>
+                  <li>Validate student completion of mandatory practicum duty hours (BSIT 486, BS-CPE 240, BSBA-HRM 300, BSENTREP 300).</li>
                   <li>Prevent fraudulent attendance logs and ensure fair academic compliance.</li>
                   <li>Facilitate academic reporting to the Practicum & Placement Office and Department Chairs.</li>
                 </ul>
@@ -213,9 +210,9 @@ export default function PublicFooter() {
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">4. Retention & Archival Standards</h4>
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">4. Retention & Archival Standards (Selfie &amp; GPS Data)</h4>
                 <p>
-                  Trainee practicum files are retained for five (5) academic years following student graduation in accordance with higher education recordkeeping standards, after which digital media files are purged.
+                  Trainee practicum files, including attendance selfies and GPS records, are retained for five (5) academic years following student graduation in accordance with higher education recordkeeping standards, after which digital media files are purged.
                 </p>
               </div>
 
@@ -293,7 +290,16 @@ export default function PublicFooter() {
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">4. Maintenance & Support</h4>
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">4. CHED CMO 104 Practicum Rules Enforced by This System</h4>
+                <ul className="list-disc list-inside mt-1 space-y-1 text-slate-600">
+                  <li>Required hours by program: BSIT 486, BS-CPE 240, BSBA-HRM 300, BSENTREP 300.</li>
+                  <li>Before deployment: Parent/Guardian Consent Waiver (notarized), Medical Certificate, Pre-OJT Orientation Certificate, and Endorsement Letter, each reviewed by the OJT Coordinator.</li>
+                  <li>A practicum schedule may span at most 5 months, at most 8 hours a day and 40 hours a week, with shifts between 6:00 AM and 9:00 PM.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">5. Maintenance & Support</h4>
                 <p>
                   The system operates 24/7 with scheduled maintenance announced in advance. For support tickets or login concerns, email <span className="font-mono text-slate-800">vralphroger@gmail.com</span> or <span className="font-mono text-slate-800">vralphroger@gmail.com</span>.
                 </p>
@@ -432,7 +438,7 @@ export default function PublicFooter() {
                 <>
                   <FaqItem
                     question="How do I verify student intern attendance?"
-                    answer="Log in to the Web Portal or Mobile App using your supervisor account. View the real-time list of trainees clocked in at your workplace along with timestamps and selfie verification."
+                    answer="Log in to the Web Portal or the Windows desktop app using your supervisor account. View the real-time list of trainees clocked in at your workplace along with timestamps and selfie verification."
                     expanded={expandedFaq === 0}
                     onToggle={() => setExpandedFaq(expandedFaq === 0 ? null : 0)}
                   />
