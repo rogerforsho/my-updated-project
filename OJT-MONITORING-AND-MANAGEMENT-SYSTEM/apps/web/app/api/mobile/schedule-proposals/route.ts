@@ -70,7 +70,11 @@ export async function POST(request: Request) {
     .select('report_type').eq('student_id', student.student_id).eq('status', 'approved');
   if (reportsError) return failure('SERVER_FAILURE', 'Could not check pre-deployment documents.', 503);
   const gateway = getGatewayStatus(reports || []);
-  if (!gateway.isCleared)
+  // Students already placed with an active assignment are exempt from newly added documents.
+  const { data: placed, error: placedError } = await supabase.from('student_assignments')
+    .select('assignment_id').eq('student_id', student.student_id).eq('assignment_status', 'active').limit(1).maybeSingle();
+  if (placedError) return failure('SERVER_FAILURE', 'Could not check your placement.', 503);
+  if (!gateway.isCleared && !placed)
     return failure('VALIDATION_FAILURE', `Cannot propose practicum schedule: approved pre-deployment documents are required. Missing: ${gateway.missing.join(', ')}.`, 400);
 
   const { data: existing, error: existingError } = await supabase.from('practicum_schedules')

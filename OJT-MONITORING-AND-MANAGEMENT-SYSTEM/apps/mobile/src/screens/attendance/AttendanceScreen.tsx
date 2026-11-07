@@ -25,7 +25,7 @@ import { getCurrentCoordinates } from '../../services/location';
 import { syncPendingOfflineAttendance, isNetworkAvailable } from '../../lib/syncEngine';
 import { getOfflineQueue } from '../../lib/offlineQueue';
 import { optimizeSelfie } from '../../lib/imageOptimizer';
-import { isWithinGeofence } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, isWithinGeofence, matchesDoc } from '@ojt/shared';
 import NetworkToast from '../../components/NetworkToast';
 import ScheduleProposalModal from '../../components/ScheduleProposalModal';
 import { fetchStudentScheduleProposal } from '../../services/schedule';
@@ -171,28 +171,18 @@ export default function AttendanceScreen() {
     } else try {
       const repRes = await listStudentReports(1, 50);
       const reports = repRes.data?.reports || [];
-      const GATEWAY_SPECS = [
-        { id: 'orientation', title: 'Pre-OJT Orientation Certificate' },
-        { id: 'endorsement', title: 'Endorsement Letter' },
-      ];
-
-      const progress = GATEWAY_SPECS.map(spec => {
-        const found = reports.find(r => {
-          const a = (r.report_type || '').toLowerCase();
-          const b = spec.title.toLowerCase();
-          return a.includes(b) || b.includes(a) ||
-            (spec.id === 'orientation' && a.includes('orientation')) ||
-            (spec.id === 'endorsement' && (a.includes('endorsement') || a.includes('acceptance') || a.includes('moa')));
-        });
+      // Same rule as the server (shared GATEWAY_DOCUMENT_SPECS); students already placed are exempt from newly added documents.
+      const progress = GATEWAY_DOCUMENT_SPECS.map(spec => {
+        const found = reports.find(r => matchesDoc(r.report_type, spec.name));
         return {
           id: spec.id,
-          title: spec.title,
+          title: spec.name,
           submitted: Boolean(found),
           status: found ? found.status : 'missing',
         };
       });
       setGatewayDocs(progress);
-      const cleared = progress.length === 2 && progress.every(p => p.status === 'approved');
+      const cleared = Boolean(assign) || progress.every(p => p.status === 'approved');
       setIsGatewayCleared(cleared);
 
       let cachedSchedule: DbPracticumSchedule | null = null;
@@ -723,7 +713,7 @@ export default function AttendanceScreen() {
                   <Text style={s.gatewayTitle}>Attendance Locked</Text>
                   <Text style={s.gatewaySubtitle}>
                     {!isGatewayCleared
-                      ? `Pre-Deployment Gateway Incomplete (${gatewayDocs.filter(d => d.status === 'approved').length}/2 Approved)`
+                      ? `Pre-Deployment Gateway Incomplete (${gatewayDocs.filter(d => d.status === 'approved').length}/${GATEWAY_DOCUMENT_SPECS.length} Approved)`
                       : scheduleProposal
                       ? 'Gateway Cleared! Waiting for Company Assignment'
                       : 'Gateway Cleared! Set Up Practicum Work Schedule'}
@@ -733,7 +723,7 @@ export default function AttendanceScreen() {
 
               <Text style={s.gatewayDesc}>
                 {!isGatewayCleared
-                  ? 'Under Colegio de Montalban practicum rules, daily check-in is unlocked only after your 2 mandatory gateway documents are submitted and verified by your OJT Coordinator.'
+                  ? 'Under Colegio de Montalban practicum rules, daily check-in is unlocked only after your mandatory gateway documents (consent waiver, medical certificate, orientation certificate and endorsement letter) are submitted and verified by your OJT Coordinator.'
                   : 'All mandatory credentials have been verified! Please submit your proposed Practicum Work Schedule so your OJT Coordinator can deploy you.'}
               </Text>
 
@@ -741,16 +731,13 @@ export default function AttendanceScreen() {
               <View style={s.gatewayProgressRow}>
                 <Text style={s.gatewayProgressLabel}>Gateway Progress</Text>
                 <Text style={s.gatewayProgressCount}>
-                  {gatewayDocs.filter(d => d.submitted).length} of {gatewayDocs.length || 2} Submitted
+                  {gatewayDocs.filter(d => d.submitted).length} of {GATEWAY_DOCUMENT_SPECS.length} Submitted
                 </Text>
               </View>
 
               {/* Checklist Items */}
               <View style={s.gatewayList}>
-                {(gatewayDocs.length > 0 ? gatewayDocs : [
-                  { id: '1', title: 'Pre-OJT Orientation Certificate', submitted: false },
-                  { id: '2', title: 'Endorsement Letter', submitted: false },
-                ]).map((doc) => (
+                {(gatewayDocs.length > 0 ? gatewayDocs : GATEWAY_DOCUMENT_SPECS.map(spec => ({ id: spec.id, title: spec.name, submitted: false, status: undefined as string | undefined }))).map((doc) => (
                   <View key={doc.id} style={s.gatewayItem}>
                     <Ionicons
                       name={doc.submitted ? "checkmark-circle" : "ellipse-outline"}

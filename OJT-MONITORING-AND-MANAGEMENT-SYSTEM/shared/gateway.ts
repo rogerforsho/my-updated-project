@@ -1,9 +1,14 @@
 export interface GatewayDocumentSpec {
   id: string;
   name: string;
+  /** Shown to the student when they pick this document type. */
+  hint?: string;
 }
 
+/** Documents every student needs approved before proposing a schedule or being assigned to a company. */
 export const GATEWAY_DOCUMENT_SPECS: GatewayDocumentSpec[] = [
+  { id: 'consent', name: 'Parent/Guardian Consent Waiver', hint: 'Notarized waiver signed by your parent or guardian. Upload a photo or a PDF.' },
+  { id: 'medical', name: 'Medical Certificate', hint: 'A valid medical certificate. Upload a photo or a PDF.' },
   { id: 'orientation', name: 'Pre-OJT Orientation Certificate' },
   { id: 'endorsement', name: 'Endorsement Letter' },
 ];
@@ -16,6 +21,8 @@ export function getGatewayStatus(reports: Array<{ report_type: string }>) {
 }
 
 export const STUDENT_REPORT_TYPES = [
+  'Parent/Guardian Consent Waiver',
+  'Medical Certificate',
   'Pre-OJT Orientation Certificate',
   'Endorsement Letter',
   'Daily Journal',
@@ -53,7 +60,7 @@ export function normalizeDocType(type: string): string {
     return 'Parent/Guardian Consent Waiver';
   }
   if (t.includes('medical') || t.includes('health clearance') || t.includes('physical exam')) {
-    return 'Medical Clearance';
+    return 'Medical Certificate';
   }
   return type.trim();
 }

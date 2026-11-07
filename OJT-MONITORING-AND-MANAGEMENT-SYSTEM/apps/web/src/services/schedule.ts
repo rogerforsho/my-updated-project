@@ -5,7 +5,7 @@ import { getTrustedActor } from '@/src/lib/trusted-actor';
 import { canManageDepartmentStudent } from '@/src/lib/department-scope';
 import { recordAuditEvent } from '@/src/lib/audit';
 import { checkStudentGatewayStatus } from './reports';
-import { validateSchedulePolicy } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, validateSchedulePolicy } from '@ojt/shared';
 import type { AppResult, DbPracticumSchedule, WorkModality } from '@ojt/shared';
 
 
@@ -53,14 +53,17 @@ export async function submitPracticumSchedule(
     return { data: null, error: { code: 'NOT_FOUND', message: 'Student record not found.' } };
   }
 
-  // 1. Enforce Gateway Clearance (Orientation Certificate & Endorsement Letter approved)
+  // 1. Enforce Gateway Clearance (all required documents approved). Students already placed are exempt.
   const gateway = await checkStudentGatewayStatus(student.student_id);
-  if (!gateway.isCleared) {
+  const { data: placed } = await supabase
+    .from('student_assignments').select('assignment_id')
+    .eq('student_id', student.student_id).eq('assignment_status', 'active').limit(1).maybeSingle();
+  if (!gateway.isCleared && !placed) {
     return {
       data: null,
       error: {
         code: 'VALIDATION_FAILURE',
-        message: `Cannot propose practicum schedule: You must first have your 2 mandatory pre-deployment gateway documents approved by your OJT Coordinator (Missing: ${gateway.missing.join(', ')}).`,
+        message: `Cannot propose practicum schedule: You must first have your ${GATEWAY_DOCUMENT_SPECS.length} mandatory pre-deployment documents approved by your OJT Coordinator (Missing: ${gateway.missing.join(', ')}).`,
       },
     };
   }

@@ -79,9 +79,11 @@ export async function sendAccountStatusEmail({
                   ⚠️ Before you can time in
                 </h3>
                 <p style="color: #78350f; font-size: 13px; line-height: 1.6; margin: 0 0 12px 0;">
-                  You can now sign in, but <strong>Time In / Time Out</strong> stays locked until you upload these <strong>2 required documents</strong> in the mobile app (Reports tab) and your OJT Coordinator approves them:
+                  You can now sign in, but <strong>Time In / Time Out</strong> stays locked until you upload these <strong>4 required documents</strong> in the mobile app (Reports tab) and your OJT Coordinator approves them:
                 </p>
                 <ol style="color: #78350f; font-size: 13px; line-height: 1.6; margin: 0; padding-left: 20px;">
+                  <li><strong>Parent/Guardian Consent Waiver</strong> (notarized; photo or PDF)</li>
+                  <li><strong>Medical Certificate</strong> (photo or PDF)</li>
                   <li><strong>Pre-OJT Orientation Certificate</strong></li>
                   <li><strong>Endorsement Letter</strong></li>
                 </ol>

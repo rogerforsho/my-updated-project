@@ -230,7 +230,7 @@ function workflowFixture(role = 'Admin', options = {}) {
 
 const attendanceId = number => `00000000-0000-4000-8000-${String(number).padStart(12, '0')}`;
 
-test('mobile schedules require both approved gateway documents before saving a proposal', async () => {
+test('mobile schedules require all four approved gateway documents before saving a proposal', async () => {
   const fixture = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }], reports: [] } });
   const route = load('apps/web/app/api/mobile/schedule-proposals/route.ts', {
     '@supabase/supabase-js': { createClient: () => fixture.client },
@@ -241,7 +241,7 @@ test('mobile schedules require both approved gateway documents before saving a p
     body: JSON.stringify({ work_modality: 'on_site', work_days: [1,2,3,4,5], time_in: '08:00', time_out: '17:00',
       lunch_break_minutes: 60, lunch_break_start: '12:00', start_date: '2026-10-26' }),
   });
-  for (const report_type of ['Pre-OJT Orientation Certificate', 'Endorsement Letter']) {
+  for (const report_type of ['Parent/Guardian Consent Waiver', 'Medical Certificate', 'Pre-OJT Orientation Certificate', 'Endorsement Letter']) {
     const response = await route.POST(request());
     assert.equal(response.status, 400);
     assert.equal(fixture.writes.length, 0);
@@ -250,6 +250,23 @@ test('mobile schedules require both approved gateway documents before saving a p
   const response = await route.POST(request());
   assert.equal(response.status, 200);
   assert.equal(fixture.tables.practicum_schedules.length, 1);
+});
+
+test('students already placed with an active assignment are exempt from the gateway documents', async () => {
+  const fixture = workflowFixture('Student', { tables: {
+    students: [{ student_id: 'student', user_id: 'actor' }], reports: [],
+    student_assignments: [{ student_id: 'student', assignment_id: 'assignment', assignment_status: 'active' }],
+  } });
+  const route = load('apps/web/app/api/mobile/schedule-proposals/route.ts', {
+    '@supabase/supabase-js': { createClient: () => fixture.client },
+    '@ojt/shared': { ...load('shared/schedulePolicy.ts'), ...load('shared/gateway.ts') },
+  }, { NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test' });
+  const response = await route.POST(new Request('https://portal.test/api/mobile/schedule-proposals', {
+    method: 'POST', headers: { authorization: 'Bearer test', 'content-type': 'application/json' },
+    body: JSON.stringify({ work_modality: 'on_site', work_days: [1,2,3,4,5], time_in: '08:00', time_out: '17:00',
+      lunch_break_minutes: 60, lunch_break_start: '12:00', start_date: '2026-10-26' }),
+  }));
+  assert.equal(response.status, 200);
 });
 
 test('completed students get a closed-record response before report upload or submission touches evidence', async () => {

@@ -18,7 +18,7 @@ import {
   type ScheduleDetail,
 } from '@/src/services/schedule';
 import { PagerBar, SearchBox, usePageSize } from '@/src/components/ui/ListControls';
-import type { AssignmentStatus, DbCompanyBranch, StudentStatus } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, type AssignmentStatus, type DbCompanyBranch, type StudentStatus } from '@ojt/shared';
 
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -408,7 +408,7 @@ export default function AssignmentsPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
             <div className="text-xs text-slate-600">
-              Student-submitted schedule proposals are cleared by pre-deployment gateway (2/2 mandatory documents).
+              Student-submitted schedule proposals are cleared by pre-deployment gateway ({GATEWAY_DOCUMENT_SPECS.length}/{GATEWAY_DOCUMENT_SPECS.length} mandatory documents).
             </div>
             <div className="flex gap-2">
               <button

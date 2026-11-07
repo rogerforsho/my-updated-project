@@ -10,7 +10,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { listStudentReports, submitStudentReport } from '../../services/reports';
 import { isNetworkAvailable } from '../../lib/syncEngine';
 import NetworkToast from '../../components/NetworkToast';
-import { STUDENT_REPORT_TYPES, type DbReport } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, STUDENT_REPORT_TYPES, isCoordinatorReviewType, matchesDoc, type DbReport } from '@ojt/shared';
 import CompanyRequestModal from '../../components/CompanyRequestModal';
 import IncidentReportModal from '../../components/IncidentReportModal';
 
@@ -139,7 +139,7 @@ export default function ReportsScreen() {
     }
 
     setModalOpen(false);
-    const routedTo = ['Pre-OJT Orientation Certificate', 'Endorsement Letter', 'Incident Report'].includes(selectedType)
+    const routedTo = (isCoordinatorReviewType(selectedType) || selectedType === 'Incident Report')
       ? 'OJT Coordinator follow-up'
       : 'Supervisor review';
     setSuccess(`Report submitted successfully for ${routedTo}.`);
@@ -326,6 +326,12 @@ export default function ReportsScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+
+              {GATEWAY_DOCUMENT_SPECS.find(spec => matchesDoc(selectedType, spec.name))?.hint ? (
+                <Text style={{ fontSize: 12, color: '#526257', marginBottom: 10 }}>
+                  {GATEWAY_DOCUMENT_SPECS.find(spec => matchesDoc(selectedType, spec.name))?.hint}
+                </Text>
+              ) : null}
 
               <Text style={s.fieldLabel}>Attach Document File</Text>
               {attachedFile ? (

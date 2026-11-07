@@ -16,7 +16,7 @@ import {
 } from '@/src/services/reports';
 import { getSignedDocumentUrl } from '@/src/services/storage';
 import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
-import { isCoordinatorReviewType, SUPERVISOR_REVIEW_REPORT_TYPES } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, isCoordinatorReviewType, SUPERVISOR_REVIEW_REPORT_TYPES } from '@ojt/shared';
 
 
 export default function CoordinatorSubmissionsPage() {
@@ -280,7 +280,7 @@ export default function CoordinatorSubmissionsPage() {
                 {complianceData?.ready_for_review ?? 0}
               </p>
               <p className="text-xs text-blue-700 mt-1 font-medium">
-                Both required documents uploaded; awaiting Coordinator review
+                All required documents uploaded; awaiting Coordinator review
               </p>
             </div>
 
@@ -301,7 +301,7 @@ export default function CoordinatorSubmissionsPage() {
                 {complianceData?.ready_for_placement ?? 0}
               </p>
               <p className="text-xs text-emerald-700 mt-1 font-medium">
-                Both required documents approved; eligible for company assignment
+                All required documents approved; eligible for company assignment
               </p>
             </div>
 
@@ -410,7 +410,7 @@ export default function CoordinatorSubmissionsPage() {
                     <tr>
                       <th className="text-left px-5 py-3.5">Student Trainee</th>
                       <th className="text-left px-5 py-3.5">Progress</th>
-                      <th className="text-left px-5 py-3.5">5 Pre-Deployment Gateway Documents</th>
+                      <th className="text-left px-5 py-3.5">{GATEWAY_DOCUMENT_SPECS.length} Pre-Deployment Documents</th>
                       <th className="text-left px-5 py-3.5">Compliance Status</th>
                       <th className="text-right px-5 py-3.5">Action</th>
                     </tr>
@@ -457,7 +457,7 @@ export default function CoordinatorSubmissionsPage() {
                             </div>
                           </td>
 
-                          {/* Two required gateway documents */}
+                          {/* Required gateway documents */}
                           <td className="px-5 py-4">
                             <div className="flex flex-wrap gap-1.5 max-w-md">
                               {student.documents.map(doc => {
@@ -710,7 +710,7 @@ export default function CoordinatorSubmissionsPage() {
               </button>
             ) : (
               <span className="text-xs text-emerald-700 font-semibold">
-                ✓ Both required gateway documents are accounted for
+                ✓ All required documents are accounted for
               </span>
             )}
             <Button variant="ghost" onClick={() => setInspectingStudent(null)}>
@@ -747,7 +747,7 @@ export default function CoordinatorSubmissionsPage() {
             {/* Required gateway documents */}
             <div className="space-y-2.5">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Required Pre-Deployment Credentials (5 Specifications)
+                Required Pre-Deployment Documents ({GATEWAY_DOCUMENT_SPECS.length})
               </h4>
               <div className="space-y-2">
                 {inspectingStudent.documents.map((doc, idx) => (
