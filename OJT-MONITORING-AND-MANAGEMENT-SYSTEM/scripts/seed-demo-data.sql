@@ -29,7 +29,7 @@ DECLARE
   local_sup  uuid := (SELECT s.supervisor_id FROM supervisors s JOIN users u USING (user_id) WHERE u.email = 'supervisor@local.test');
   local_co   uuid := (SELECT company_id FROM supervisors WHERE supervisor_id = (SELECT s.supervisor_id FROM supervisors s JOIN users u USING (user_id) WHERE u.email = 'supervisor@local.test'));
   local_br   uuid;
-  courses text[] := ARRAY['BSIT','BSBA','BSCS','BSA'];
+  courses text[] := ARRAY['BSIT','BS-CPE','BSBA-HRM','BSENTREP'];
   rtypes text[] := ARRAY['Pre-OJT Orientation Certificate','Endorsement Letter','Daily Journal','Weekly Progress','Accomplishment Report'];
   cats text[] := ARRAY['harassment','safety','supervisor_conduct','workplace_condition','other'];
   i int; d int; cid uuid; bid uuid; uid uuid; sid uuid; eid uuid; supid uuid;
@@ -68,8 +68,9 @@ BEGIN
     VALUES ('Demo Student ' || lpad(i::text, 3, '0'), 'student' || i || '@demo.local', 'Student',
             CASE WHEN i % 15 = 0 THEN 'pending' WHEN i % 20 = 0 THEN 'inactive' ELSE 'active' END)
     RETURNING user_id INTO uid;
-    INSERT INTO students (user_id, student_number, course, year_level, required_hours)
-    VALUES (uid, 'DEMO-' || lpad(i::text, 4, '0'), courses[1 + i % 4], 4, 486) RETURNING student_id INTO sid;
+    -- required_hours is filled from the course by the students_default_required_hours trigger.
+    INSERT INTO students (user_id, student_number, course, year_level)
+    VALUES (uid, 'DEMO-' || lpad(i::text, 4, '0'), courses[1 + i % 4], 4) RETURNING student_id INTO sid;
     st_ids := st_ids || sid; st_users := st_users || uid;
   END LOOP;
 
@@ -102,7 +103,8 @@ BEGIN
     INSERT INTO practicum_schedules (student_id, company_id, work_modality, work_days, time_in, time_out, lunch_break_minutes, daily_hours, weekly_hours, start_date, status)
     VALUES (st_ids[i], CASE WHEN i <= 50 THEN local_co ELSE co_ids[1 + (i % 30)] END, 'on_site', ARRAY[1,2,3,4,5], '08:00', '17:00', 60, 8, 40, current_date - 60, 'approved');
     INSERT INTO internship_progress (student_id, completed_hours, remaining_hours, progress_status)
-    VALUES (st_ids[i], CASE WHEN i BETWEEN 41 AND 45 THEN 486 ELSE 40 + i * 5 END, CASE WHEN i BETWEEN 41 AND 45 THEN 0 ELSE 486 - (40 + i * 5) END,
+    VALUES (st_ids[i], CASE WHEN i BETWEEN 41 AND 45 THEN (SELECT required_hours FROM students WHERE student_id = st_ids[i]) ELSE 40 + i * 5 END,
+            CASE WHEN i BETWEEN 41 AND 45 THEN 0 ELSE greatest(0, (SELECT required_hours FROM students WHERE student_id = st_ids[i]) - (40 + i * 5)) END,
             CASE WHEN i BETWEEN 41 AND 45 THEN 'completed' ELSE 'in_progress' END);
     FOR d IN 1..21 LOOP
       CONTINUE WHEN extract(isodow FROM current_date - d) > 5;
@@ -117,7 +119,7 @@ BEGIN
       FROM student_assignments a WHERE a.student_id = st_ids[i] AND a.assignment_status = 'active';
     END LOOP;
   END LOOP;
-  -- Students 41-45 finished: completed placement with the full 486 hours (graduated).
+  -- Students 41-45 finished: completed placement with the full required hours for their program (graduated).
   UPDATE student_assignments SET assignment_status = 'completed', end_date = current_date - 1 WHERE student_id = ANY (st_ids[41:45]);
 
   -- Holidays: two national, one department, one company.

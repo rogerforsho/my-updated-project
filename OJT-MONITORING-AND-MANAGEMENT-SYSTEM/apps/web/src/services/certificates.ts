@@ -6,7 +6,7 @@ import { getTrustedActor } from '@/src/lib/trusted-actor';
 import { getServiceClient } from '@/src/lib/supabase/service';
 import { recordAuditEvent } from '@/src/lib/audit';
 import { departmentScope, restrictDepartment } from '@/src/lib/department-scope';
-import type { AppResult } from '@ojt/shared';
+import { resolveRequiredHours, type AppResult } from '@ojt/shared';
 
 const serviceClient = getServiceClient;
 
@@ -71,7 +71,7 @@ export async function checkClearanceStatus(student_id: string): Promise<AppResul
     .maybeSingle();
 
   const completedHours = Number(progress?.completed_hours || 0);
-  const requiredHours = Number(student.required_hours || 486);
+  const requiredHours = resolveRequiredHours(student.required_hours, student.course);
   const hoursMet = completedHours >= requiredHours;
 
   // 3. Fetch final report status

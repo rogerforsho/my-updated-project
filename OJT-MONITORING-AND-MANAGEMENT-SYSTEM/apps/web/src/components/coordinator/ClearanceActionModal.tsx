@@ -12,6 +12,7 @@ interface Props {
   studentId: string;
   studentName: string;
   completedHours: number;
+  requiredHours: number;
   readOnly?: boolean;
 }
 
@@ -19,6 +20,7 @@ export default function ClearanceActionModal({
   studentId,
   studentName,
   completedHours,
+  requiredHours,
   readOnly = false,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -80,12 +82,12 @@ export default function ClearanceActionModal({
       <button
         onClick={handleOpen}
         className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-          completedHours >= 486
+          completedHours >= requiredHours
             ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] hover:bg-[#092E1D] shadow-xs'
             : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
         }`}
       >
-        {completedHours >= 486 ? '🎓 Clearance' : 'Inspect'}
+        {completedHours >= requiredHours ? '🎓 Clearance' : 'Inspect'}
       </button>
 
       <Modal

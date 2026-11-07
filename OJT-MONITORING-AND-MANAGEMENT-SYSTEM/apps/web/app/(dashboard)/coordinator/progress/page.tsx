@@ -147,7 +147,7 @@ export default async function CoordinatorProgressPage({ searchParams }: Props) {
                       </td>
                       <td className="py-4 px-4">
                         <div className="text-xs font-bold text-slate-900">
-                          {s.completed_hours} <span className="text-slate-400 font-normal">/ {s.required_hours || 486} hrs</span>
+                          {s.completed_hours} <span className="text-slate-400 font-normal">/ {s.required_hours} hrs</span>
                         </div>
                         <div className="text-[11px] text-slate-400">{s.remaining_hours} hrs remaining</div>
                       </td>
@@ -192,6 +192,7 @@ export default async function CoordinatorProgressPage({ searchParams }: Props) {
                             studentId={s.student_id}
                             studentName={s.full_name}
                             completedHours={s.completed_hours}
+                            requiredHours={s.required_hours}
                           />
                         </div>
                       </td>

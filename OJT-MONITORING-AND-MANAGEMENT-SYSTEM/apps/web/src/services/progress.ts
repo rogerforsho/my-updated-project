@@ -4,7 +4,7 @@ import { getTrustedActor } from '@/src/lib/trusted-actor';
 
 import { isICSCourse } from '@/src/lib/departments';
 import { departmentScope, restrictDepartment } from '@/src/lib/department-scope';
-import { DEFAULT_REQUIRED_HOURS, type AppResult, type ProgressStatus } from '@ojt/shared';
+import { resolveRequiredHours, type AppResult, type ProgressStatus } from '@ojt/shared';
 
 
 
@@ -114,7 +114,7 @@ export async function listCohortProgress(
     const assignment = Array.isArray(s.student_assignments) ? s.student_assignments[0] : s.student_assignments;
     const company = assignment ? (Array.isArray(assignment.companies) ? assignment.companies[0] : assignment.companies) : null;
 
-    const required = s.required_hours || DEFAULT_REQUIRED_HOURS;
+    const required = resolveRequiredHours(s.required_hours, s.course);
     const completed = progress?.completed_hours || 0;
     const remaining = Math.max(0, required - completed);
     const percentage = Math.min(100, Math.round((completed / required) * 100));
@@ -286,7 +286,7 @@ export async function getOwnStudentProgress(): Promise<AppResult<StudentProgress
     .eq('student_id', student.student_id)
     .eq('verification_status', 'verified');
 
-  const required = student.required_hours || DEFAULT_REQUIRED_HOURS;
+  const required = resolveRequiredHours(student.required_hours, student.course);
   const completed = progress?.completed_hours || 0;
   const remaining = Math.max(0, required - completed);
   const percentage = Math.min(100, Math.round((completed / required) * 100));
