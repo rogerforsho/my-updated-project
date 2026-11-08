@@ -41,7 +41,11 @@ function GroupRows({ course, search, onReset }: { course: string; search: string
     listActiveStudents(page, pageSize, search, course).then((result) => {
       if (!active) return;
       if (result.error) setError(result.error.message);
-      else { setStudents(result.data?.students ?? []); setTotal(result.data?.total ?? 0); }
+      else {
+        const t = result.data?.total ?? 0;
+        if (t > 0 && (page - 1) * pageSize >= t) { setPage(Math.ceil(t / pageSize)); return; }
+        setStudents(result.data?.students ?? []); setTotal(t);
+      }
       setLoading(false);
     }).catch(() => {
       if (!active) return;
@@ -51,7 +55,7 @@ function GroupRows({ course, search, onReset }: { course: string; search: string
     return () => { active = false; };
   }, [page, pageSize, search, course]);
 
-  if (loading) return <div className="p-5 space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full rounded" />)}</div>;
+  if (loading && students.length === 0) return <div className="p-5 space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full rounded" />)}</div>;
   if (error) return <div className="p-4"><Alert type="error" message={error} /></div>;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   return (
@@ -126,7 +130,7 @@ export default function CoordinatorStudentsPage() {
   const [resetTarget, setResetTarget] = useState<ActiveStudent | null>(null);
   const [resetting, setResetting] = useState(false);
   const [notice, setNotice] = useState('');
-  const fold = useGroupFold('coordinator-students-fold');
+  const fold = useGroupFold('coordinator-students-fold', searchFilter);
 
   useEffect(() => {
     const timer = setTimeout(() => setSearchFilter(searchQuery.trim()), 250);
@@ -266,7 +270,7 @@ export default function CoordinatorStudentsPage() {
             title={g.course}
             summary={`${g.count} ${g.count === 1 ? 'student' : 'students'}`}
             // A search opens every group that matched, without changing what the user folded.
-            open={!!searchFilter || fold.isOpen(g.course)}
+            open={fold.isOpen(g.course)}
             onToggle={() => fold.toggle(g.course)}
           >
             <GroupRows course={g.course} search={searchFilter} onReset={(student) => { setNotice(''); setResetTarget(student); }} />

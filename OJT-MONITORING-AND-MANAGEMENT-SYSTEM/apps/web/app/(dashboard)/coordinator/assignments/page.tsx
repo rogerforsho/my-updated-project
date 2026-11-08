@@ -45,7 +45,12 @@ function AssignmentGroupRows({ companyId, search, refreshKey, onComplete, onTerm
     listAssignments(page, pageSize, search, companyId).then((result) => {
       if (!active) return;
       if (result.error) setError(result.error.message);
-      else { setAssignments(result.data!.assignments); setTotal(result.data!.total); }
+      else {
+        const t = result.data!.total;
+        // the last row of this page was just removed: step back instead of showing an empty page
+        if (t > 0 && (page - 1) * pageSize >= t) { setPage(Math.ceil(t / pageSize)); return; }
+        setAssignments(result.data!.assignments); setTotal(t);
+      }
       setLoading(false);
     }).catch(() => {
       if (!active) return;
@@ -55,7 +60,7 @@ function AssignmentGroupRows({ companyId, search, refreshKey, onComplete, onTerm
     return () => { active = false; };
   }, [page, pageSize, search, companyId, refreshKey]);
 
-  if (loading) return <div className="flex items-center justify-center py-10 text-slate-400 text-sm">Loading...</div>;
+  if (loading && assignments.length === 0) return <div className="flex items-center justify-center py-10 text-slate-400 text-sm">Loading...</div>;
   if (error) return <div className="p-4"><Alert type="error" message={error} /></div>;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   return (
@@ -122,9 +127,9 @@ export default function AssignmentsPage() {
   const [activeTab, setActiveTab] = useState<'assignments' | 'proposals'>('assignments');
   const [groups, setGroups] = useState<Array<{ company_id: string; company_name: string; count: number; active: number }>>([]);
   const [refreshKey, setRefreshKey] = useState(0);
-  const fold = useGroupFold('coordinator-assignments-fold');
   const [searchText, setSearchText] = useState('');
   const [search, setSearch] = useState('');
+  const fold = useGroupFold('coordinator-assignments-fold', search);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -454,7 +459,7 @@ export default function AssignmentsPage() {
                   summary={`${g.count} ${g.count === 1 ? 'assignment' : 'assignments'}`}
                   badge={g.active > 0 ? <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">{g.active} active</span> : undefined}
                   // Companies with active placements start open; a search opens every match without changing what was folded.
-                  open={!!search || fold.isOpen(g.company_id, g.active > 0)}
+                  open={fold.isOpen(g.company_id, g.active > 0)}
                   onToggle={() => fold.toggle(g.company_id, g.active > 0)}
                 >
                   <AssignmentGroupRows

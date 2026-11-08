@@ -3,8 +3,12 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
 // Fold state per screen, remembered in this browser. A group is open unless the user folded it.
-export function useGroupFold(storageKey: string) {
+// While `search` is non-empty every group starts open and clicks fold only for that search; the saved state is untouched.
+export function useGroupFold(storageKey: string, search = '') {
   const [folded, setFolded] = useState<Record<string, boolean>>({});
+  const [searchFolded, setSearchFolded] = useState<Record<string, boolean>>({});
+
+  useEffect(() => { setSearchFolded({}); }, [search]);
 
   useEffect(() => {
     try {
@@ -19,9 +23,14 @@ export function useGroupFold(storageKey: string) {
 
   return {
     // defaultOpen applies until the user folds or unfolds that group once.
-    isOpen: (id: string, defaultOpen = true) => (id in folded ? !folded[id] : defaultOpen),
-    toggle: (id: string, defaultOpen = true) => save({ ...folded, [id]: id in folded ? !folded[id] : defaultOpen }),
-    setAll: (ids: string[], open: boolean) => save(Object.fromEntries(ids.map((id) => [id, !open]))),
+    isOpen: (id: string, defaultOpen = true) => (search ? !searchFolded[id] : id in folded ? !folded[id] : defaultOpen),
+    toggle: (id: string, defaultOpen = true) => search
+      ? setSearchFolded((s) => ({ ...s, [id]: !s[id] }))
+      : save({ ...folded, [id]: id in folded ? !folded[id] : defaultOpen }),
+    setAll: (ids: string[], open: boolean) => {
+      const next = Object.fromEntries(ids.map((id) => [id, !open]));
+      if (search) setSearchFolded(next); else save(next);
+    },
   };
 }
 

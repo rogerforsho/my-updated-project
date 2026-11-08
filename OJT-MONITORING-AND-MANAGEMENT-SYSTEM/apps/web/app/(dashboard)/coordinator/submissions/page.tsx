@@ -40,7 +40,11 @@ function ReportGroupRows({ status, refreshKey, openingDocId, onOpen, onReview }:
     listReportsForCoordinator(page, pageSize, status).then((res) => {
       if (!active) return;
       if (res.error) setError(res.error.message);
-      else { setReports(res.data!.reports); setTotal(res.data!.total); }
+      else {
+        const t = res.data!.total;
+        if (t > 0 && (page - 1) * pageSize >= t) { setPage(Math.ceil(t / pageSize)); return; }
+        setReports(res.data!.reports); setTotal(t);
+      }
       setLoading(false);
     }).catch(() => {
       if (!active) return;
@@ -50,7 +54,7 @@ function ReportGroupRows({ status, refreshKey, openingDocId, onOpen, onReview }:
     return () => { active = false; };
   }, [page, pageSize, status, refreshKey]);
 
-  if (loading) return <div className="flex items-center justify-center py-10 text-slate-400 text-sm">Loading submissions...</div>;
+  if (loading && reports.length === 0) return <div className="flex items-center justify-center py-10 text-slate-400 text-sm">Loading submissions...</div>;
   if (error) return <div className="p-4"><Alert type="error" message={error} /></div>;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   return (
