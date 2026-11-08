@@ -18,7 +18,7 @@ import {
   listPracticumSchedules, reviewPracticumSchedule,
   type ScheduleDetail,
 } from '@/src/services/schedule';
-import { PagerBar, SearchBox, usePageSize } from '@/src/components/ui/ListControls';
+import { PagerBar, SearchBox, usePagedList } from '@/src/components/ui/ListControls';
 import { GATEWAY_DOCUMENT_SPECS, type AssignmentStatus, type DbCompanyBranch, type StudentStatus } from '@ojt/shared';
 
 
@@ -29,40 +29,15 @@ function AssignmentGroupRows({ companyId, search, refreshKey, onComplete, onTerm
   onComplete: (id: string) => void; onTerminate: (id: string) => void;
   onStudentStatus: (studentId: string, status: StudentStatus) => void;
 }) {
-  const [assignments, setAssignments] = useState<AssignmentDetail[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, changePageSize] = usePageSize();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => { setPage(1); }, [search]);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError('');
-    listAssignments(page, pageSize, search, companyId).then((result) => {
-      if (!active) return;
-      if (result.error) setError(result.error.message);
-      else {
-        const t = result.data!.total;
-        // the last row of this page was just removed: step back instead of showing an empty page
-        if (t > 0 && (page - 1) * pageSize >= t) { setPage(Math.ceil(t / pageSize)); return; }
-        setAssignments(result.data!.assignments); setTotal(t);
-      }
-      setLoading(false);
-    }).catch(() => {
-      if (!active) return;
-      setError('Failed to load assignments.');
-      setLoading(false);
-    });
-    return () => { active = false; };
-  }, [page, pageSize, search, companyId, refreshKey]);
+  const { items: assignments, page, setPage, pageSize, loading, error, totalPages, total, setPageSize } = usePagedList<AssignmentDetail>(
+    (p, size) => listAssignments(p, size, search, companyId).then((r) => ({ error: r.error, data: r.data && { items: r.data.assignments, total: r.data.total } })),
+    [search, companyId, refreshKey],
+    search,
+    'Failed to load assignments.',
+  );
 
   if (loading && assignments.length === 0) return <div className="flex items-center justify-center py-10 text-slate-400 text-sm">Loading...</div>;
   if (error) return <div className="p-4"><Alert type="error" message={error} /></div>;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   return (
     <>
       <div className="overflow-x-auto" role="region" aria-label="Active trainee assignments" tabIndex={0}>
@@ -118,7 +93,7 @@ function AssignmentGroupRows({ companyId, search, refreshKey, onComplete, onTerm
         </tbody>
       </table>
       </div>
-      <div className="p-3"><PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={(n) => { changePageSize(n); setPage(1); }} /></div>
+      <div className="p-3"><PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize} /></div>
     </>
   );
 }

@@ -708,6 +708,31 @@ test('Supervisor bulk verify only includes clean logs, never flagged entries', (
   assert.match(page, /r\.time_out_flag_reason/);
 });
 
+test('student identity: one set of failure shapes for signed-out and missing-profile', async () => {
+  const f = mobileFixture();
+  const { requireStudent } = f.load('apps/mobile/src/lib/studentIdentity.ts');
+  assert.deepEqual(JSON.parse(JSON.stringify(await requireStudent())), { data: { user_id: 'user-a', student_id: 'student-a' }, error: null });
+  f.state.studentLookup = async () => ({ data: null, error: null });
+  assert.deepEqual(JSON.parse(JSON.stringify((await requireStudent()).error)), { code: 'NOT_FOUND', message: 'Student profile not found.' });
+  f.state.userId = null;
+  assert.deepEqual(JSON.parse(JSON.stringify((await requireStudent('Sign in again.')).error)), { code: 'UNAUTHORIZED', message: 'Sign in again.' });
+  assert.equal((await requireStudent()).error.message, 'Not authenticated.');
+});
+
+test('services keep their sign-in and missing-student errors on the identity module', async () => {
+  const f = mobileFixture();
+  const evaluations = f.load('apps/mobile/src/services/evaluations.ts');
+  const reports = f.load('apps/mobile/src/services/reports.ts');
+  const schedule = f.load('apps/mobile/src/services/schedule.ts');
+  f.state.studentLookup = async () => ({ data: null, error: null });
+  assert.equal((await reports.listStudentReports()).error.message, 'Student profile not found.');
+  assert.equal((await schedule.fetchStudentScheduleProposal()).error.message, 'Student not found.');
+  f.state.userId = null;
+  assert.equal((await evaluations.listOwnEvaluations()).error.message, 'Sign in again to view evaluations.');
+  assert.equal((await reports.listStudentReports()).error.message, 'Not authenticated.');
+  assert.equal((await schedule.fetchStudentScheduleProposal()).error.message, 'Not logged in.');
+});
+
 test('Vercel traces from the Git root so the builder finds apps/web (MODULE_NOT_FOUND noop.js)', () => {
   const config = fs.readFileSync(path.join(root, 'apps/web/next.config.ts'), 'utf8');
   assert.match(config, /outputFileTracingRoot: path\.resolve\(__dirname, process\.env\.VERCEL \? '\.\.\/\.\.\/\.\.' : '\.\.\/\.\.'\)/);

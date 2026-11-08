@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/src/lib/supabase/server';
+import { getCoordinator } from '@/src/lib/actor';
 import { recordAuditEvent } from '@/src/lib/audit';
 import type { AppResult, DbCompany, DbCompanyBranch } from '@ojt/shared';
 
@@ -39,28 +39,12 @@ function validateCompanyInput(input: CompanyInput): string | null {
   return null;
 }
 
-async function assertCoordinator() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { supabase, user: null, authorized: false };
-  const { data } = await supabase
-    .from('users')
-    .select('role, account_status')
-    .eq('user_id', user.id)
-    .single();
-  return {
-    supabase,
-    user,
-    authorized: data?.role === 'Coordinator' && data?.account_status === 'active',
-  };
-}
-
 export async function listCompanies(
   page = 1,
   pageSize = 20,
   opts: { search?: string; status?: string } = {}
 ): Promise<AppResult<{ companies: CompanyWithSupervisors[]; total: number }>> {
-  const { supabase, authorized } = await assertCoordinator();
+  const { supabase, authorized } = await getCoordinator({ scoped: false });
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
   const from = (page - 1) * pageSize;
@@ -92,7 +76,7 @@ export async function searchActiveCompanies(
   search: string,
   openOnly = false
 ): Promise<AppResult<{ company_id: string; company_name: string }[]>> {
-  const { supabase, authorized } = await assertCoordinator();
+  const { supabase, authorized } = await getCoordinator({ scoped: false });
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   let query = supabase.from('companies').select('company_id, company_name, max_interns')
     .eq('status', 'active').order('company_name').limit(20);
@@ -117,7 +101,7 @@ export async function searchActiveCompanies(
 
 export async function listCompanyBranches(company_id: string): Promise<AppResult<DbCompanyBranch[]>> {
   if (!company_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Company ID is required.' } };
-  const { supabase, authorized } = await assertCoordinator();
+  const { supabase, authorized } = await getCoordinator({ scoped: false });
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   const { data, error } = await supabase.from('company_branches')
     .select('branch_id, company_id, branch_name, address, latitude, longitude, geofence_radius_meters, geofence_enabled, is_primary, status')
@@ -138,7 +122,7 @@ export interface MapBranch {
 }
 
 export async function listMapBranches(): Promise<AppResult<MapBranch[]>> {
-  const { supabase, authorized } = await assertCoordinator();
+  const { supabase, authorized } = await getCoordinator({ scoped: false });
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   const { data, error } = await supabase.from('company_branches')
     .select('branch_id, branch_name, address, latitude, longitude, companies(company_name, max_interns)')
@@ -168,7 +152,7 @@ export async function createCompanyBranch(input: {
       !Number.isFinite(input.longitude) || input.longitude < -180 || input.longitude > 180 ||
       !Number.isInteger(input.geofence_radius_meters ?? 50) || (input.geofence_radius_meters ?? 50) < 30 || (input.geofence_radius_meters ?? 50) > 50)
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Provide a branch name, address, valid map coordinates, and a radius between 30 and 50 meters.' } };
-  const { supabase, user, authorized } = await assertCoordinator();
+  const { supabase, user, authorized } = await getCoordinator({ scoped: false });
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   const { data: company } = await supabase.from('companies').select('company_id').eq('company_id', input.company_id).eq('status', 'active').maybeSingle();
   if (!company) return { data: null, error: { code: 'NOT_FOUND', message: 'Active HTE not found.' } };
@@ -186,7 +170,7 @@ export async function createCompany(input: CompanyInput): Promise<AppResult<DbCo
   const validationError = validateCompanyInput(input);
   if (validationError) return { data: null, error: { code: 'VALIDATION_FAILURE', message: validationError } };
 
-  const { supabase, user, authorized } = await assertCoordinator();
+  const { supabase, user, authorized } = await getCoordinator({ scoped: false });
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
   const normalizedName = input.company_name.trim();
@@ -240,7 +224,7 @@ export async function updateCompany(
   const validationError = validateCompanyInput(input);
   if (validationError) return { data: null, error: { code: 'VALIDATION_FAILURE', message: validationError } };
 
-  const { supabase, user, authorized } = await assertCoordinator();
+  const { supabase, user, authorized } = await getCoordinator({ scoped: false });
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
   const { data, error } = await supabase
@@ -280,7 +264,7 @@ export async function setCompanyStatus(
 ): Promise<AppResult<{ activeInternsAffected: number }>> {
   if (!company_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Company ID is required.' } };
 
-  const { supabase, user, authorized } = await assertCoordinator();
+  const { supabase, user, authorized } = await getCoordinator({ scoped: false });
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
   // Check active student assignments at this establishment
@@ -313,7 +297,7 @@ export async function getCompanyCapacity(
 ): Promise<AppResult<{ company_id: string; active_interns: number; recommended_capacity: number; is_at_capacity: boolean }>> {
   if (!company_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Company ID is required.' } };
 
-  const { supabase, authorized } = await assertCoordinator();
+  const { supabase, authorized } = await getCoordinator({ scoped: false });
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
   const [{ count, error }, { data: company }] = await Promise.all([
@@ -343,7 +327,7 @@ export async function deleteCompany(
 ): Promise<AppResult<{ success: boolean; company_name: string }>> {
   if (!company_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Company ID is required.' } };
 
-  const { supabase, user, authorized } = await assertCoordinator();
+  const { supabase, user, authorized } = await getCoordinator({ scoped: false });
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
   // 1. Fetch company details

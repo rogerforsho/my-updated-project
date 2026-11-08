@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { requireUser } from '../lib/studentIdentity';
 import { postWebBff } from '../lib/webBff';
 import type { AppResult } from '@ojt/shared';
 
@@ -20,10 +21,9 @@ export const FEED_PAGE_SIZE = 20;
  * `hasMore` is true when the notifications page came back full.
  */
 export async function listStudentFeed(page = 0): Promise<AppResult<{ items: MobileFeedItem[]; hasMore: boolean }>> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { data: null, error: { code: 'UNAUTHORIZED', message: 'Not authenticated.' } };
-  }
+  const me = await requireUser();
+  if (!me.data) return { data: null, error: me.error };
+  const user = { id: me.data.user_id };
 
   const from = page * FEED_PAGE_SIZE;
   const [announcementsRes, notificationsRes] = await Promise.all([

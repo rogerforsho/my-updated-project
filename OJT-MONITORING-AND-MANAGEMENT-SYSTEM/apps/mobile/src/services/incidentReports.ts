@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { requireUser } from '../lib/studentIdentity';
 import { postWebBff } from '../lib/webBff';
 import type { AppResult } from '@ojt/shared';
 
@@ -22,8 +23,8 @@ export interface MyIncidentReport {
 }
 
 export async function listMyIncidentReports(): Promise<AppResult<MyIncidentReport[]>> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { data: null, error: { code: 'UNAUTHORIZED', message: 'Sign in again to view your reports.' } };
+  const me = await requireUser('Sign in again to view your reports.');
+  if (!me.data) return { data: null, error: me.error };
   const { data, error } = await supabase.from('incident_reports')
     .select('incident_id, category, description, status, coordinator_response, created_at')
     .order('created_at', { ascending: false }).limit(20);

@@ -20,3 +20,8 @@ export function pageItems(page: number, totalPages: number): (number | '…')[] 
   }
   return out;
 }
+
+/** Last page to step back to when `page` is past the end (e.g. its final row was removed); null when no move is needed. */
+export function outOfRangePage(page: number, size: number, total: number): number | null {
+  return total > 0 && (page - 1) * size >= total ? Math.ceil(total / size) : null;
+}

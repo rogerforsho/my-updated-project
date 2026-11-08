@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { requireStudent } from '../lib/studentIdentity';
 import { isNetworkAvailable } from '../lib/syncEngine';
 import { uploadSelfieToStorage } from '../lib/storage';
 import { postWebBff } from '../lib/webBff';
@@ -268,20 +269,9 @@ export async function fetchOwnAttendance(
   page = 1,
   pageSize = 20
 ): Promise<AppResult<{ records: DbAttendance[]; total: number }>> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { data: null, error: { code: 'UNAUTHORIZED', message: 'Not authenticated.' } };
-  }
-
-  const { data: student } = await supabase
-    .from('students')
-    .select('student_id')
-    .eq('user_id', user.id)
-    .single();
-
-  if (!student) {
-    return { data: null, error: { code: 'NOT_FOUND', message: 'Student profile not found.' } };
-  }
+  const who = await requireStudent();
+  if (!who.data) return { data: null, error: who.error };
+  const student = who.data;
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;

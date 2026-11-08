@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { requireUser } from '../lib/studentIdentity';
 import { resolveRequiredHours, type AppResult } from '@ojt/shared';
 
 export interface StudentProgressDetail {
@@ -17,10 +18,9 @@ export interface StudentProgressDetail {
 }
 
 export async function getOwnStudentProgress(): Promise<AppResult<StudentProgressDetail>> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { data: null, error: { code: 'UNAUTHORIZED', message: 'Not authenticated.' } };
-  }
+  const me = await requireUser();
+  if (!me.data) return { data: null, error: me.error };
+  const user = { id: me.data.user_id };
 
   const { data: profile } = await supabase
     .from('users')
