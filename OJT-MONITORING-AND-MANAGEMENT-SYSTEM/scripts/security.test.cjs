@@ -2141,7 +2141,7 @@ test('only a pending automatic Time Out can be replaced with captured offline ev
     async download() { return { data: { type: 'image/jpeg', async arrayBuffer() { return new ArrayBuffer(1); } }, error: null }; },
   }; } } };
   const route = load('apps/web/app/api/mobile/attendance/route.ts', {
-    '@ojt/shared': { AUTO_TIME_OUT_REASON: reason, getAttendanceDate: () => '2026-10-26',
+    '@ojt/shared': { AUTO_TIME_OUT_REASON: reason, isReplaceableAutoTimeOut: load('shared/attendanceDate.ts').isReplaceableAutoTimeOut, getAttendanceDate: () => '2026-10-26',
       getPhilippineClock: date => date, isWithinGeofence: () => ({ isWithin: true, distanceMeters: 0 }) },
     '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'user' }, studentId: 'student', supabase: client }),
     '@/src/lib/supabase/service': { getServiceClient: () => client },
