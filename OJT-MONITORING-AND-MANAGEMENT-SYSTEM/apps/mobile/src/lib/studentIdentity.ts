@@ -6,12 +6,10 @@ export interface StudentIdentity {
   student_id: string;
 }
 
-type Fail = { data: null; error: { code: 'UNAUTHORIZED'; message: string } };
-
 // The signed-in auth user, or the one UNAUTHORIZED failure shape every service returns.
 export async function requireUser(unauthorizedMessage = 'Not authenticated.'): Promise<AppResult<{ user_id: string }>> {
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { data: null, error: { code: 'UNAUTHORIZED', message: unauthorizedMessage } } as Fail;
+  if (!user) return { data: null, error: { code: 'UNAUTHORIZED', message: unauthorizedMessage } };
   return { data: { user_id: user.id }, error: null };
 }
 
