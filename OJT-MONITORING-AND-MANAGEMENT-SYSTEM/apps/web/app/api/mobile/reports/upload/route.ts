@@ -1,40 +1,27 @@
 import crypto from 'node:crypto';
-import { authenticateMobileStudent, mobileBffFailure } from '@/src/lib/mobile-bff';
+import { mobileBffFailure, mobileBffPreamble } from '@/src/lib/mobile-bff';
 import { getServiceClient } from '@/src/lib/supabase/service';
-import { authActionLimit } from '@/src/services/auth/internal';
-import { readLimitedJson } from '@/src/lib/read-limited-json';
 
 export const runtime = 'nodejs';
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.docx', '.doc', '.jpg', '.jpeg', '.png']);
 
 export async function POST(request: Request) {
-  const auth = await authenticateMobileStudent(request);
-  if (auth.error) return mobileBffFailure(auth.error);
-  const { data: completion, error: completionError } = await auth.actor.supabase.from('certificates')
-    .select('certificate_id').eq('student_id', auth.actor.studentId).maybeSingle();
-  if (completionError)
-    return mobileBffFailure({ status: 503, code: 'SERVER_FAILURE', message: 'Could not check OJT completion.' });
-  if (completion)
-    return mobileBffFailure({ status: 409, code: 'FORBIDDEN', message: 'Your OJT is completed. Academic records are read-only.' });
-
-  const limitError = await authActionLimit('report_upload', auth.actor.user.id, 10, 3600, 'user');
-  if (limitError) return mobileBffFailure({
-    status: limitError.code === 'RATE_LIMITED' ? 429 : 503,
-    code: limitError.code,
-    message: limitError.message,
+  const pre = await mobileBffPreamble(request, {
+    beforeLimit: async (actor) => {
+      const { data: completion, error: completionError } = await actor.supabase.from('certificates')
+        .select('certificate_id').eq('student_id', actor.studentId).maybeSingle();
+      if (completionError)
+        return mobileBffFailure({ status: 503, code: 'SERVER_FAILURE', message: 'Could not check OJT completion.' });
+      if (completion)
+        return mobileBffFailure({ status: 409, code: 'FORBIDDEN', message: 'Your OJT is completed. Academic records are read-only.' });
+      return null;
+    },
+    limit: { action: 'report_upload', max: 10, windowSeconds: 3600 },
+    body: { maxBytes: 16 * 1024, label: 'Upload request' },
   });
-
-  const parsed = await readLimitedJson(request, 16 * 1024);
-  if (parsed.error === 'too_large')
-    return mobileBffFailure({ status: 413, code: 'VALIDATION_FAILURE', message: 'Upload request is too large.' });
-  if (parsed.error)
-    return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Upload request could not be read.' });
-  const body = parsed.data;
-  if (!body || typeof body !== 'object' || Array.isArray(body))
-    return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Invalid upload request.' });
-
-  const input = body as Record<string, unknown>;
+  if (pre.response) return pre.response;
+  const { actor, body: input } = pre;
   const fileName = typeof input.file_name === 'string' ? input.file_name.trim() : '';
   const fileSize = input.file_size;
   const extension = fileName.toLowerCase().match(/\.[^.]+$/)?.[0];
@@ -43,7 +30,7 @@ export async function POST(request: Request) {
       (fileSize as number) < 1 || (fileSize as number) > MAX_FILE_SIZE)
     return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Choose a supported document up to 10 MB.' });
 
-  const filePath = `${auth.actor.user.id}/reports/${crypto.randomUUID()}${extension}`;
+  const filePath = `${actor.user.id}/reports/${crypto.randomUUID()}${extension}`;
   const { data, error } = await getServiceClient().storage.from('private-documents')
     .createSignedUploadUrl(filePath, { upsert: false });
   if (error || !data?.token)
