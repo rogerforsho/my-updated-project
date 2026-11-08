@@ -1,5 +1,7 @@
 // Shared account-creation sequence (ADR 0006/0007). Pure: talks to Supabase only through AuthAdapter.
 // An email collision fails at createIdentity and never reaches any delete: only identities this call created are rolled back.
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 type Err = { message: string } | null;
 
 export interface AuthAdapter {
@@ -69,10 +71,7 @@ export async function rollbackIdentities(adapter: AuthAdapter, ids: string[]): P
   return leftovers;
 }
 
-type Service = {
-  from(table: string): any; // eslint-disable-line @typescript-eslint/no-explicit-any
-  auth: { admin: { createUser(a: any): Promise<any>; deleteUser(id: string): Promise<{ error: Err }>; updateUserById(id: string, a: any): Promise<{ error: Err }> }; resetPasswordForEmail(email: string, o: { redirectTo: string }): Promise<{ error: Err }> }; // eslint-disable-line @typescript-eslint/no-explicit-any
-};
+type Service = SupabaseClient;
 
 /** Production adapter over the Supabase service client. */
 export function supabaseAuthAdapter(service: Service): AuthAdapter {
