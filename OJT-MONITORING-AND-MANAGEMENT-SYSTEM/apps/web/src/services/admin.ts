@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/src/lib/supabase/server';
+import { getSuperAdmin } from '@/src/lib/actor';
 import { getServiceClient } from '@/src/lib/supabase/service';
 import { recordAuditEvent } from '@/src/lib/audit';
 import { restrictDepartment } from '@/src/lib/department-scope';
@@ -9,23 +9,6 @@ import crypto from 'crypto';
 import type { AppResult, UserRole, AccountStatus } from '@ojt/shared';
 
 const serviceClient = getServiceClient;
-
-async function assertSuperAdmin() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { authorized: false, user: null };
-  const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (assuranceError || assurance?.currentLevel !== 'aal2') return { authorized: false, user };
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, account_status')
-    .eq('user_id', user.id)
-    .single();
-  return {
-    authorized: profile?.role === 'Admin' && profile?.account_status === 'active',
-    user,
-  };
-}
 
 type Service = ReturnType<typeof serviceClient>;
 const COORDINATOR_CAPABILITIES = ['academic_workflows', 'department_reports'];
@@ -97,7 +80,7 @@ export async function listAllUsers(
   search?: string,
   departmentFilter?: string
 ): Promise<AppResult<{ users: UserManagementItem[]; total: number }>> {
-  const { authorized } = await assertSuperAdmin();
+  const { authorized } = await getSuperAdmin();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
 
   const service = serviceClient();
@@ -164,7 +147,7 @@ export async function listAllUsers(
 export async function createSystemUser(
   input: CreateSystemUserInput
 ): Promise<AppResult<{ user_id: string }>> {
-  const { authorized, user: adminUser } = await assertSuperAdmin();
+  const { authorized, user: adminUser } = await getSuperAdmin();
   if (!authorized || !adminUser) {
     return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
   }
@@ -266,7 +249,7 @@ export async function updateUserAccountStatus(
   user_id: string,
   status: AccountStatus
 ): Promise<AppResult<null>> {
-  const { authorized, user } = await assertSuperAdmin();
+  const { authorized, user } = await getSuperAdmin();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
 
   if (!['pending', 'active', 'rejected', 'inactive'].includes(status)) {
@@ -316,7 +299,7 @@ export async function getSystemOverview(): Promise<AppResult<{
   pendingUsers: number;
   roleBreakdown: Record<string, number>;
 }>> {
-  const { authorized } = await assertSuperAdmin();
+  const { authorized } = await getSuperAdmin();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
 
   const service = serviceClient();
@@ -347,7 +330,7 @@ export async function deactivateSystemUser(
   user_id: string,
   reason?: string
 ): Promise<AppResult<null>> {
-  const { authorized, user: adminUser } = await assertSuperAdmin();
+  const { authorized, user: adminUser } = await getSuperAdmin();
   if (!authorized || !adminUser) {
     return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
   }
@@ -402,7 +385,7 @@ export async function updateCoordinatorDepartments(
   user_id: string,
   departmentScopes: Array<'ICS' | 'IBE'>
 ): Promise<AppResult<null>> {
-  const { authorized, user } = await assertSuperAdmin();
+  const { authorized, user } = await getSuperAdmin();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
 
   const next = [...new Set(departmentScopes ?? [])];
@@ -455,7 +438,7 @@ export async function updateCoordinatorDepartments(
 }
 
 export async function resendStaffInvite(user_id: string): Promise<AppResult<null>> {
-  const { authorized, user } = await assertSuperAdmin();
+  const { authorized, user } = await getSuperAdmin();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
 
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL;
