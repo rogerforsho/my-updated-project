@@ -2211,15 +2211,8 @@ test('offline attendance from a closed assignment syncs within its placement dat
 test('student resubmission requires the rejected-student BFF and bounds streamed JSON', async () => {
   let submitted = null;
   const route = load('apps/web/app/api/mobile/registration/resubmit/route.ts', {
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent(_request, status) {
-        assert.equal(status, 'rejected');
-        return { actor: { user: { id: 'student-user' }, studentId: 'student-row' }, error: null };
-      },
-      mobileBffFailure(error) {
-        return Response.json({ data: null, error: { code: error.code } }, { status: error.status });
-      },
-    },
+    // Only a rejected-status account passes the real preamble, so this also pins the required status.
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'student-user' }, studentId: 'student-row', status: 'rejected' }),
     '@/src/lib/supabase/service': { getServiceClient() { throw new Error('POST must not read registration data directly'); } },
     '@/src/services/auth/registration': {
       async resubmitStudentRegistration(userId, input) {
