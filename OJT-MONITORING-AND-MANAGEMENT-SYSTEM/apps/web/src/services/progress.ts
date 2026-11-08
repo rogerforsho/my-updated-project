@@ -2,7 +2,7 @@
 
 import { getTrustedActor } from '@/src/lib/trusted-actor';
 
-import { isICSCourse } from '@/src/lib/departments';
+import { isICSCourse, isIBECourse } from '@/src/lib/departments';
 import { departmentScope, restrictDepartment } from '@/src/lib/department-scope';
 import { resolveRequiredHours, type AppResult, type ProgressStatus } from '@ojt/shared';
 
@@ -234,7 +234,7 @@ export async function getDepartmentSummary(): Promise<AppResult<DepartmentSummar
       target.hours += completed;
       if (status === 'completed') target.completed++;
       else if (status === 'in_progress') target.active++;
-    } else {
+    } else if (isIBECourse(c)) {
       summary.ibe.total++;
       summary.ibe.hours += completed;
       if (status === 'completed') summary.ibe.completed++;

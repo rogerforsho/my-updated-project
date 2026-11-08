@@ -2463,3 +2463,14 @@ test('Super Admin user list shows each account\'s department and filters by it',
   assert.equal(ibe.error, null);
   assert.deepEqual(ibe.data.users.map(row => row.user_id).sort(), ['co-ibe', 'stu-ibe']);
 });
+
+test('unknown or empty courses have no department and are never treated as IBE', () => {
+  const departments = load('apps/web/src/lib/departments.ts');
+  for (const course of ['BS Nursing', '', null]) {
+    assert.equal(departments.getDepartmentByCourse(course), null);
+    assert.equal(departments.isIBECourse(course), false);
+    assert.equal(departments.getDepartmentFullName(course ?? ''), 'Unknown department');
+  }
+  assert.equal(departments.getDepartmentByCourse('BSCPE'), 'ICS');
+  assert.equal(departments.getDepartmentByCourse('BSA'), 'IBE');
+});
