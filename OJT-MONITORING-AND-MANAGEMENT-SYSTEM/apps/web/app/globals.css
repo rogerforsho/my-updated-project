@@ -17,7 +17,7 @@
   --surface: #FFFEFB;
   --surface-muted: #EDF2EB;
   --line: #DCE5DB;
-  --text-muted: #68776B;
+  --text-muted: #5A6A5E;
   --font-geometric: var(--font-geometric-sans), 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-display: var(--font-geometric-display), 'Outfit', var(--font-geometric-sans), 'Plus Jakarta Sans', system-ui, sans-serif;
 }
@@ -46,7 +46,7 @@
   --color-slate-200: #DCE5DB;
   --color-slate-300: #C7D2C7;
   --color-slate-400: #879687;
-  --color-slate-500: #68776B;
+  --color-slate-500: #5A6A5E;
   --color-slate-600: #526257;
   --color-slate-700: #37483C;
   --color-slate-800: #26372D;
