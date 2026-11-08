@@ -235,6 +235,7 @@ test('mobile schedules require all four approved gateway documents before saving
   const fixture = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }], reports: [] } });
   const route = load('apps/web/app/api/mobile/schedule-proposals/route.ts', {
     '@supabase/supabase-js': { createClient: () => fixture.client },
+    '@/src/services/auth/internal': { async authActionLimit() { return null; } },
     '@ojt/shared': { ...load('shared/schedulePolicy.ts'), ...load('shared/gateway.ts'), ...load('shared/courses.ts') },
   }, { NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test' });
   const request = () => new Request('https://portal.test/api/mobile/schedule-proposals', {
@@ -260,6 +261,7 @@ test('students already placed with an active assignment are exempt from the gate
   } });
   const route = load('apps/web/app/api/mobile/schedule-proposals/route.ts', {
     '@supabase/supabase-js': { createClient: () => fixture.client },
+    '@/src/services/auth/internal': { async authActionLimit() { return null; } },
     '@ojt/shared': { ...load('shared/schedulePolicy.ts'), ...load('shared/gateway.ts'), ...load('shared/courses.ts') },
   }, { NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test' });
   const response = await route.POST(new Request('https://portal.test/api/mobile/schedule-proposals', {

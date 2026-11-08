@@ -1,37 +1,28 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getGatewayStatus, resolveRequiredHours, validateScheduleFeasibility, validateSchedulePolicy, type WorkModality } from '@ojt/shared';
-import { readLimitedJson } from '@/src/lib/read-limited-json';
+import { isUuid, mobileBffFailure, mobileBffOk, mobileBffPreamble } from '@/src/lib/mobile-bff';
 
 export const runtime = 'nodejs';
 
-const NO_STORE = { 'Cache-Control': 'no-store' };
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MODALITIES = new Set<WorkModality>(['on_site', 'hybrid', 'remote']);
 
 function failure(code: string, message: string, status: number) {
-  return Response.json({ data: null, error: { code, message } }, { status, headers: NO_STORE });
+  return mobileBffFailure({ status, code, message });
 }
 
 export async function POST(request: Request) {
-  const authorization = request.headers.get('authorization');
-  const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!token || !supabaseUrl || !supabaseKey)
-    return failure('UNAUTHORIZED', 'Sign in again before submitting a schedule.', 401);
-
-  const parsed = await readLimitedJson(request, 16 * 1024);
-  if (parsed.error === 'too_large') return failure('VALIDATION_FAILURE', 'Schedule request is too large.', 413);
-  if (parsed.error) return failure('VALIDATION_FAILURE', 'Schedule request could not be read.', 400);
-  if (!parsed.data || typeof parsed.data !== 'object' || Array.isArray(parsed.data))
-    return failure('VALIDATION_FAILURE', 'Invalid schedule request.', 400);
-  const input = parsed.data as Record<string, unknown>;
+  // No rate limit: this route never had one, and adding a counter here is a separate decision.
+  const pre = await mobileBffPreamble(request, { body: { maxBytes: 16 * 1024, label: 'Schedule request' } });
+  if (pre.response) return pre.response;
+  const { actor, body: input } = pre;
+  // shortcut: the BFF client types only the tables it declares; this route reads more, so use it untyped.
+  const supabase = actor.supabase as unknown as SupabaseClient;
 
   if (!Array.isArray(input.work_days) || typeof input.time_in !== 'string' || typeof input.time_out !== 'string' ||
       typeof input.start_date !== 'string' || typeof input.lunch_break_minutes !== 'number' ||
       (input.lunch_break_start !== null && typeof input.lunch_break_start !== 'string') ||
       typeof input.work_modality !== 'string' || !MODALITIES.has(input.work_modality as WorkModality) ||
-      (input.company_id != null && (typeof input.company_id !== 'string' || !UUID.test(input.company_id))) ||
+      (input.company_id != null && !isUuid(input.company_id)) ||
       (input.end_date != null && typeof input.end_date !== 'string') ||
       (input.custom_company_name != null && typeof input.custom_company_name !== 'string') ||
       (input.student_notes != null && typeof input.student_notes !== 'string'))
@@ -49,20 +40,8 @@ export async function POST(request: Request) {
   });
   if (!policy.ok) return failure('VALIDATION_FAILURE', policy.message, 400);
 
-  const supabase = createSupabaseClient(supabaseUrl, supabaseKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) return failure('UNAUTHORIZED', 'Your session expired. Sign in again.', 401);
-
-  const { data: profile, error: profileError } = await supabase.from('users')
-    .select('role, account_status').eq('user_id', user.id).maybeSingle();
-  if (profileError || profile?.role !== 'Student' || profile.account_status !== 'active')
-    return failure('FORBIDDEN', 'Only active student accounts can submit schedules.', 403);
-
   const { data: student, error: studentError } = await supabase.from('students')
-    .select('student_id, course, required_hours').eq('user_id', user.id).maybeSingle();
+    .select('student_id, course, required_hours').eq('user_id', actor.user.id).maybeSingle();
   if (studentError || !student)
     return failure('NOT_FOUND', 'Student profile not found.', 404);
   const feasibility = validateScheduleFeasibility({
@@ -111,5 +90,5 @@ export async function POST(request: Request) {
 
   if (result.error || !result.data)
     return failure('SERVER_FAILURE', 'Failed to submit schedule proposal.', 503);
-  return Response.json({ data: result.data, error: null }, { status: 200, headers: NO_STORE });
+  return mobileBffOk(result.data);
 }
