@@ -26,7 +26,7 @@ export async function provisionAccount(adapter: AuthAdapter, input: {
   user_metadata?: Record<string, unknown>;
   inviteKind?: string;
   /** Staff accounts: set up the users row. Omit for students. */
-  staff?: { employee_number: string; profileRole?: string };
+  staff?: { employee_number: string };
   /** When set, emails the one-time password setup link. */
   redirectTo?: string;
   /** Caller-supplied role rows/grants. */
@@ -57,7 +57,7 @@ export async function provisionAccount(adapter: AuthAdapter, input: {
   };
 
   if (input.redirectTo && (await adapter.sendSetupLink(input.email, input.redirectTo))) return rollback('invite_failed');
-  if (input.staff && (await adapter.initStaffProfile(userId, { role: input.staff.profileRole ?? input.role, full_name: input.full_name, email: input.email, employee_number: input.staff.employee_number }))) return rollback('setup_failed');
+  if (input.staff && (await adapter.initStaffProfile(userId, { role: input.role, full_name: input.full_name, email: input.email, employee_number: input.staff.employee_number }))) return rollback('setup_failed');
   if (await input.setup(userId)) return rollback('setup_failed');
   return { ok: true, userId };
 }
