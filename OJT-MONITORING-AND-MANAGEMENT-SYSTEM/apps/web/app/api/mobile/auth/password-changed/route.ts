@@ -1,25 +1,21 @@
 import { createClient } from '@supabase/supabase-js';
-import { authenticateMobileStudent, mobileBffFailure } from '@/src/lib/mobile-bff';
+import { mobileBffFailure, mobileBffPreamble } from '@/src/lib/mobile-bff';
 import { getServiceClient } from '@/src/lib/supabase/service';
-import { authActionLimit } from '@/src/services/auth/internal';
 import { defaultStudentPassword } from '@/src/lib/default-password';
 
 export const runtime = 'nodejs';
 
 // Clears users.must_change_password once the student's password is no longer the default.
 export async function POST(request: Request) {
-  const auth = await authenticateMobileStudent(request);
-  if (auth.error) return mobileBffFailure(auth.error);
-  const { actor } = auth;
-  const email = actor.user.email;
-  if (!email) return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Account has no email.' });
-
-  const rateLimitError = await authActionLimit('password_reset_verify', actor.user.id, 10, 900, 'user');
-  if (rateLimitError) return mobileBffFailure({
-    status: rateLimitError.code === 'RATE_LIMITED' ? 429 : 503,
-    code: rateLimitError.code,
-    message: rateLimitError.message,
+  const pre = await mobileBffPreamble(request, {
+    beforeLimit: async (actor) => actor.user.email
+      ? null
+      : mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Account has no email.' }),
+    limit: { action: 'password_reset_verify', max: 10, windowSeconds: 900 },
   });
+  if (pre.response) return pre.response;
+  const { actor } = pre;
+  const email = actor.user.email!;
 
   const service = getServiceClient();
   const { data: student } = await service.from('students').select('student_number').eq('user_id', actor.user.id).maybeSingle();
