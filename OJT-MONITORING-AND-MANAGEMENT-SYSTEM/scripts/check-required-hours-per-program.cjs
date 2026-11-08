@@ -14,6 +14,10 @@ async function main() {
   assert.equal(resolveRequiredHours(250, 'BS-CPE'), 250, "a student's own value wins");
   assert.equal(resolveRequiredHours(null, 'BS Nursing'), 486, 'legacy unknown course keeps the old default');
 
+  assert.equal(requiredHoursForCourse('BSCPE'), 240, 'legacy BSCPE spelling');
+  assert.equal(requiredHoursForCourse('BSA'), null, 'BSA has no program hours');
+  assert.equal(requiredHoursForCourse(undefined), null);
+
   const db = new PGlite();
   const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
   await db.exec(`
@@ -35,7 +39,7 @@ async function main() {
   await db.exec(migration); // reapplying must be safe
 
   // The database mapping must agree with the app mapping, including legacy spellings and unknown courses.
-  for (const course of ['BSIT', 'BS-CPE', 'BSCpE', 'BSBA-HRM', 'BSENTREP', 'BSEntrep', 'Computer Engineering', 'BS Nursing', '', null]) {
+  for (const course of ['BSIT', 'BS-CPE', 'BSCpE', 'BSCPE', 'BSBA-HRM', 'BSA', 'BS Accountancy', 'BSENTREP', 'BSEntrep', 'Computer Engineering', 'BS Nursing', '  ', '', null, undefined]) {
     const { rows } = await db.query('SELECT public.required_hours_for_course($1) AS h', [course]);
     assert.equal(rows[0].h, requiredHoursForCourse(course), `required hours for ${JSON.stringify(course)} must match the app`);
   }
