@@ -82,7 +82,7 @@ export function SupervisorInvitesPanel() {
               <span className="ml-2 text-xs text-slate-500">{i.department} · used {i.use_count}/{i.max_uses} · expires {new Date(i.expires_at).toLocaleDateString()}</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase ${STATUS[i.status]}`}>{i.status.replace('_', ' ')}</span>
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase ${STATUS[i.status]}`}>{i.status.replace('_', ' ')}</span>
               {i.status === 'active' && <button type="button" onClick={() => revoke(i.invite_id)} className="text-xs font-bold text-red-700 underline">Revoke</button>}
             </div>
           </div>

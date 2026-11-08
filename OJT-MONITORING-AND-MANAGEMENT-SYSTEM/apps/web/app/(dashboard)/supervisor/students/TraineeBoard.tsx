@@ -218,10 +218,10 @@ export function TraineeBoard({ trainees, intake }: { trainees: SupervisedTrainee
                   </span>
                 </label>
                 <div className="flex flex-wrap gap-1.5">
-                  {t.department && <span title={getDepartmentFullName(t.department)} className="rounded-full bg-teal-50 px-2.5 py-0.5 text-[11px] font-bold text-teal-800">{t.department}</span>}
-                  <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-700">{STATUS_LABEL[t.placement.assignment_status] ?? t.placement.assignment_status}</span>
-                  {t.graduated && <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">Graduated</span>}
-                  {t.no_recent_attendance && <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">No attendance in 7 days</span>}
+                  {t.department && <span title={getDepartmentFullName(t.department)} className="rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-bold text-teal-800">{t.department}</span>}
+                  <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700">{STATUS_LABEL[t.placement.assignment_status] ?? t.placement.assignment_status}</span>
+                  {t.graduated && <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-800">Graduated</span>}
+                  {t.no_recent_attendance && <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-800">No attendance in 7 days</span>}
                 </div>
               </div>
               <dl className="mt-3 grid grid-cols-1 gap-3 text-xs sm:grid-cols-3">

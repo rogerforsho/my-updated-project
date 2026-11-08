@@ -35,7 +35,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               />
             </div>
             <div>
-              <span className="text-[10px] uppercase tracking-widest font-bold text-amber-400 block mb-0.5">
+              <span className="text-xs uppercase tracking-widest font-bold text-amber-400 block mb-0.5">
                 Official Practicum Portal
               </span>
               <span className="text-xl sm:text-2xl font-black text-white font-serif tracking-tight block">
@@ -49,7 +49,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
           {/* Center: Inspiring Academic Statement */}
           <div className="relative z-10 my-10 lg:my-auto max-w-lg space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-[11px] font-semibold text-emerald-300">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-xs font-semibold text-emerald-300">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span>Academic Year Practicum Management</span>
             </div>
@@ -62,7 +62,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </div>
 
           {/* Bottom Left: Legal & Campus Compliance Footnote */}
-          <div className="relative z-10 pt-4 border-t border-white/10 text-[11px] text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="relative z-10 pt-4 border-t border-white/10 text-xs text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <span>Rodriguez, Rizal</span>
               <span className="mx-2 text-slate-600">&bull;</span>
@@ -78,8 +78,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="lg:w-[46%] xl:w-[42%] bg-white flex flex-col justify-between p-6 sm:p-10 lg:p-12 min-h-[520px] lg:min-h-screen relative z-10">
           {/* Top Right Status Bar */}
           <div className="flex items-center justify-between text-xs text-slate-400 pb-4">
-            <span className="font-semibold text-slate-500 text-[11px]">CdM Portal v1.2.0</span>
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/80">
+            <span className="font-semibold text-slate-500 text-xs">CdM Portal v1.2.0</span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/80">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               Institutional Access
             </span>
@@ -91,7 +91,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </div>
 
           {/* Minimalist Footnote */}
-          <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-400">
+          <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
             <span>Colegio de Montalban MIS</span>
             <div className="flex items-center gap-3">
               <a href="/downloads/CdM-OJT-Portal-Setup-1.0.0.exe" download className="hover:text-slate-700 transition-colors">

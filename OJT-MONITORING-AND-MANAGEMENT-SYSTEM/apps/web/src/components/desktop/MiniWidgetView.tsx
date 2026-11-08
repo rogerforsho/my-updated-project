@@ -54,7 +54,7 @@ export default function MiniWidgetView({ user }: Props) {
           type="button"
           onClick={() => toggleMiniWidget(false)}
           title="Expand Full Dashboard"
-          className="text-[11px] font-extrabold text-[var(--cdm-sand)] hover:text-white bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg border border-white/10 transition-all flex items-center gap-1 cursor-pointer"
+          className="text-xs font-extrabold text-[var(--cdm-sand)] hover:text-white bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg border border-white/10 transition-all flex items-center gap-1 cursor-pointer"
         >
           <span>Expand</span>
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -71,10 +71,10 @@ export default function MiniWidgetView({ user }: Props) {
         <div className="min-w-0 flex-1">
           <p className="text-xs font-bold text-white truncate">{user.full_name}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-[var(--cdm-sand)]/15 text-[var(--cdm-sand)] border border-[var(--cdm-sand)]/30 uppercase">
+            <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-[var(--cdm-sand)]/15 text-[var(--cdm-sand)] border border-[var(--cdm-sand)]/30 uppercase">
               {accountRoleLabel(user.role)}
             </span>
-            <span className="text-[10px] text-slate-400 font-medium">WFH Active</span>
+            <span className="text-xs text-slate-400 font-medium">WFH Active</span>
           </div>
         </div>
       </div>
@@ -90,7 +90,7 @@ export default function MiniWidgetView({ user }: Props) {
           {hrs}:{mins}:{secs}
         </div>
 
-        <p className="text-[10px] text-slate-400 mt-2 font-medium">
+        <p className="text-xs text-slate-400 mt-2 font-medium">
           {new Date().toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })}
         </p>
       </div>
@@ -120,7 +120,7 @@ export default function MiniWidgetView({ user }: Props) {
         <button
           type="button"
           onClick={minimizeToTray}
-          className="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-[11px] border border-white/10 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+          className="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs border border-white/10 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
         >
           <span>Minimize to Tray</span>
         </button>

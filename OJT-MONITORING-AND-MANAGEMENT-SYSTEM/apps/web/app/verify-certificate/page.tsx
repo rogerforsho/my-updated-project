@@ -46,7 +46,7 @@ export default function CertificateSearchPage() {
           </div>
 
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0A3824]/10 text-[#0A3824] text-[11px] font-bold tracking-wider uppercase mb-1">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0A3824]/10 text-[#0A3824] text-xs font-bold tracking-wider uppercase mb-1">
               <Shield className="w-3.5 h-3.5 text-emerald-800" />
               Public Credential Verification
             </div>
@@ -72,7 +72,7 @@ export default function CertificateSearchPage() {
                 required
                 className="font-mono uppercase tracking-wider text-base"
               />
-              <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
+              <p className="text-xs text-slate-400 mt-1.5 flex items-center gap-1">
                 <span>💡</span> Find this alphanumeric code printed on the bottom of the official Certificate of Completion.
               </p>
             </div>
@@ -109,7 +109,7 @@ export default function CertificateSearchPage() {
         </div>
 
         {/* Security & Compliance Footer Note */}
-        <div className="text-center text-[11px] text-slate-400 space-y-1">
+        <div className="text-center text-xs text-slate-400 space-y-1">
           <p>ISO/IEC 25010:2023 Digital Clearance Verification Standard</p>
           <p>Colegio de Montalban &bull; Office of Student Internship & Placement (OSIP)</p>
         </div>

@@ -33,7 +33,7 @@ export default function LandingNavbar({ onOpenAccessPortal }: LandingNavbarProps
                 />
               </div>
               <div className="flex flex-col justify-center">
-                <span className="text-[10px] uppercase font-bold tracking-widest text-amber-400 leading-tight">
+                <span className="text-xs uppercase font-bold tracking-widest text-amber-400 leading-tight">
                   Practicum Management Portal
                 </span>
                 <span className="text-lg font-black text-white font-serif tracking-tight leading-tight group-hover:text-amber-300 transition-colors">
@@ -94,7 +94,7 @@ export default function LandingNavbar({ onOpenAccessPortal }: LandingNavbarProps
                         <span className="text-xs font-bold text-white group-hover:text-[var(--cdm-sand)] block">
                           Verify Certificate
                         </span>
-                        <span className="text-[10px] text-slate-300 block">
+                        <span className="text-xs text-slate-300 block">
                           Authenticate student certificate by code
                         </span>
                       </div>
@@ -112,7 +112,7 @@ export default function LandingNavbar({ onOpenAccessPortal }: LandingNavbarProps
                         <span className="text-xs font-bold text-white group-hover:text-[var(--cdm-sand)] block">
                           Downloads &amp; Tools
                         </span>
-                        <span className="text-[10px] text-slate-300 block">
+                        <span className="text-xs text-slate-300 block">
                           Windows desktop client &amp; mobile guide
                         </span>
                       </div>

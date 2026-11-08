@@ -47,14 +47,14 @@ export default function ComplianceFramework() {
                 <div className="absolute inset-0 bg-gradient-to-t from-[#092E1D]/80 via-transparent to-transparent pointer-events-none" />
 
                 <div className="absolute bottom-4 left-4 right-4 text-white">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/90 text-amber-300 text-[10px] font-bold border border-emerald-700/50 mb-1">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/90 text-amber-300 text-xs font-bold border border-emerald-700/50 mb-1">
                     <MapPin className="w-3 h-3 text-emerald-400" />
                     <span>Rodriguez, Rizal &bull; Kasiglahan Village</span>
                   </div>
                   <p className="text-sm font-bold text-white font-serif">
                     Colegio de Montalban
                   </p>
-                  <p className="text-[11px] text-slate-200">
+                  <p className="text-xs text-slate-200">
                     Institute of Computing Studies &bull; Institute of Business &amp; Entrepreneurship
                   </p>
                 </div>
@@ -65,7 +65,7 @@ export default function ComplianceFramework() {
                 <span className="text-2xl sm:text-3xl font-black font-mono leading-none">
                   ISO
                 </span>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider mt-1">
+                <span className="text-xs font-extrabold uppercase tracking-wider mt-1">
                   25010:2023<br />Evaluated
                 </span>
               </div>

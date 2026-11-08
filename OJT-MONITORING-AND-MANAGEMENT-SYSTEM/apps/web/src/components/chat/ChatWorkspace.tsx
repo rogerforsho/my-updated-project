@@ -203,12 +203,12 @@ export default function ChatWorkspace({ userId, role }: { userId: string; role: 
                 const mine = message.sender_user_id === userId;
                 return <div key={message.message_id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[82%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${mine ? 'bg-teal-700 text-white' : 'border border-slate-200 bg-white text-slate-800'}`}>
-                    {message.tagged_student_label && <p className={`mb-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${mine ? 'bg-teal-600 text-teal-50' : 'bg-slate-100 text-slate-600'}`}>Re: {message.tagged_student_label}</p>}
+                    {message.tagged_student_label && <p className={`mb-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${mine ? 'bg-teal-600 text-teal-50' : 'bg-slate-100 text-slate-600'}`}>Re: {message.tagged_student_label}</p>}
                     {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
                     {message.attachment_name && <button type="button" onClick={() => void openAttachment(message.message_id)}
                       className={`mt-1 block max-w-full truncate rounded-lg border px-2.5 py-1 text-left text-xs font-medium underline ${mine ? 'border-teal-500 text-white' : 'border-slate-200 text-teal-800'}`}>
                       📎 {message.attachment_name}</button>}
-                    <time className={`mt-1 block text-[10px] ${mine ? 'text-teal-100' : 'text-slate-400'}`} dateTime={message.created_at}>{new Date(message.created_at).toLocaleString()}</time>
+                    <time className={`mt-1 block text-xs ${mine ? 'text-teal-100' : 'text-slate-400'}`} dateTime={message.created_at}>{new Date(message.created_at).toLocaleString()}</time>
                   </div>
                 </div>;
               })}
@@ -235,7 +235,7 @@ export default function ChatWorkspace({ userId, role }: { userId: string; role: 
                   maxLength={4000} rows={2} placeholder="Write a message…" className="min-h-12 flex-1 resize-y rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100" />
                 <button type="submit" disabled={(!draft.trim() && !attachment) || sending} className="rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{sending ? 'Sending…' : 'Send'}</button>
               </div>
-              <div className="mt-1 flex justify-between text-[11px] text-slate-400"><span>Messages cannot be edited or deleted.</span><span>{draft.length}/4000</span></div>
+              <div className="mt-1 flex justify-between text-xs text-slate-400"><span>Messages cannot be edited or deleted.</span><span>{draft.length}/4000</span></div>
             </form> : <div className="border-t border-slate-100 bg-amber-50 px-4 py-3 text-sm text-amber-900">This conversation is read-only until an active shared placement resumes.</div>}
           </> : <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-slate-500">Choose an eligible contact to view the conversation.</div>}
           {error && <p role="alert" className="border-t border-red-100 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}

@@ -117,7 +117,7 @@ export default async function DashboardPage() {
               />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
+              <p className="text-xs font-bold uppercase tracking-wider text-amber-400">
                 Colegio de Montalban <span className="text-slate-500 font-medium">•</span>{' '}
                 <span className="text-slate-300 font-medium">
                   {new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -131,7 +131,7 @@ export default async function DashboardPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-300 bg-emerald-950/80 border border-emerald-500/30 px-2.5 py-1 rounded-full">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-300 bg-emerald-950/80 border border-emerald-500/30 px-2.5 py-1 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               Portal Online
             </span>
@@ -277,7 +277,7 @@ export default async function DashboardPage() {
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-[#0A3824] dark:group-hover:text-emerald-400">Verify Attendance Logs</h4>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Review intern time-in and selfie captures</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Review intern time-in and selfie captures</p>
                   </div>
                 </Link>
 
@@ -290,7 +290,7 @@ export default async function DashboardPage() {
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-[#0A3824] dark:group-hover:text-emerald-400">Performance Evaluations</h4>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Grade trainees based on standard rubrics</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Grade trainees based on standard rubrics</p>
                   </div>
                 </Link>
               </div>

@@ -202,7 +202,7 @@ export default function DepartmentReportsClient({
                 {activeDept} Enrolled Trainees
               </p>
               <p className="text-2xl font-bold text-slate-900 mt-1">{deptMetrics.total}</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">Active senior cohort</p>
+              <p className="text-xs text-slate-400 mt-0.5">Active senior cohort</p>
             </div>
             <div className="w-11 h-11 rounded-xl bg-slate-50 border border-slate-200/90 text-[#0A3824] flex items-center justify-center">
               <Users className="w-5 h-5" />
@@ -217,7 +217,7 @@ export default function DepartmentReportsClient({
               <p className="text-2xl font-bold text-[#0A3824] mt-1">
                 {isICSView ? summary.ics.bsit.active + summary.ics.bscpe.active : summary.ibe.bsbaHrm.active + summary.ibe.bsEntrep.active}
               </p>
-              <p className="text-[11px] text-slate-400 mt-0.5">Practicum in progress</p>
+              <p className="text-xs text-slate-400 mt-0.5">Practicum in progress</p>
             </div>
             <div className="w-11 h-11 rounded-xl bg-slate-50 border border-slate-200/90 text-[#0A3824] flex items-center justify-center">
               <Building2 className="w-5 h-5" />
@@ -230,7 +230,7 @@ export default function DepartmentReportsClient({
             <div>
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Completed Practicum</p>
               <p className="text-2xl font-bold text-emerald-600 mt-1">{deptMetrics.completed}</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">Completed required practicum hours</p>
+              <p className="text-xs text-slate-400 mt-0.5">Completed required practicum hours</p>
             </div>
             <div className="w-11 h-11 rounded-xl bg-slate-50 border border-slate-200/90 text-emerald-700 flex items-center justify-center">
               <GraduationCap className="w-5 h-5" />
@@ -243,7 +243,7 @@ export default function DepartmentReportsClient({
             <div>
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Rendered Hours</p>
               <p className="text-2xl font-bold text-slate-900 mt-1">{deptMetrics.hours.toFixed(1)}</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">Verified Industry Hours</p>
+              <p className="text-xs text-slate-400 mt-0.5">Verified Industry Hours</p>
             </div>
             <div className="w-11 h-11 rounded-xl bg-slate-50 border border-slate-200/90 text-[#0A3824] flex items-center justify-center">
               <Timer className="w-5 h-5" />
@@ -544,7 +544,7 @@ export default function DepartmentReportsClient({
                       <td className="px-5 py-4">
                         <div className="flex items-baseline gap-1.5">
                           <span className="font-mono font-bold text-slate-900 text-sm">{s.completed_hours.toFixed(1)}</span>
-                          <span className="text-[11px] text-slate-400">/ {s.required_hours} hrs</span>
+                          <span className="text-xs text-slate-400">/ {s.required_hours} hrs</span>
                         </div>
                         <div className="w-24 h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1.5">
                           <div
@@ -557,7 +557,7 @@ export default function DepartmentReportsClient({
                       </td>
                       <td className="px-5 py-4">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
                             s.progress_status === 'completed'
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                               : s.progress_status === 'in_progress'

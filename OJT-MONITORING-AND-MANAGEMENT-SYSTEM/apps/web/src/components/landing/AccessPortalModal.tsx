@@ -86,8 +86,8 @@ export default function AccessPortalModal({ isOpen, onClose }: AccessPortalModal
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#E4DBC4]">Institutional Access</span>
-                <span className="text-[10px] text-emerald-300 font-mono flex items-center gap-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#E4DBC4]">Institutional Access</span>
+                <span className="text-xs text-emerald-300 font-mono flex items-center gap-1">
                   <Shield className="w-3 h-3" /> Secure Gateway
                 </span>
               </div>
@@ -127,7 +127,7 @@ export default function AccessPortalModal({ isOpen, onClose }: AccessPortalModal
                         <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-900 transition-colors">
                           {g.role}
                         </h3>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${g.badgeColor}`}>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${g.badgeColor}`}>
                           {g.badge}
                         </span>
                       </div>

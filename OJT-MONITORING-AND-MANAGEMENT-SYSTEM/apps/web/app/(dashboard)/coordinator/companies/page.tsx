@@ -313,7 +313,7 @@ export default function CoordinatorCompaniesPage() {
                       <p className="font-semibold text-slate-900 text-sm leading-snug truncate" title={c.company_name}>
                         {c.company_name}
                       </p>
-                      <p className="text-[11px] text-slate-500 mt-0.5 truncate" title={c.address}>
+                      <p className="text-xs text-slate-500 mt-0.5 truncate" title={c.address}>
                         {c.address?.trim() ? c.address : <span className="text-slate-400 italic">No address provided</span>}
                       </p>
                     </td>
@@ -327,7 +327,7 @@ export default function CoordinatorCompaniesPage() {
                           <span className="text-slate-400 italic">Not Assigned</span>
                         )}
                       </p>
-                      <p className="text-[11px] text-slate-500 mt-0.5 truncate" title={c.contact_email}>
+                      <p className="text-xs text-slate-500 mt-0.5 truncate" title={c.contact_email}>
                         {c.contact_email?.trim() ? (
                           c.contact_email
                         ) : (
@@ -339,7 +339,7 @@ export default function CoordinatorCompaniesPage() {
                     {/* Workplace GPS with fallback */}
                     <td className="px-3.5 py-3.5 whitespace-nowrap">
                       {c.geofence_enabled && c.latitude != null && c.longitude != null ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                           📍 {c.geofence_radius_meters ?? 50}m
                         </span>
                       ) : (

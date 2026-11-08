@@ -47,7 +47,7 @@ function TopBar({ title }: { title: string }) {
       <div className="flex items-center gap-4 text-sm">
         <span className="hidden sm:inline rounded-full border border-slate-200 px-3 py-1 text-xs">● CdM Cloud · ISO/IEC 25010</span>
         <span>🔔</span><span>🌙</span>
-        <span className="flex items-center gap-2"><b className="grid place-items-center w-9 h-9 rounded-full bg-[#0A3824] text-white">L</b><span className="leading-tight"><b className="block text-sm">Local Supervisor</b><i className="text-[10px] not-italic text-slate-500">Supervisor</i></span></span>
+        <span className="flex items-center gap-2"><b className="grid place-items-center w-9 h-9 rounded-full bg-[#0A3824] text-white">L</b><span className="leading-tight"><b className="block text-sm">Local Supervisor</b><i className="text-xs not-italic text-slate-500">Supervisor</i></span></span>
       </div>
     </header>
   );
@@ -56,7 +56,7 @@ function TopBar({ title }: { title: string }) {
 function Decision({ r }: { r: ReportWithStudent }) {
   const d = r.supervisor_decision;
   const c = d === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : d === 'returned' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-700 border-amber-200';
-  return <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${c}`}>{(d ?? 'pending').toUpperCase()}</span>;
+  return <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-bold ${c}`}>{(d ?? 'pending').toUpperCase()}</span>;
 }
 
 /* ---------- A: dark sidebar (as in the screenshot) + stat strip + review-queue rows ---------- */
@@ -67,7 +67,7 @@ export function VariantA({ reports, filter, setFilter, openDoc, review }: VProps
   return (
     <div className="fixed inset-0 z-[8000] flex bg-[#F6F7F4]">
       <aside className="w-64 shrink-0 bg-[#092E1D] text-white flex flex-col">
-        <div className="h-16 flex items-center gap-3 px-5 border-b border-white/10"><span className="w-9 h-9 rounded-full bg-[#E4DBC4]" /><b className="text-sm leading-tight">Colegio de Montalban<br /><small className="text-[10px] tracking-wider">OJT PRACTICUM PORTAL</small></b></div>
+        <div className="h-16 flex items-center gap-3 px-5 border-b border-white/10"><span className="w-9 h-9 rounded-full bg-[#E4DBC4]" /><b className="text-sm leading-tight">Colegio de Montalban<br /><small className="text-xs tracking-wider">OJT PRACTICUM PORTAL</small></b></div>
         <nav className="p-3 space-y-1 flex-1">
           {NAV.map((n) => (
             <Link key={n.label} href={n.href} className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm ${n.label === 'Daily Reports' ? 'bg-white/10 ring-1 ring-white/20 font-bold' : 'text-white/70 hover:bg-white/5'}`}>{n.icon} {n.label}</Link>
@@ -162,7 +162,7 @@ export function VariantC({ reports, openDoc, review }: VProps) {
   return (
     <div className="fixed inset-0 z-[8000] flex bg-[#EEF1EC]">
       <aside className="w-60 shrink-0 bg-white border-r border-slate-200 flex flex-col p-4">
-        <div className="flex items-center gap-2 mb-6"><span className="w-9 h-9 rounded-xl bg-[#0A3824]" /><b className="text-sm leading-tight">CdM OJT<br /><small className="text-slate-400 text-[10px]">PRACTICUM PORTAL</small></b></div>
+        <div className="flex items-center gap-2 mb-6"><span className="w-9 h-9 rounded-xl bg-[#0A3824]" /><b className="text-sm leading-tight">CdM OJT<br /><small className="text-slate-400 text-xs">PRACTICUM PORTAL</small></b></div>
         <nav className="space-y-1 flex-1">
           {NAV.map((n) => (
             <Link key={n.label} href={n.href} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${n.label === 'Daily Reports' ? 'bg-emerald-50 text-[#0A3824] font-bold border-l-4 border-[#0A3824]' : 'text-slate-600 hover:bg-slate-50'}`}>{n.icon} {n.label}</Link>
@@ -182,7 +182,7 @@ export function VariantC({ reports, openDoc, review }: VProps) {
                   <div className="flex-1 overflow-y-auto p-3 space-y-3">
                     {items.map((r) => (
                       <article key={r.report_id} className="rounded-xl bg-white border border-slate-200 p-4 shadow-sm space-y-2">
-                        <div className="flex items-center gap-2"><b className="grid place-items-center w-8 h-8 rounded-full bg-emerald-50 text-xs text-[#0A3824]">{initials(r)}</b><div className="min-w-0"><p className="font-bold text-sm truncate">{name(r)}</p><p className="text-[11px] text-slate-400 font-mono">{r.students?.student_number}</p></div></div>
+                        <div className="flex items-center gap-2"><b className="grid place-items-center w-8 h-8 rounded-full bg-emerald-50 text-xs text-[#0A3824]">{initials(r)}</b><div className="min-w-0"><p className="font-bold text-sm truncate">{name(r)}</p><p className="text-xs text-slate-400 font-mono">{r.students?.student_number}</p></div></div>
                         <p className="text-sm font-semibold capitalize">{type(r)} <span className="text-xs text-slate-400 font-normal">· {when(r.submission_date)}</span></p>
                         {r.supervisor_feedback && <p className="text-xs text-slate-600 bg-slate-50 rounded p-2">{r.supervisor_feedback}</p>}
                         <div className="flex gap-2 pt-1"><button onClick={() => openDoc(r.file_path, r.report_id)} className="flex-1 rounded-lg border border-slate-200 py-1.5 text-xs font-bold cursor-pointer">📄 View</button>{!r.supervisor_decision && <button onClick={() => review(r)} className="flex-1 rounded-lg bg-[#0A3824] py-1.5 text-xs font-bold text-[#E4DBC4] cursor-pointer">Review</button>}</div>

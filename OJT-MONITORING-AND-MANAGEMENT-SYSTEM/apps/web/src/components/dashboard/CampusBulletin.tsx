@@ -80,10 +80,10 @@ export default function CampusBulletin({ announcements = [] }: Props) {
           </div>
           <div>
             <h3 className="text-xs font-bold text-slate-900 dark:text-white">Campus Bulletin</h3>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400">Institutional Announcements</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Institutional Announcements</p>
           </div>
         </div>
-        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 uppercase tracking-wider">
+        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 uppercase tracking-wider">
           Notice Board
         </span>
       </div>
@@ -98,11 +98,11 @@ export default function CampusBulletin({ announcements = [] }: Props) {
             >
               <div className="flex items-center justify-between gap-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-[#0A3824] text-[var(--cdm-sand)] uppercase tracking-wider">
+                  <span className="inline-flex items-center gap-1 text-xs font-extrabold px-1.5 py-0.5 rounded bg-[#0A3824] text-[var(--cdm-sand)] uppercase tracking-wider">
                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--cdm-sand)] animate-pulse" />
                     {annc.target_department === 'All' ? 'Campus-Wide' : `${annc.target_department} Dept`}
                   </span>
-                  <span className="text-[10px] text-slate-400 font-medium">
+                  <span className="text-xs text-slate-400 font-medium">
                     {new Date(annc.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
                   </span>
                 </div>
@@ -112,7 +112,7 @@ export default function CampusBulletin({ announcements = [] }: Props) {
                   type="button"
                   onClick={(e) => handleDismiss(annc.announcement_id, e)}
                   title="Dismiss this notice (I've read this)"
-                  className="text-[10px] font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-md flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                  className="text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-md flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                 >
                   <X className="w-2.5 h-2.5" />
                   <span>Dismiss</span>
@@ -120,7 +120,7 @@ export default function CampusBulletin({ announcements = [] }: Props) {
               </div>
 
               <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-snug wrap-anywhere">{annc.title}</h4>
-              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3 wrap-anywhere">{annc.content}</p>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-3 wrap-anywhere">{annc.content}</p>
             </div>
           ))}
         </div>
@@ -130,7 +130,7 @@ export default function CampusBulletin({ announcements = [] }: Props) {
             <Check className="w-4 h-4" />
           </div>
           <p className="font-bold text-slate-800 dark:text-slate-200 text-xs">You&apos;re all caught up!</p>
-          <p className="text-[11px] text-slate-400">No unread announcements on your board.</p>
+          <p className="text-xs text-slate-400">No unread announcements on your board.</p>
         </div>
       )}
 
@@ -140,13 +140,13 @@ export default function CampusBulletin({ announcements = [] }: Props) {
           <button
             type="button"
             onClick={() => setShowDismissed(!showDismissed)}
-            className="w-full flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400 hover:text-[#0A3824] dark:hover:text-emerald-400 transition-colors py-1 cursor-pointer"
+            className="w-full flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-[#0A3824] dark:hover:text-emerald-400 transition-colors py-1 cursor-pointer"
           >
             <span className="flex items-center gap-1.5">
               {showDismissed ? <EyeOff className="w-3.5 h-3.5 text-slate-400" /> : <Eye className="w-3.5 h-3.5 text-slate-400" />}
               {showDismissed ? 'Hide dismissed notices' : `Show ${dismissedAnnouncements.length} dismissed notice${dismissedAnnouncements.length > 1 ? 's' : ''}`}
             </span>
-            <span className="text-[10px] text-slate-400">
+            <span className="text-xs text-slate-400">
               {showDismissed ? '▲' : '▼'}
             </span>
           </button>
@@ -154,13 +154,13 @@ export default function CampusBulletin({ announcements = [] }: Props) {
           {showDismissed && (
             <div className="space-y-2 mt-2 pt-2 border-t border-slate-100/80 dark:border-slate-800 page-fade-in">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                   Dismissed Archive
                 </span>
                 <button
                   type="button"
                   onClick={handleClearAllDismissed}
-                  className="text-[10px] font-bold text-[#0A3824] dark:text-emerald-400 hover:underline cursor-pointer flex items-center gap-1"
+                  className="text-xs font-bold text-[#0A3824] dark:text-emerald-400 hover:underline cursor-pointer flex items-center gap-1"
                 >
                   <RotateCcw className="w-2.5 h-2.5" />
                   Restore All
@@ -174,22 +174,22 @@ export default function CampusBulletin({ announcements = [] }: Props) {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 uppercase">
+                      <span className="text-xs font-bold px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 uppercase">
                         {annc.target_department}
                       </span>
-                      <span className="text-[10px] text-slate-400">
+                      <span className="text-xs text-slate-400">
                         {new Date(annc.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
                       </span>
                     </div>
                     <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-snug line-clamp-1">{annc.title}</h5>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">{annc.content}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">{annc.content}</p>
                   </div>
 
                   <button
                     type="button"
                     onClick={(e) => handleRestore(annc.announcement_id, e)}
                     title="Restore to active board"
-                    className="text-[10px] font-bold text-[#0A3824] dark:text-emerald-400 hover:text-[#092E1D] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded shadow-2xs hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shrink-0 cursor-pointer"
+                    className="text-xs font-bold text-[#0A3824] dark:text-emerald-400 hover:text-[#092E1D] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded shadow-2xs hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shrink-0 cursor-pointer"
                   >
                     Restore
                   </button>

@@ -149,11 +149,11 @@ export default async function CoordinatorProgressPage({ searchParams }: Props) {
                         <div className="text-xs font-bold text-slate-900">
                           {s.completed_hours} <span className="text-slate-400 font-normal">/ {s.required_hours} hrs</span>
                         </div>
-                        <div className="text-[11px] text-slate-400">{s.remaining_hours} hrs remaining</div>
+                        <div className="text-xs text-slate-400">{s.remaining_hours} hrs remaining</div>
                       </td>
                       <td className="py-4 px-4">
                         <div className="space-y-1">
-                          <div className="flex justify-between text-[11px] font-semibold text-slate-700">
+                          <div className="flex justify-between text-xs font-semibold text-slate-700">
                             <span>{s.percentage}%</span>
                             <span className="text-slate-400 font-normal">{s.remaining_hours <= 0 ? 'Target Reached' : `${s.remaining_hours.toFixed(1)}h left`}</span>
                           </div>

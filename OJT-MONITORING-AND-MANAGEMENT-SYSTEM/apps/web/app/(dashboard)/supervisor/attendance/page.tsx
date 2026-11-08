@@ -161,12 +161,12 @@ export default function SupervisorAttendancePage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-5">
           <div className="p-4 rounded-2xl bg-white border border-emerald-200/90 shadow-2xs flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Clean Compliant Logs</p>
+              <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Clean Compliant Logs</p>
               <div className="flex items-baseline gap-2 mt-0.5">
                 <span className="text-2xl font-black text-slate-900">{cleanLogs.length}</span>
                 <span className="text-xs text-slate-400">/ {records.length} pending</span>
               </div>
-              <p className="text-[11px] text-emerald-700 font-medium mt-0.5">Live selfie &amp; on-site GPS verified</p>
+              <p className="text-xs text-emerald-700 font-medium mt-0.5">Live selfie &amp; on-site GPS verified</p>
             </div>
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-base">
               ✓
@@ -175,12 +175,12 @@ export default function SupervisorAttendancePage() {
 
           <div className="p-4 rounded-2xl bg-white border border-amber-200/90 shadow-2xs flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-bold text-amber-800 uppercase tracking-wider">Field / Errand Work</p>
+              <p className="text-xs font-bold text-amber-800 uppercase tracking-wider">Field / Errand Work</p>
               <div className="flex items-baseline gap-2 mt-0.5">
                 <span className="text-2xl font-black text-slate-900">{fieldLogs.length}</span>
                 <span className="text-xs text-slate-400">require note review</span>
               </div>
-              <p className="text-[11px] text-amber-700 font-medium mt-0.5">Recorded outside primary facility</p>
+              <p className="text-xs text-amber-700 font-medium mt-0.5">Recorded outside primary facility</p>
             </div>
             <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-base">
               📍
@@ -189,12 +189,12 @@ export default function SupervisorAttendancePage() {
 
           <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-between">
             <div>
-              <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Tardy Arrivals</p>
+              <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Tardy Arrivals</p>
               <div className="flex items-baseline gap-2 mt-0.5">
                 <span className="text-2xl font-black text-slate-900">{lateLogs.length}</span>
                 <span className="text-xs text-slate-400">exceeded grace period</span>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium mt-0.5">Clocked past schedule cutoff</p>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">Clocked past schedule cutoff</p>
             </div>
             <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-base">
               ⏰
@@ -234,7 +234,7 @@ export default function SupervisorAttendancePage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-200/80 bg-slate-50/75 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <thead className="border-b border-slate-200/80 bg-slate-50/75 text-xs font-bold text-slate-500 uppercase tracking-wider">
                 <tr>
                   <th className="px-5 py-3.5 font-medium text-slate-600">Trainee</th>
                   <th className="px-5 py-3.5 font-medium text-slate-600">Date</th>
@@ -257,10 +257,10 @@ export default function SupervisorAttendancePage() {
                         <div className="flex items-center gap-2">
                           <div>
                             <p className="font-semibold text-slate-900">{r.students?.users?.full_name}</p>
-                            <p className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">{r.students?.student_number}</p>
+                            <p className="text-xs text-slate-500 font-mono tabular-nums mt-0.5">{r.students?.student_number}</p>
                           </div>
                           {isOfflineSynced && (
-                            <span className="inline-flex items-center text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200" title="Captured offline and synced">
+                            <span className="inline-flex items-center text-xs font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200" title="Captured offline and synced">
                               📁 Offline
                             </span>
                           )}
@@ -268,19 +268,19 @@ export default function SupervisorAttendancePage() {
                         {r.verification_status === 'pending' && (
                           <div className="mt-1">
                             {isClean ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                                 ✓ Clean Log
                               </span>
                             ) : r.time_out_flag_reason ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200" title={r.time_out_flag_reason}>
+                              <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200" title={r.time_out_flag_reason}>
                                 Time Out flagged
                               </span>
                             ) : isField ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200" title={r.time_in_flag_reason || r.time_out_flag_reason || ''}>
+                              <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200" title={r.time_in_flag_reason || r.time_out_flag_reason || ''}>
                                 📍 Field Errand
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                              <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
                                 ⏰ Tardy
                               </span>
                             )}
@@ -429,14 +429,14 @@ export default function SupervisorAttendancePage() {
                 <p className="font-mono text-xs font-semibold text-slate-900">
                   {selected.time_in ? new Date(selected.time_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                 </p>
-                {selected.time_in_received_at && <p className="mt-1 text-[10px] text-slate-500">Server received: {new Date(selected.time_in_received_at).toLocaleString()}</p>}
+                {selected.time_in_received_at && <p className="mt-1 text-xs text-slate-500">Server received: {new Date(selected.time_in_received_at).toLocaleString()}</p>}
               </div>
               <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                 <p className="text-xs text-slate-400 mb-0.5">Time Out</p>
                 <p className="font-mono text-xs font-semibold text-slate-900">
                   {selected.time_out ? new Date(selected.time_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                 </p>
-                {selected.time_out_received_at && <p className="mt-1 text-[10px] text-slate-500">Server received: {new Date(selected.time_out_received_at).toLocaleString()}</p>}
+                {selected.time_out_received_at && <p className="mt-1 text-xs text-slate-500">Server received: {new Date(selected.time_out_received_at).toLocaleString()}</p>}
               </div>
             </div>
 
@@ -449,8 +449,8 @@ export default function SupervisorAttendancePage() {
                 {/* Time In Selfie */}
                 <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-200 text-center">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-bold text-slate-700">Time In Evidence</span>
-                    <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                    <span className="text-xs font-bold text-slate-700">Time In Evidence</span>
+                    <span className="text-xs font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                       {selected.time_in ? new Date(selected.time_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                     </span>
                   </div>
@@ -474,8 +474,8 @@ export default function SupervisorAttendancePage() {
                 {/* Time Out Selfie */}
                 <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-200 text-center">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-bold text-slate-700">Time Out Evidence</span>
-                    <span className="text-[10px] font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                    <span className="text-xs font-bold text-slate-700">Time Out Evidence</span>
+                    <span className="text-xs font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
                       {selected.time_out ? new Date(selected.time_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending'}
                     </span>
                   </div>

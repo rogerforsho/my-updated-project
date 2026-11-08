@@ -161,10 +161,10 @@ function SignInContent() {
         </div>
 
         <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 text-xs flex items-start gap-2.5">
-          <div className="w-5 h-5 rounded-full bg-amber-200/80 flex items-center justify-center shrink-0 mt-0.5 font-bold text-[11px] text-amber-800">
+          <div className="w-5 h-5 rounded-full bg-amber-200/80 flex items-center justify-center shrink-0 mt-0.5 font-bold text-xs text-amber-800">
             i
           </div>
-          <p className="text-[11px] leading-relaxed text-amber-800">
+          <p className="text-xs leading-relaxed text-amber-800">
             For security, this page does not reveal whether an email belongs to an account.
           </p>
         </div>
@@ -192,10 +192,10 @@ function SignInContent() {
 
           {/* Student Trainee Guidance Box */}
           <div className="mt-2 p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
-            <p className="text-[11px] text-slate-700 font-semibold mb-0.5">
+            <p className="text-xs text-slate-700 font-semibold mb-0.5">
               🎓 Student Trainee?
             </p>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-xs text-slate-500">
               Student account recovery is conducted exclusively via the <strong>CdM Mobile Application</strong>.
             </p>
           </div>
@@ -222,7 +222,7 @@ function SignInContent() {
         {isInactiveLogout && (
           <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
             <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-[11px] leading-relaxed text-amber-800">
+            <p className="text-xs leading-relaxed text-amber-800">
               <strong>Session Locked (ISO/IEC 25010:2023):</strong> You were automatically signed out after 15 minutes of inactivity to protect your account on shared campus computers.
             </p>
           </div>
@@ -246,7 +246,7 @@ function SignInContent() {
                 <UserCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               </div>
               <p className="text-xs text-slate-500 truncate">{selectedProfile.email}</p>
-              <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 ${badge.bg} ${badge.text}`}>
+              <span className={`inline-block text-xs font-bold px-2 py-0.5 rounded-full mt-1 ${badge.bg} ${badge.text}`}>
                 {badge.label}
               </span>
             </div>
@@ -265,7 +265,7 @@ function SignInContent() {
           <div className="space-y-4">
             <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
               <Smartphone className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <div className="text-[11px] leading-relaxed text-amber-800">
+              <div className="text-xs leading-relaxed text-amber-800">
                 <p className="font-bold">Student Mobile App Access Only</p>
                 <p className="mt-0.5">
                   OJT Student accounts use the <strong>CdM OJT Mobile App</strong> for registration and OJT workflows. Web sign-in is for Supervisors, OJT Coordinators, and Super Admins.
@@ -341,7 +341,7 @@ function SignInContent() {
 
         {savedProfiles.length > 1 && (
           <div className="mt-5 pt-4 border-t border-slate-100">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Other Saved Profiles</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Other Saved Profiles</p>
             <div className="space-y-1.5">
               {savedProfiles
                 .filter(p => p.email.toLowerCase() !== selectedProfile.email.toLowerCase())
@@ -358,7 +358,7 @@ function SignInContent() {
                       </div>
                       <div>
                         <p className="text-xs font-bold text-slate-800">{p.full_name}</p>
-                        <p className="text-[10px] text-slate-400">{p.email}</p>
+                        <p className="text-xs text-slate-400">{p.email}</p>
                       </div>
                     </div>
                     <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
@@ -377,7 +377,7 @@ function SignInContent() {
       {isInactiveLogout && (
         <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
           <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-[11px] leading-relaxed text-amber-800">
+          <p className="text-xs leading-relaxed text-amber-800">
             <strong>Session Locked (ISO/IEC 25010:2023):</strong> You were automatically signed out after 15 minutes of inactivity to protect your account on shared campus computers.
           </p>
         </div>
@@ -386,7 +386,7 @@ function SignInContent() {
       {isMobileOnly && (
         <div className="mb-4 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
           <Smartphone className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-          <div className="text-[11px] leading-relaxed text-amber-800">
+          <div className="text-xs leading-relaxed text-amber-800">
             <p className="font-bold">Student Mobile App Access Only</p>
             <p className="mt-0.5">
               OJT Student accounts use the <strong>CdM OJT Mobile App</strong> for registration and OJT workflows. Web sign-in is for Supervisors, OJT Coordinators, and Super Admins.
@@ -454,7 +454,7 @@ function SignInContent() {
           </button>
         </div>
 
-        <p className="text-[11px] text-slate-400 text-center">
+        <p className="text-xs text-slate-400 text-center">
           Enrolled students: Register above, then sign in using the mobile app.
         </p>
 

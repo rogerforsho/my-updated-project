@@ -28,7 +28,7 @@ export default function StaffNotificationBell({ userId, role }: { userId: string
   return <Link href={href} aria-label={failed ? 'Notifications; unread count unavailable' : `Notifications${unread ? `, ${unread} unread` : ''}`} title={failed ? 'Unread count unavailable; open notifications to retry' : 'Notifications'}
     className="relative rounded-xl p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100">
     <Bell className="h-4 w-4" />
-    {failed ? <span aria-hidden="true" className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-4 text-white">!</span>
-      : unread > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-center text-[10px] font-bold leading-4 text-white">{unread > 99 ? '99+' : unread}</span>}
+    {failed ? <span aria-hidden="true" className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold leading-4 text-white">!</span>
+      : unread > 0 && <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-amber-500 px-1 text-center text-xs font-bold leading-4 text-white">{unread > 99 ? '99+' : unread}</span>}
   </Link>;
 }

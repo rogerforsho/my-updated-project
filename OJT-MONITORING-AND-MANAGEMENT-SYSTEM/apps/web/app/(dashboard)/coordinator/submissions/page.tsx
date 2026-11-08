@@ -183,7 +183,7 @@ export default function CoordinatorSubmissionsPage() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Requirement & Document Submissions</h1>
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-[#0A3824]">
+            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-[#0A3824]">
               CdM Practicum
             </span>
           </div>
@@ -204,7 +204,7 @@ export default function CoordinatorSubmissionsPage() {
           >
             <span>📋 Pre-Deployment Tracker</span>
             {complianceData && complianceData.needs_requirements > 0 && (
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+              <span className={`px-1.5 py-0.5 rounded-full text-xs font-black ${
                 activeTab === 'compliance' ? 'bg-[var(--cdm-sand)] text-[#0A3824]' : 'bg-rose-500 text-white'
               }`}>
                 {complianceData.needs_requirements}
@@ -221,7 +221,7 @@ export default function CoordinatorSubmissionsPage() {
           >
             <span>📑 Document Review Feed</span>
             {totalReports > 0 && (
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+              <span className={`px-1.5 py-0.5 rounded-full text-xs font-black ${
                 activeTab === 'feed' ? 'bg-[var(--cdm-sand)] text-[#0A3824]' : 'bg-slate-300 text-slate-700'
               }`}>
                 {totalReports}
@@ -425,10 +425,10 @@ export default function CoordinatorSubmissionsPage() {
                           {/* Student Trainee Info */}
                           <td className="px-5 py-4">
                             <p className="font-bold text-slate-900">{student.full_name}</p>
-                            <p className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">
+                            <p className="text-xs text-slate-500 font-mono tabular-nums mt-0.5">
                               {student.student_number} • {student.course} (Yr {student.year_level})
                             </p>
-                            <p className="text-[11px] text-slate-400 mt-0.5">{student.email}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">{student.email}</p>
                           </td>
 
                           {/* Progress Bar */}
@@ -437,7 +437,7 @@ export default function CoordinatorSubmissionsPage() {
                               <span className={isComplete ? 'text-emerald-700' : 'text-slate-700'}>
                                 {student.submitted_count} / {student.total_required} Submitted
                               </span>
-                              <span className="text-[11px] text-slate-400">
+                              <span className="text-xs text-slate-400">
                                 ({student.approved_count} Approved)
                               </span>
                             </div>
@@ -478,7 +478,7 @@ export default function CoordinatorSubmissionsPage() {
                                   <span
                                     key={doc.spec_id}
                                     title={`${doc.spec_name}: ${doc.status.toUpperCase()}`}
-                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] border ${badgeClass}`}
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs border ${badgeClass}`}
                                   >
                                     <span>{icon}</span>
                                     <span>{doc.spec_name.split(' ')[0]}</span>
@@ -487,7 +487,7 @@ export default function CoordinatorSubmissionsPage() {
                               })}
                             </div>
                             {student.missing_documents.length > 0 && (
-                              <p className="text-[11px] text-rose-600 mt-1 font-medium">
+                              <p className="text-xs text-rose-600 mt-1 font-medium">
                                 Missing: {student.missing_documents.join(', ')}
                               </p>
                             )}
@@ -500,7 +500,7 @@ export default function CoordinatorSubmissionsPage() {
                                 <Badge className="bg-[var(--cdm-green)]/10 text-[#0A3824] border-[#0A3824]/20 text-xs font-bold">
                                   🏢 DEPLOYED
                                 </Badge>
-                                <p className="text-[11px] text-slate-500 font-medium mt-0.5 truncate max-w-[150px]">
+                                <p className="text-xs text-slate-500 font-medium mt-0.5 truncate max-w-[150px]">
                                   {student.assigned_company}
                                 </p>
                               </div>
@@ -617,7 +617,7 @@ export default function CoordinatorSubmissionsPage() {
                       <tr key={r.report_id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="px-5 py-4">
                           <p className="font-bold text-slate-900">{r.students?.users?.full_name}</p>
-                          <p className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">
+                          <p className="text-xs text-slate-500 font-mono tabular-nums mt-0.5">
                             {r.students?.student_number} • {r.students?.course}
                           </p>
                         </td>
@@ -625,7 +625,7 @@ export default function CoordinatorSubmissionsPage() {
                           <span className="font-semibold text-slate-800 capitalize">
                             {r.report_type.replace(/_/g, ' ')}
                           </span>
-                          <p className="text-[11px] text-slate-400 mt-0.5">
+                          <p className="text-xs text-slate-400 mt-0.5">
                             Submitted {new Date(r.submission_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                           </p>
                           {r.remarks && (
@@ -648,7 +648,7 @@ export default function CoordinatorSubmissionsPage() {
                             <div className="bg-emerald-50/70 border border-emerald-200 p-2 rounded-lg max-w-xs">
                               {r.supervisor_decision && <p className="font-bold uppercase text-emerald-900">{r.supervisor_decision}</p>}
                               <p className="text-emerald-900 font-semibold">{r.supervisor_feedback}</p>
-                              <span className="text-[10px] text-emerald-700 block mt-1">
+                              <span className="text-xs text-emerald-700 block mt-1">
                                 Decision recorded {r.supervisor_decided_at ? new Date(r.supervisor_decided_at).toLocaleDateString() : ''}
                               </span>
                             </div>
@@ -765,25 +765,25 @@ export default function CoordinatorSubmissionsPage() {
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-white border border-slate-300">
+                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-white border border-slate-300">
                           {idx + 1}
                         </span>
                         <p className="font-bold text-slate-900 text-xs">{doc.spec_name}</p>
                       </div>
                       {doc.submission_date && (
-                        <p className="text-[11px] text-slate-500 mt-1 pl-7">
+                        <p className="text-xs text-slate-500 mt-1 pl-7">
                           Uploaded on {new Date(doc.submission_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </p>
                       )}
                       {doc.remarks && (
-                        <p className="text-[11px] text-slate-600 mt-0.5 pl-7 italic">
+                        <p className="text-xs text-slate-600 mt-0.5 pl-7 italic">
                           Note: &ldquo;{doc.remarks}&rdquo;
                         </p>
                       )}
                     </div>
 
                     <div className="flex items-center gap-2 self-end sm:self-auto pl-7 sm:pl-0">
-                      <Badge className={`text-[11px] font-bold ${
+                      <Badge className={`text-xs font-bold ${
                         doc.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
                         doc.status === 'submitted' ? 'bg-amber-100 text-amber-800 border-amber-300' :
                         doc.status === 'rejected' ? 'bg-rose-100 text-rose-800 border-rose-300' :

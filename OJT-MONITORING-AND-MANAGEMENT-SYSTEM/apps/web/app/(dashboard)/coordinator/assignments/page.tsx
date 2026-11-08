@@ -362,7 +362,7 @@ export default function AssignmentsPage() {
                     <tr key={a.assignment_id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-5 py-4">
                         <p className="font-medium text-slate-900">{a.students?.users?.full_name}</p>
-                        <p className="text-[11px] text-slate-500 tabular-nums">{a.students?.student_number} • {a.students?.course}</p>
+                        <p className="text-xs text-slate-500 tabular-nums">{a.students?.student_number} • {a.students?.course}</p>
                         <div className="mt-1 flex items-center gap-2">
                           <Badge status={a.students?.status}>{a.students?.status?.toUpperCase()}</Badge>
                           <select
@@ -470,7 +470,7 @@ export default function AssignmentsPage() {
                       <tr key={p.schedule_id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-5 py-4">
                           <p className="font-medium text-slate-900">{p.students?.users?.full_name}</p>
-                          <p className="text-[11px] text-slate-500 tabular-nums">{p.students?.student_number} • {p.students?.course}</p>
+                          <p className="text-xs text-slate-500 tabular-nums">{p.students?.student_number} • {p.students?.course}</p>
                         </td>
                         <td className="px-5 py-4">
                           <p className="text-slate-800 font-medium">
@@ -488,7 +488,7 @@ export default function AssignmentsPage() {
                         <td className="px-5 py-4">
                           <div className="space-y-0.5">
                             <p className="text-xs font-semibold text-slate-700">{daysStr || 'None'}</p>
-                            <p className="text-[11px] text-slate-500">
+                            <p className="text-xs text-slate-500">
                               {p.time_in} - {p.time_out} ({p.daily_hours}h/day • {p.weekly_hours}h/wk)
                             </p>
                           </div>
@@ -551,7 +551,7 @@ export default function AssignmentsPage() {
                 <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider">
                   Schedule Rules Summary
                 </span>
-                <span className="text-[11px] font-semibold text-emerald-700 bg-white px-2 py-0.5 rounded-full border border-emerald-300">
+                <span className="text-xs font-semibold text-emerald-700 bg-white px-2 py-0.5 rounded-full border border-emerald-300">
                   {selectedProposal.work_modality.toUpperCase()}
                 </span>
               </div>
@@ -559,14 +559,14 @@ export default function AssignmentsPage() {
                 <div className="bg-white p-2 rounded-lg border border-emerald-100">
                   <span className="text-slate-500 block">Daily Shift:</span>
                   <span className="font-bold text-slate-800">{selectedProposal.time_in} - {selectedProposal.time_out}</span>
-                  <span className="text-[11px] text-emerald-700 block">({selectedProposal.daily_hours} hrs/day • ≤ 8.0 limit)</span>
+                  <span className="text-xs text-emerald-700 block">({selectedProposal.daily_hours} hrs/day • ≤ 8.0 limit)</span>
                 </div>
                 <div className="bg-white p-2 rounded-lg border border-emerald-100">
                   <span className="text-slate-500 block">Weekly Commitment:</span>
                   <span className="font-bold text-slate-800">
                     {(selectedProposal.work_days || []).map(d => DAY_NAMES[d]).join(', ')}
                   </span>
-                  <span className="text-[11px] text-emerald-700 block">({selectedProposal.weekly_hours} hrs/wk • ≤ 40.0 limit)</span>
+                  <span className="text-xs text-emerald-700 block">({selectedProposal.weekly_hours} hrs/wk • ≤ 40.0 limit)</span>
                 </div>
               </div>
               {selectedProposal.student_notes && (
@@ -747,7 +747,7 @@ export default function AssignmentsPage() {
                   <p className="font-semibold text-rose-700 pl-2 border-l-2 border-rose-300">
                     {selectedStudent.missing_gateway_documents.join(', ')}
                   </p>
-                  <p className="text-[11px] text-amber-700 pt-1">
+                  <p className="text-xs text-amber-700 pt-1">
                     Please approve these documents under the Submissions portal before creating an assignment.
                   </p>
                 </div>

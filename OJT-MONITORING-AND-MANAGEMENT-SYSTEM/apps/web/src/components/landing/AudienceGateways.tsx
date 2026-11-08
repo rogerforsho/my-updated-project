@@ -101,7 +101,7 @@ export default function AudienceGateways() {
                     <Icon className="w-6 h-6" />
                   </div>
 
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">
                     {t.category}
                   </span>
 
@@ -115,7 +115,7 @@ export default function AudienceGateways() {
                 </div>
 
                 <div className="mt-6 pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-500 font-mono">
+                  <span className="text-xs font-bold text-slate-500 font-mono">
                     {t.badge}
                   </span>
                   <Link

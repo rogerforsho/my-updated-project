@@ -120,7 +120,7 @@ export default function HeroSection({ onOpenAccessPortal }: HeroSectionProps) {
                     <span>Student Trainee</span>
                   </button>
                 </div>
-                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider hidden sm:inline-block">
+                <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider hidden sm:inline-block">
                   {heroView === 'campus' ? 'Kasiglahan Village' : '4th-Year Trainee'}
                 </span>
               </div>
@@ -152,7 +152,7 @@ export default function HeroSection({ onOpenAccessPortal }: HeroSectionProps) {
 
                 {/* Bottom caption overlay */}
                 <div className="absolute bottom-4 left-4 right-4 text-white">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md border border-white/20 text-[10px] font-bold text-amber-300 mb-1">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md border border-white/20 text-xs font-bold text-amber-300 mb-1">
                     <MapPin className="w-3 h-3 text-emerald-400" />
                     <span>
                       {heroView === 'campus' 
@@ -165,7 +165,7 @@ export default function HeroSection({ onOpenAccessPortal }: HeroSectionProps) {
                       ? 'Colegio de Montalban • Ynares School Building'
                       : 'Colegio de Montalban Trainee'}
                   </p>
-                  <p className="text-[11px] text-slate-200 mt-0.5">
+                  <p className="text-xs text-slate-200 mt-0.5">
                     {heroView === 'campus'
                       ? 'Official Practicum Administration • ICS & IBE'
                       : 'Institute of Computing Studies • 486 Hours Track'}
@@ -182,7 +182,7 @@ export default function HeroSection({ onOpenAccessPortal }: HeroSectionProps) {
                   <div className="text-lg sm:text-xl font-black text-slate-900 font-mono tracking-tight leading-none">
                     486<span className="text-amber-600">+</span>
                   </div>
-                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider block mt-0.5">
+                  <span className="text-xs sm:text-xs font-bold text-slate-500 uppercase tracking-wider block mt-0.5">
                     Hours Certified
                   </span>
                 </div>
@@ -194,7 +194,7 @@ export default function HeroSection({ onOpenAccessPortal }: HeroSectionProps) {
                   <Check className="w-4 h-4 stroke-[3]" />
                 </div>
                 <div>
-                  <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 block">
+                  <span className="text-xs sm:text-xs font-extrabold uppercase tracking-wider text-emerald-800 block">
                     Point-in-Time GPS Verified
                   </span>
                   <span className="text-xs font-bold text-slate-800">

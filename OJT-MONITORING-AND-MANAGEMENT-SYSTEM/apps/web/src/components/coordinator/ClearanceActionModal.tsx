@@ -134,7 +134,7 @@ export default function ClearanceActionModal({
 
             {/* 3 Clearance Pillars Checklist */}
             <div className="space-y-2.5">
-              <h4 className="font-extrabold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+              <h4 className="font-extrabold text-slate-800 uppercase tracking-wider text-xs flex items-center gap-1.5">
                 <Shield className="w-3.5 h-3.5 text-[#0A3824]" /> Institutional Clearance Gateways
               </h4>
 
@@ -150,7 +150,7 @@ export default function ClearanceActionModal({
                   </div>
                   <div>
                     <span className="font-bold">1. Verified Rendered Hours ({clearance.completed_hours} / {clearance.required_hours}h)</span>
-                    <p className="text-[10px] text-slate-500">Biometric selfie & GPS attendance log</p>
+                    <p className="text-xs text-slate-500">Biometric selfie & GPS attendance log</p>
                   </div>
                 </div>
 
@@ -171,7 +171,7 @@ export default function ClearanceActionModal({
                   </div>
                   <div>
                     <span className="font-bold">2. Final Practicum Narrative & Portfolio</span>
-                    <p className="text-[10px] text-slate-500">Approved by OJT Practicum Faculty</p>
+                    <p className="text-xs text-slate-500">Approved by OJT Practicum Faculty</p>
                   </div>
                 </div>
                 <Badge className={clearance.final_report_approved ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}>
@@ -191,7 +191,7 @@ export default function ClearanceActionModal({
                   </div>
                   <div>
                     <span className="font-bold">3. Industry Supervisor Appraisals (Passing &ge; 75.0%)</span>
-                    <p className="text-[10px] text-slate-500">
+                    <p className="text-xs text-slate-500">
                       Midterm: {clearance.midterm_score !== null ? `${clearance.midterm_score}%` : 'Not Rated'} • Final: {clearance.final_score !== null ? `${clearance.final_score}%` : 'Not Rated'}
                     </p>
                   </div>
@@ -227,8 +227,8 @@ export default function ClearanceActionModal({
                   aria-describedby="academic-year-hint"
                   required={finalGradeNumber <= 3}
                 />
-                <p id="academic-year-hint" className="text-[11px] text-slate-600">Required for a passing grade and certificate. Enter the academic year that should appear on the certificate (YYYY-YYYY).</p>
-                <p id="final-grade-hint" className="text-[11px] text-slate-600">Grades 1.00–3.00 pass and finalize OJT with a completion certificate. Grades above 3.00 are recorded as failing and do not finalize OJT; you can update the grade after review.</p>
+                <p id="academic-year-hint" className="text-xs text-slate-600">Required for a passing grade and certificate. Enter the academic year that should appear on the certificate (YYYY-YYYY).</p>
+                <p id="final-grade-hint" className="text-xs text-slate-600">Grades 1.00–3.00 pass and finalize OJT with a completion certificate. Grades above 3.00 are recorded as failing and do not finalize OJT; you can update the grade after review.</p>
               </div>
             )}
 

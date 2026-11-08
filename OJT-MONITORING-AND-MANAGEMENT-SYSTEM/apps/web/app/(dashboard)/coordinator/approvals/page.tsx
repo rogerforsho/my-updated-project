@@ -269,7 +269,7 @@ export default function CoordinatorApprovalsPage() {
                       </td>
                       <td className="px-5 py-4">
                         <p className="font-semibold text-slate-900">{student.full_name}</p>
-                        <p className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">{student.student_number}</p>
+                        <p className="text-xs text-slate-500 font-mono tabular-nums mt-0.5">{student.student_number}</p>
                       </td>
                       <td className="px-5 py-4 text-slate-600 font-mono text-xs">{student.email}</td>
                       <td className="px-5 py-4">
@@ -383,7 +383,7 @@ export default function CoordinatorApprovalsPage() {
               <p className="text-rose-700">
                 {rejectTarget.student_number} • {rejectTarget.course} • {yearLabel(rejectTarget.year_level)}
               </p>
-              <p className="text-rose-600 text-[11px] pt-1">
+              <p className="text-rose-600 text-xs pt-1">
                 Rejecting this registration will notify the student at <strong className="font-semibold">{rejectTarget.email}</strong>.
               </p>
             </div>

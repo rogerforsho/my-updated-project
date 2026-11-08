@@ -105,7 +105,7 @@ export default function PublicFooter() {
           <div className="border-t border-slate-200 my-3" />
 
           {/* Row 2: Governance, Policies & Development Credits */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-slate-500">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500">
             <button
               onClick={() => openModal('privacy')}
               className="hover:underline hover:text-slate-800 cursor-pointer"
@@ -142,7 +142,7 @@ export default function PublicFooter() {
           </div>
 
           {/* Row 3: Institutional Copyright & Office Info */}
-          <div className="mt-3 pt-2 text-[11px] text-slate-400 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1">
+          <div className="mt-3 pt-2 text-xs text-slate-400 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1">
             <p>
               Colegio de Montalban &copy; {new Date().getFullYear()} &bull; Institute of Computing Studies &bull; Institute of Business &amp; Entrepreneurship &bull; Kasiglahan Village, Rodriguez, Rizal 1860
             </p>
@@ -163,7 +163,7 @@ export default function PublicFooter() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Institutional Privacy Policy</h3>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   Republic Act No. 10173 (Data Privacy Act of 2012 of the Philippines)
                 </p>
               </div>
@@ -226,7 +226,7 @@ export default function PublicFooter() {
 
             {/* Footer */}
             <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">Colegio de Montalban • Ref: POL-DPA-2026</span>
+              <span className="text-xs text-slate-400">Colegio de Montalban • Ref: POL-DPA-2026</span>
               <button
                 onClick={closeModal}
                 className="px-3.5 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium transition-colors cursor-pointer"
@@ -248,7 +248,7 @@ export default function PublicFooter() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Terms of Service & Code of Conduct</h3>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   Practicum Management & Acceptable Use Policy
                 </p>
               </div>
@@ -308,7 +308,7 @@ export default function PublicFooter() {
 
             {/* Footer */}
             <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">Effective Academic Year 2025–2026</span>
+              <span className="text-xs text-slate-400">Effective Academic Year 2025–2026</span>
               <button
                 onClick={closeModal}
                 className="px-3.5 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium transition-colors cursor-pointer"
@@ -330,7 +330,7 @@ export default function PublicFooter() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">User Guides & FAQs</h3>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   Operational guidelines for Students, OJT Coordinator, and Supervisors
                 </p>
               </div>
@@ -471,7 +471,7 @@ export default function PublicFooter() {
 
             {/* Footer */}
             <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">Need support? Contact vralphroger@gmail.com</span>
+              <span className="text-xs text-slate-400">Need support? Contact vralphroger@gmail.com</span>
               <button
                 onClick={closeModal}
                 className="px-3.5 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium transition-colors cursor-pointer"
@@ -493,7 +493,7 @@ export default function PublicFooter() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Capstone Engineering & Research Group</h3>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   Institute of Computing Studies (ICS) &bull; Colegio de Montalban
                 </p>
               </div>
@@ -521,14 +521,14 @@ export default function PublicFooter() {
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="text-xs font-bold text-slate-900">Ralph Roger Vicente</h4>
-                      <p className="text-[11px] text-slate-600 font-medium">System Architecture &amp; Development</p>
+                      <p className="text-xs text-slate-600 font-medium">System Architecture &amp; Development</p>
                     </div>
-                    <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">BSIT</span>
+                    <span className="text-xs font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">BSIT</span>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-normal">
+                  <p className="text-xs text-slate-500 leading-normal">
                     System architecture, database modeling, backend services, and overall platform integration.
                   </p>
-                  <p className="text-[10px] text-slate-400 font-mono">System Architect &bull; Backend &bull; Full-Stack</p>
+                  <p className="text-xs text-slate-400 font-mono">System Architect &bull; Backend &bull; Full-Stack</p>
                 </div>
 
                 {/* 2. Jay Baui */}
@@ -536,14 +536,14 @@ export default function PublicFooter() {
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="text-xs font-bold text-slate-900">Jay Baui</h4>
-                      <p className="text-[11px] text-slate-600 font-medium">Frontend Developer</p>
+                      <p className="text-xs text-slate-600 font-medium">Frontend Developer</p>
                     </div>
-                    <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">BSIT</span>
+                    <span className="text-xs font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">BSIT</span>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-normal">
+                  <p className="text-xs text-slate-500 leading-normal">
                     Frontend user interfaces, client components, and layout styling across web and mobile platforms.
                   </p>
-                  <p className="text-[10px] text-slate-400 font-mono">Frontend &bull; UI &bull; Mobile &amp; Web</p>
+                  <p className="text-xs text-slate-400 font-mono">Frontend &bull; UI &bull; Mobile &amp; Web</p>
                 </div>
 
                 {/* 3. Jomar Suralta */}
@@ -551,14 +551,14 @@ export default function PublicFooter() {
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="text-xs font-bold text-slate-900">Jomar Suralta</h4>
-                      <p className="text-[11px] text-slate-600 font-medium">Researcher &amp; Interviewer</p>
+                      <p className="text-xs text-slate-600 font-medium">Researcher &amp; Interviewer</p>
                     </div>
-                    <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">BSIT</span>
+                    <span className="text-xs font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">BSIT</span>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-normal">
+                  <p className="text-xs text-slate-500 leading-normal">
                     Stakeholder interview coordination, qualitative data gathering, survey administration, and field research.
                   </p>
-                  <p className="text-[10px] text-slate-400 font-mono">Researcher &bull; Interviewer &bull; Field Data</p>
+                  <p className="text-xs text-slate-400 font-mono">Researcher &bull; Interviewer &bull; Field Data</p>
                 </div>
 
                 {/* 4. Jovelyn Golis */}
@@ -566,21 +566,21 @@ export default function PublicFooter() {
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="text-xs font-bold text-slate-900">Jovelyn Golis</h4>
-                      <p className="text-[11px] text-slate-600 font-medium">Researcher &amp; Paper Documentation</p>
+                      <p className="text-xs text-slate-600 font-medium">Researcher &amp; Paper Documentation</p>
                     </div>
-                    <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">BSIT</span>
+                    <span className="text-xs font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">BSIT</span>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-normal">
+                  <p className="text-xs text-slate-500 leading-normal">
                     Thesis manuscript writing, chapter preparation, research methodology, and paper documentation.
                   </p>
-                  <p className="text-[10px] text-slate-400 font-mono">Researcher &bull; Documentation &bull; Manuscript</p>
+                  <p className="text-xs text-slate-400 font-mono">Researcher &bull; Documentation &bull; Manuscript</p>
                 </div>
               </div>
             </div>
 
             {/* Footer */}
             <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">Colegio de Montalban • Institute of Computing Studies</span>
+              <span className="text-xs text-slate-400">Colegio de Montalban • Institute of Computing Studies</span>
               <button
                 onClick={closeModal}
                 className="px-3.5 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium transition-colors cursor-pointer"

@@ -279,7 +279,7 @@ export default function LocationPickerMap({
         {/* Search Results Dropdown */}
         {searchResults.length > 0 && (
           <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-[1000] overflow-hidden max-h-56 overflow-y-auto">
-            <div className="p-1.5 bg-slate-50 border-b border-slate-100 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+            <div className="p-1.5 bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
               Select Matching Location
             </div>
             {searchResults.map((item) => (
@@ -306,14 +306,14 @@ export default function LocationPickerMap({
         <div ref={mapContainerRef} className="w-full h-64 sm:h-72 z-0" />
 
         {/* Floating Instruction overlay */}
-        <div className="absolute top-2 left-2 z-[400] bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-md text-[11px] text-slate-600 shadow-sm border border-slate-200/80 pointer-events-none flex items-center gap-1.5">
+        <div className="absolute top-2 left-2 z-[400] bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-md text-xs text-slate-600 shadow-sm border border-slate-200/80 pointer-events-none flex items-center gap-1.5">
           <span>👆</span>
           <span>Click anywhere to place pin or drag marker</span>
         </div>
 
         {/* Active Geofence Badge Overlay */}
         {hasCoordinates && (
-          <div className="absolute bottom-2 right-2 z-[400] bg-emerald-900/90 backdrop-blur-xs text-white px-2.5 py-1 rounded-md text-[11px] font-semibold shadow-md flex items-center gap-1.5 pointer-events-none">
+          <div className="absolute bottom-2 right-2 z-[400] bg-emerald-900/90 backdrop-blur-xs text-white px-2.5 py-1 rounded-md text-xs font-semibold shadow-md flex items-center gap-1.5 pointer-events-none">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span>Perimeter: {radiusMeters}m</span>
           </div>
@@ -332,7 +332,7 @@ export default function LocationPickerMap({
                 key={r}
                 type="button"
                 onClick={() => onRadiusChange(r)}
-                className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
+                className={`px-2 py-0.5 text-xs font-medium rounded transition-colors ${
                   radiusMeters === r
                     ? 'bg-emerald-600 text-white font-bold shadow-xs'
                     : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'
@@ -355,7 +355,7 @@ export default function LocationPickerMap({
         />
 
         {hasCoordinates ? (
-          <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/60">
+          <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-200/60">
             <span>
               Pinned at: <b>{latitude?.toFixed(6)}</b>, <b>{longitude?.toFixed(6)}</b>
             </span>
@@ -369,7 +369,7 @@ export default function LocationPickerMap({
             </a>
           </div>
         ) : (
-          <p className="text-[11px] text-amber-600 font-medium pt-1">
+          <p className="text-xs text-amber-600 font-medium pt-1">
             ⚠️ No pin placed yet. Search an address above or click on the map.
           </p>
         )}

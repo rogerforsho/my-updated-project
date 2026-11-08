@@ -147,7 +147,7 @@ export default function SettingsClient({ user, extraDetails }: Props) {
                 <div className="w-14 h-14 rounded-2xl bg-[#0A3824] text-amber-300 border-4 border-white dark:border-slate-900 shadow-2xs flex items-center justify-center font-bold text-lg">
                   {user.full_name ? user.full_name[0].toUpperCase() : 'U'}
                 </div>
-                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#0A3824] text-amber-300 uppercase tracking-wider border border-amber-400/30 shadow-2xs">
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#0A3824] text-amber-300 uppercase tracking-wider border border-amber-400/30 shadow-2xs">
                   {accountRoleLabel(user.role)}
                 </span>
               </div>
@@ -160,7 +160,7 @@ export default function SettingsClient({ user, extraDetails }: Props) {
               <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2.5 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 dark:text-slate-500 font-medium">Account Status</span>
-                  <span className="font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/60 uppercase text-[10px]">
+                  <span className="font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/60 uppercase text-xs">
                     {user.account_status}
                   </span>
                 </div>
@@ -214,16 +214,16 @@ export default function SettingsClient({ user, extraDetails }: Props) {
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Desktop Client</h4>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Windows 10 / 11 (64-bit)</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Windows 10 / 11 (64-bit)</p>
                   </div>
                 </div>
-                <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
+                <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
                   v1.0.0
                 </span>
               </div>
 
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                Native Windows client for faculty with System Tray parking, background alerts, and floating WFH shift stopwatch (<kbd className="font-mono text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1 py-0.5 rounded border border-slate-300 dark:border-slate-700">Ctrl+M</kbd>).
+                Native Windows client for faculty with System Tray parking, background alerts, and floating WFH shift stopwatch (<kbd className="font-mono text-xs bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1 py-0.5 rounded border border-slate-300 dark:border-slate-700">Ctrl+M</kbd>).
               </p>
 
               <div className="pt-1">
@@ -235,7 +235,7 @@ export default function SettingsClient({ user, extraDetails }: Props) {
                   <Download className="w-3.5 h-3.5" />
                   Download Windows Setup (.exe)
                 </a>
-                <p className="text-[10px] text-center text-slate-400 dark:text-slate-500 mt-1.5 font-medium">
+                <p className="text-xs text-center text-slate-400 dark:text-slate-500 mt-1.5 font-medium">
                   Pre-configured for Colegio de Montalban Cloud
                 </p>
               </div>
@@ -248,7 +248,7 @@ export default function SettingsClient({ user, extraDetails }: Props) {
               <Lock className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
               <span>Temporary Password Notice</span>
             </div>
-            <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 leading-relaxed">
+            <p className="text-xs text-amber-800/90 dark:text-amber-300/90 leading-relaxed">
               If you are logging in with a default or temporary password provided by your institution, please create a new, private password below to secure your practicum records.
             </p>
           </div>
@@ -320,7 +320,7 @@ export default function SettingsClient({ user, extraDetails }: Props) {
                   {/* Password Strength Meter */}
                   {newPassword.length > 0 && (
                     <div className="pt-1 space-y-1">
-                      <div className="flex items-center justify-between text-[10px] font-bold">
+                      <div className="flex items-center justify-between text-xs font-bold">
                         <span className="text-slate-400 dark:text-slate-500">Password Strength:</span>
                         <span
                           className={
@@ -382,7 +382,7 @@ export default function SettingsClient({ user, extraDetails }: Props) {
                     </button>
                   </div>
                   {confirmPassword.length > 0 && newPassword !== confirmPassword && (
-                    <p className="text-[11px] font-bold text-rose-600 pt-0.5">
+                    <p className="text-xs font-bold text-rose-600 pt-0.5">
                       Passwords do not match.
                     </p>
                   )}

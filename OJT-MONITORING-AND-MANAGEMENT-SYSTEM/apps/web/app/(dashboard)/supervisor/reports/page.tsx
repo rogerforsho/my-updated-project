@@ -183,7 +183,7 @@ function ReportsPageInner() {
                       <span className="font-semibold text-slate-800 capitalize">
                         {r.report_type.replace(/_/g, ' ')}
                       </span>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
+                      <p className="text-xs text-slate-400 mt-0.5">
                         Submitted {new Date(r.submission_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
                       {r.remarks && (
@@ -206,7 +206,7 @@ function ReportsPageInner() {
                         <div className="bg-emerald-50/70 border border-emerald-200 p-2 rounded-lg max-w-xs">
                           <p className="font-bold uppercase text-emerald-900">{r.supervisor_decision}</p>
                           <p className="text-emerald-900 font-semibold">{r.supervisor_feedback}</p>
-                          <span className="text-[10px] text-emerald-700 block mt-1">
+                          <span className="text-xs text-emerald-700 block mt-1">
                             Decision recorded {r.supervisor_decided_at ? new Date(r.supervisor_decided_at).toLocaleDateString() : ''}
                           </span>
                         </div>

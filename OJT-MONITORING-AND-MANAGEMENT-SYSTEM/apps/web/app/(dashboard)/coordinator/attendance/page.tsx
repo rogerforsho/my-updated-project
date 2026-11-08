@@ -98,13 +98,13 @@ function Timecard() {
                 <tr key={r.key}>
                   <td className="p-3">
                     <button type="button" onClick={() => { setStudent({ id: r.student_id, name: r.full_name }); setPage(1); }} className="text-left font-semibold text-slate-900 hover:underline">{r.full_name || 'Student'}</button>
-                    <p className="text-[11px] text-slate-500 tabular-nums">{r.student_number}{r.company_name ? ` · ${r.company_name}` : ''}</p>
+                    <p className="text-xs text-slate-500 tabular-nums">{r.student_number}{r.company_name ? ` · ${r.company_name}` : ''}</p>
                   </td>
                   <td className="p-3 whitespace-nowrap">{r.date}</td>
                   <td className="p-3">{clock(r.time_in)}</td>
                   <td className="p-3">{clock(r.time_out)}</td>
                   <td className="p-3">{r.hours ?? '—'}</td>
-                  <td className="p-3"><span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${LATE[r.late].cls}`}>{LATE[r.late].label}</span></td>
+                  <td className="p-3"><span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${LATE[r.late].cls}`}>{LATE[r.late].label}</span></td>
                   <td className="p-3 text-xs">{SELFIE[r.selfie]}</td>
                   <td className="p-3 text-xs">{GPS[r.gps] ?? r.gps}</td>
                 </tr>

@@ -137,6 +137,6 @@ export default function PlacementMapPage() {
       <ul className="mt-2 space-y-1 text-sm text-slate-600">{failed.map((r) =>
         <li key={r.request_id}><b>{r.requested_company_name}</b> · {r.branch_address || r.company_address}</li>)}</ul>
     </div>}
-    <p className="mt-3 text-[11px] text-slate-400">Student-request locations come from the address typed in the app and are estimates. Map data from OpenStreetMap contributors.</p>
+    <p className="mt-3 text-xs text-slate-400">Student-request locations come from the address typed in the app and are estimates. Map data from OpenStreetMap contributors.</p>
   </main>;
 }

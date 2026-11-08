@@ -164,7 +164,7 @@ export default function Sidebar({ user, isOpen = false, onClose }: Props) {
               <h2 className="text-xs font-black text-white leading-tight font-serif tracking-tight truncate">
                 Colegio de Montalban
               </h2>
-              <p className="text-[9px] font-bold text-[#E4DBC4] tracking-wider uppercase mt-0.5">
+              <p className="text-xs font-bold text-[#E4DBC4] tracking-wider uppercase mt-0.5">
                 OJT Practicum Portal
               </p>
             </div>
@@ -232,7 +232,7 @@ export default function Sidebar({ user, isOpen = false, onClose }: Props) {
                   type="button"
                   onClick={() => toggleSection(item.section!)}
                   aria-expanded={!collapsed.includes(item.section!)}
-                  className="w-full flex items-center justify-between px-3 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-[#E4DBC4]/70 hover:text-[#E4DBC4] cursor-pointer"
+                  className="w-full flex items-center justify-between px-3 pt-3 pb-1 text-xs font-bold uppercase tracking-wider text-[#E4DBC4]/70 hover:text-[#E4DBC4] cursor-pointer"
                 >
                   {item.section}
                   <ChevronDown className={`w-3 h-3 transition-transform duration-150 ${collapsed.includes(item.section!) ? '-rotate-90' : ''}`} />
@@ -263,7 +263,7 @@ export default function Sidebar({ user, isOpen = false, onClose }: Props) {
           <div className="px-3 py-2 mx-3 mb-2 rounded-xl bg-emerald-950/60 border border-emerald-500/30 flex items-center justify-between shadow-2xs">
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">
+              <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
                 Desktop Mode
               </span>
             </div>
@@ -271,7 +271,7 @@ export default function Sidebar({ user, isOpen = false, onClose }: Props) {
               type="button"
               onClick={() => toggleMiniWidget(true)}
               title="Toggle Floating Mini-Widget Mode"
-              className="text-[10px] font-bold text-amber-300 hover:text-white px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 transition-all cursor-pointer active:scale-95"
+              className="text-xs font-bold text-amber-300 hover:text-white px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 transition-all cursor-pointer active:scale-95"
             >
               Widget
             </button>
@@ -299,12 +299,12 @@ export default function Sidebar({ user, isOpen = false, onClose }: Props) {
         <div className="p-3 border-t border-white/8 bg-black/25 space-y-2">
           <SignOutButton />
 
-          <div className="pt-1.5 border-t border-white/5 flex items-center justify-between text-[10px] text-slate-400">
+          <div className="pt-1.5 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="font-medium text-slate-300">v1.2.0 Online</span>
             </div>
-            <span className="text-[9px] text-slate-400 font-medium">RA 10173 • ISO/IEC</span>
+            <span className="text-xs text-slate-400 font-medium">RA 10173 • ISO/IEC</span>
           </div>
         </div>
       </aside>

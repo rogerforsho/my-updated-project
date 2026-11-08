@@ -233,10 +233,10 @@ export default function SupervisorEvaluationsPage() {
                 <tr key={e.evaluation_id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-5 py-4">
                     <p className="font-bold text-slate-900">{e.students?.users?.full_name}</p>
-                    <p className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">{e.students?.student_number} • {e.students?.course}</p>
+                    <p className="text-xs text-slate-500 font-mono tabular-nums mt-0.5">{e.students?.student_number} • {e.students?.course}</p>
                   </td>
                   <td className="px-5 py-4">
-                    <Badge className={`text-[10px] font-extrabold uppercase ${
+                    <Badge className={`text-xs font-extrabold uppercase ${
                       e.evaluation_type === 'midterm'
                         ? 'bg-amber-50 text-amber-800 border-amber-200'
                         : 'bg-[#0A3824]/10 text-[#0A3824] border-[#0A3824]/30'
@@ -309,11 +309,11 @@ export default function SupervisorEvaluationsPage() {
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-slate-900">Midterm Evaluation</span>
-                  <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
                     243h Target
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">Midway progress checkpoint (50% completion)</p>
+                <p className="text-xs text-slate-500 mt-1">Midway progress checkpoint (50% completion)</p>
               </button>
 
               <button
@@ -327,11 +327,11 @@ export default function SupervisorEvaluationsPage() {
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-slate-900">Final Exit Appraisal</span>
-                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
                     486h Clearance
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">Final exit appraisal for degree clearance</p>
+                <p className="text-xs text-slate-500 mt-1">Final exit appraisal for degree clearance</p>
               </button>
             </div>
           </div>
@@ -391,7 +391,7 @@ export default function SupervisorEvaluationsPage() {
               <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
                 CHED Practicum Competency Rubric
               </h4>
-              <span className="text-[11px] font-bold text-[#0A3824] bg-emerald-100/80 px-2.5 py-0.5 rounded-full border border-emerald-300">
+              <span className="text-xs font-bold text-[#0A3824] bg-emerald-100/80 px-2.5 py-0.5 rounded-full border border-emerald-300">
                 5-Point Scale
               </span>
             </div>
@@ -401,7 +401,7 @@ export default function SupervisorEvaluationsPage() {
                 <div key={key} className="space-y-1 p-3 bg-white rounded-xl border border-slate-200/70 shadow-2xs">
                   <label htmlFor={`rating-${key}`} className="flex justify-between items-center gap-2 text-xs font-semibold text-slate-800">
                     <span className="truncate">{label}</span>
-                    <span className="text-[10px] text-slate-400 shrink-0">{weight}% weight</span>
+                    <span className="text-xs text-slate-400 shrink-0">{weight}% weight</span>
                   </label>
                   <select
                     id={`rating-${key}`}
@@ -411,7 +411,7 @@ export default function SupervisorEvaluationsPage() {
                   >
                     {[5, 4, 3, 2, 1].map(r => <option key={r} value={r}>{r} - {RATING_LABELS[r]}</option>)}
                   </select>
-                  <p className="text-[10px] text-slate-400">{hint}</p>
+                  <p className="text-xs text-slate-400">{hint}</p>
                 </div>
               ))}
             </div>
@@ -420,7 +420,7 @@ export default function SupervisorEvaluationsPage() {
             <div className="p-3.5 rounded-xl bg-white border border-[#0A3824]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
               <div>
                 <span className="text-xs font-bold text-slate-800">Overall Calculated Competency Rating:</span>
-                <p className="text-[11px] text-slate-500">Auto-aggregated composite across all 5 dimensions</p>
+                <p className="text-xs text-slate-500">Auto-aggregated composite across all 5 dimensions</p>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-2xl font-black font-mono text-[#0A3824]">{computedTotalScore}%</span>
@@ -443,7 +443,7 @@ export default function SupervisorEvaluationsPage() {
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
               Qualitative Feedback & Mentor Remarks {commentRequired && <span className="text-rose-500">*</span>}
             </label>
-            <p className={`text-[11px] ${commentRequired ? 'text-red-700 font-semibold' : 'text-slate-500'}`}>
+            <p className={`text-xs ${commentRequired ? 'text-red-700 font-semibold' : 'text-slate-500'}`}>
               {commentRequired ? 'Required: at least one rating is below 3. Explain the low rating.' : 'Optional when every rating is 3 or higher. Required for any rating below 3.'}
             </p>
             <textarea
