@@ -1,9 +1,7 @@
-import { authenticateMobileStudent, mobileBffFailure } from '@/src/lib/mobile-bff';
+import { mobileBffFailure, mobileBffPreamble } from '@/src/lib/mobile-bff';
 import { getServiceClient } from '@/src/lib/supabase/service';
-import { authActionLimit } from '@/src/services/auth/internal';
 import { validateUploadedBytes } from '@/src/lib/uploadValidation';
 import { recordAuditEvent } from '@/src/lib/audit';
-import { readLimitedJson } from '@/src/lib/read-limited-json';
 import { STUDENT_REPORT_TYPES } from '@ojt/shared';
 
 export const runtime = 'nodejs';
@@ -17,30 +15,21 @@ function isHttpsUrl(value: string) {
 }
 
 export async function POST(request: Request) {
-  const auth = await authenticateMobileStudent(request);
-  if (auth.error) return mobileBffFailure(auth.error);
-  const { data: completion, error: completionError } = await auth.actor.supabase.from('certificates')
-    .select('certificate_id').eq('student_id', auth.actor.studentId).maybeSingle();
-  if (completionError)
-    return mobileBffFailure({ status: 503, code: 'SERVER_FAILURE', message: 'Could not check OJT completion.' });
-  if (completion)
-    return mobileBffFailure({ status: 409, code: 'FORBIDDEN', message: 'Your OJT is completed. Academic records are read-only.' });
-  const rateLimitError = await authActionLimit('report_submit', auth.actor.user.id, 10, 3600, 'user');
-  if (rateLimitError) return mobileBffFailure({
-    status: rateLimitError.code === 'RATE_LIMITED' ? 429 : 503,
-    code: rateLimitError.code,
-    message: rateLimitError.message,
+  const pre = await mobileBffPreamble(request, {
+    beforeLimit: async (actor) => {
+      const { data: completion, error: completionError } = await actor.supabase.from('certificates')
+        .select('certificate_id').eq('student_id', actor.studentId).maybeSingle();
+      if (completionError)
+        return mobileBffFailure({ status: 503, code: 'SERVER_FAILURE', message: 'Could not check OJT completion.' });
+      if (completion)
+        return mobileBffFailure({ status: 409, code: 'FORBIDDEN', message: 'Your OJT is completed. Academic records are read-only.' });
+      return null;
+    },
+    limit: { action: 'report_submit', max: 10, windowSeconds: 3600 },
+    body: { maxBytes: 16 * 1024, label: 'Report request' },
   });
-
-  const parsed = await readLimitedJson(request, 16 * 1024);
-  if (parsed.error === 'too_large')
-    return mobileBffFailure({ status: 413, code: 'VALIDATION_FAILURE', message: 'Report request is too large.' });
-  if (parsed.error)
-    return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Report request could not be read.' });
-  const body = parsed.data;
-  if (!body || typeof body !== 'object' || Array.isArray(body))
-    return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Invalid report request.' });
-  const input = body as Record<string, unknown>;
+  if (pre.response) return pre.response;
+  const { actor, body: input } = pre;
   const reportType = typeof input.report_type === 'string' ? input.report_type.trim() : '';
   const filePath = typeof input.file_path === 'string' ? input.file_path.trim() : '';
   const remarks = typeof input.remarks === 'string' ? input.remarks.trim() : null;
@@ -48,7 +37,6 @@ export async function POST(request: Request) {
       (input.remarks != null && typeof input.remarks !== 'string') || (remarks && remarks.length > 2000))
     return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Report type and document are required.' });
 
-  const { actor } = auth;
   const isLink = isHttpsUrl(filePath);
   const escapedUserId = actor.user.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const isOwnedStoragePath = new RegExp(`^${escapedUserId}/reports/[0-9a-f-]{36}\\.(pdf|docx|doc|jpg|jpeg|png)$`, 'i').test(filePath);
