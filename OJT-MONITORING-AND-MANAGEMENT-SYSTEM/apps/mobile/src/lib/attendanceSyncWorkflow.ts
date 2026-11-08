@@ -1,4 +1,4 @@
-import { AUTO_TIME_OUT_REASON } from '@ojt/shared';
+import { isReplaceableAutoTimeOut } from '@ojt/shared';
 
 export interface QueuedAttendanceEvent {
   id: string;
@@ -127,8 +127,7 @@ export async function syncAttendanceWorkflow(
             syncedCount++;
             continue;
           }
-          if (existing.verification_status !== 'pending' ||
-              existing.time_out_flag_reason !== AUTO_TIME_OUT_REASON) {
+          if (!isReplaceableAutoTimeOut(existing)) {
             errors.push(conflictMessage(item, 'time out'));
             continue;
           }
