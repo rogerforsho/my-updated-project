@@ -5,6 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 const root = path.resolve(__dirname, '..');
+const { mobileBffMock } = require('./mobile-bff-harness.cjs');
 
 function loadRoute(mocks) {
   const filename = path.join(root, 'apps/web/app/api/mobile/notifications/route.ts');
@@ -35,13 +36,7 @@ function fixture({ updateError = null, found = true } = {}) {
     },
   };
   const route = loadRoute({
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent() { return { actor: { user: { id: 'user-a' }, supabase }, error: null }; },
-      mobileBffFailure(error) { return Response.json({ error }, { status: error.status }); },
-    },
-    '@/src/lib/read-limited-json': {
-      async readLimitedJson(request) { try { return { data: await request.json(), error: null }; } catch { return { data: null, error: 'invalid' }; } },
-    },
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'user-a' }, studentId: 'student-a', supabase }),
   });
   const post = body => route.POST(new Request('https://portal.test/api/mobile/notifications', { method: 'POST', body: JSON.stringify(body) }));
   return { calls, post };

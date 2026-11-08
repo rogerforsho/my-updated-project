@@ -57,7 +57,11 @@ async function buildPreview(csvText: string, departments: string[]): Promise<App
     if (!student_number || student_number.length > 50) errors.push('Student number is required (50 characters maximum).');
     const normalizedCourse = course.toUpperCase();
     if (!isStudentRegistrationCourse(normalizedCourse)) errors.push('Course must be BSIT, BS-CPE, BSBA-HRM or BSENTREP.');
-    else if (!departments.includes(getDepartmentByCourse(normalizedCourse))) errors.push('Course is outside your department.');
+    else {
+      const department = getDepartmentByCourse(normalizedCourse);
+      if (!department) errors.push('Course has no department. Use BSIT, BS-CPE, BSBA-HRM or BSENTREP.');
+      else if (!departments.includes(department)) errors.push('Course is outside your department.');
+    }
     return { line: index + 2, full_name, email: email.toLowerCase(), student_number, course: normalizedCourse, errors };
   });
 

@@ -1,5 +1,7 @@
 import 'server-only';
 import { createClient as createSupabaseClient, type SupabaseClient, type User } from '@supabase/supabase-js';
+import { authActionLimit, type AuthAction } from '@/src/services/auth/internal';
+import { readLimitedJson } from '@/src/lib/read-limited-json';
 
 type BffTable<
   Row extends Record<string, unknown>,
@@ -133,4 +135,53 @@ export function mobileBffFailure(error: { status: number; code: string; message:
     { data: null, error: { code: error.code, message: error.message } },
     { status: error.status, headers: { 'Cache-Control': 'no-store' } }
   );
+}
+
+export function mobileBffOk<T>(data: T) {
+  return Response.json({ data, error: null }, { status: 200, headers: { 'Cache-Control': 'no-store' } });
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const isUuid = (value: unknown): value is string => typeof value === 'string' && UUID.test(value);
+
+type PreambleOptions = {
+  requiredStatus?: 'active' | 'rejected';
+  /** Runs after authentication and before the rate limit, for checks that must not spend limiter budget. */
+  beforeLimit?: (actor: MobileActor) => Promise<Response | null>;
+  /** ADR 0008: the per-subject limiter stays in the database; the preamble just calls it. */
+  limit?: { action: AuthAction; max: number; windowSeconds: number };
+  /** `label` names the request in error messages. `lenient` treats a non-object body as {}. */
+  body?: { maxBytes: number; label: string; lenient?: boolean };
+};
+
+type Preamble =
+  | { response: Response; actor?: undefined; body?: undefined }
+  | { response: null; actor: MobileActor; body: Record<string, unknown> };
+
+/** Bearer parse, student auth, rate limit and bounded JSON parse, answering 401/403/413/429/503 in one envelope. */
+export async function mobileBffPreamble(request: Request, options: PreambleOptions = {}): Promise<Preamble> {
+  const auth = await authenticateMobileStudent(request, options.requiredStatus);
+  if (auth.error) return { response: mobileBffFailure(auth.error) };
+  const { actor } = auth;
+
+  const early = await options.beforeLimit?.(actor);
+  if (early) return { response: early };
+
+  if (options.limit) {
+    const limited = await authActionLimit(options.limit.action, actor.user.id, options.limit.max, options.limit.windowSeconds, 'user');
+    if (limited) return { response: mobileBffFailure({ status: limited.code === 'RATE_LIMITED' ? 429 : 503, code: limited.code, message: limited.message }) };
+  }
+
+  let body: Record<string, unknown> = {};
+  if (options.body) {
+    const { maxBytes, label, lenient } = options.body;
+    const parsed = await readLimitedJson(request, maxBytes);
+    if (parsed.error === 'too_large')
+      return { response: mobileBffFailure({ status: 413, code: 'VALIDATION_FAILURE', message: `${label} is too large.` }) };
+    if (parsed.error)
+      return { response: mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: `${label} could not be read.` }) };
+    if (parsed.data && typeof parsed.data === 'object' && !Array.isArray(parsed.data)) body = parsed.data as Record<string, unknown>;
+    else if (!lenient) return { response: mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: `Invalid ${label.toLowerCase()}.` }) };
+  }
+  return { response: null, actor, body };
 }

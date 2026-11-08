@@ -1,6 +1,4 @@
-import { authenticateMobileStudent, mobileBffFailure } from '@/src/lib/mobile-bff';
-import { authActionLimit } from '@/src/services/auth/internal';
-import { readLimitedJson } from '@/src/lib/read-limited-json';
+import { mobileBffFailure, mobileBffPreamble } from '@/src/lib/mobile-bff';
 import { validateUploadedBytes } from '@/src/lib/uploadValidation';
 import { getServiceClient } from '@/src/lib/supabase/service';
 
@@ -40,16 +38,12 @@ async function validEvidence(path: string | null | undefined, userId: string): P
 }
 
 export async function POST(request: Request) {
-  const auth = await authenticateMobileStudent(request);
-  if (auth.error) return mobileBffFailure(auth.error);
-  const limited = await authActionLimit('report_submit', auth.actor.user.id, 5, 3600, 'user');
-  if (limited) return mobileBffFailure({ status: limited.code === 'RATE_LIMITED' ? 429 : 503, code: limited.code, message: limited.message });
-  const parsed = await readLimitedJson(request, 16 * 1024);
-  if (parsed.error) return mobileBffFailure({ status: parsed.error === 'too_large' ? 413 : 400, code: 'VALIDATION_FAILURE', message: 'Company request could not be read.' });
-  const body = parsed.data;
-  if (!body || typeof body !== 'object' || Array.isArray(body))
-    return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Invalid company request.' });
-  const input = body as Record<string, unknown>;
+  const pre = await mobileBffPreamble(request, {
+    limit: { action: 'report_submit', max: 5, windowSeconds: 3600 },
+    body: { maxBytes: 16 * 1024, label: 'Company request' },
+  });
+  if (pre.response) return pre.response;
+  const { actor, body: input } = pre;
   const fields = [
     ['requested_company_name', 2, 200], ['company_address', 2, 500], ['contact_person', 2, 150],
     ['contact_email', 3, 254], ['contact_number', 5, 40], ['requested_branch_name', 1, 150], ['branch_address', 2, 500],
@@ -63,27 +57,27 @@ export async function POST(request: Request) {
   if (fields.some(([key, min, max]) => !text(input[key], min, max)) ||
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(input.contact_email).trim()) ||
       ['business_permit_path', 'moa_path'].some((key) => input[key] != null &&
-        (typeof input[key] !== 'string' || !input[key].startsWith(`${auth.actor.user.id}/reports/`) || input[key].length > 500)))
+        (typeof input[key] !== 'string' || !input[key].startsWith(`${actor.user.id}/reports/`) || input[key].length > 500)))
     return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Check the HTE and branch details, email, and uploaded evidence.' });
 
   // A student already placed cannot ask for another company (one active placement at a time).
-  const { count: activePlacements, error: placementError } = await auth.actor.supabase.from('student_assignments')
-    .select('*', { count: 'exact', head: true }).eq('student_id', auth.actor.studentId).eq('assignment_status', 'active');
+  const { count: activePlacements, error: placementError } = await actor.supabase.from('student_assignments')
+    .select('*', { count: 'exact', head: true }).eq('student_id', actor.studentId).eq('assignment_status', 'active');
   if (placementError) return mobileBffFailure({ status: 503, code: 'SERVER_FAILURE', message: 'Could not check your placement. Try again.' });
   if ((activePlacements ?? 0) > 0) {
-    await removeOwnedEvidence([input.business_permit_path as string | null | undefined, input.moa_path as string | null | undefined], auth.actor.user.id);
+    await removeOwnedEvidence([input.business_permit_path as string | null | undefined, input.moa_path as string | null | undefined], actor.user.id);
     return mobileBffFailure({ status: 409, code: 'DUPLICATE_REQUEST', message: 'You already have an active placement. Ask your coordinator if you need to change it.' });
   }
 
-  if (!await validEvidence(input.business_permit_path as string | null | undefined, auth.actor.user.id) ||
-      !await validEvidence(input.moa_path as string | null | undefined, auth.actor.user.id)) {
-    await removeOwnedEvidence([input.business_permit_path as string | null | undefined, input.moa_path as string | null | undefined], auth.actor.user.id);
+  if (!await validEvidence(input.business_permit_path as string | null | undefined, actor.user.id) ||
+      !await validEvidence(input.moa_path as string | null | undefined, actor.user.id)) {
+    await removeOwnedEvidence([input.business_permit_path as string | null | undefined, input.moa_path as string | null | undefined], actor.user.id);
     return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Uploaded HTE evidence could not be verified. Choose a valid PDF, Word document, or image up to 10 MB.' });
   }
 
-  const { data, error } = await auth.actor.supabase.from('company_requests').insert({
-    student_id: auth.actor.studentId,
-    submitted_by: auth.actor.user.id,
+  const { data, error } = await actor.supabase.from('company_requests').insert({
+    student_id: actor.studentId,
+    submitted_by: actor.user.id,
     requested_company_name: String(input.requested_company_name).trim(),
     company_address: String(input.company_address).trim(),
     contact_person: String(input.contact_person).trim(),
@@ -97,7 +91,7 @@ export async function POST(request: Request) {
     moa_path: (input.moa_path as string | null | undefined) ?? null,
   }).select('request_id, status, created_at').single();
   if (error || !data) {
-    await removeOwnedEvidence([input.business_permit_path as string | null | undefined, input.moa_path as string | null | undefined], auth.actor.user.id);
+    await removeOwnedEvidence([input.business_permit_path as string | null | undefined, input.moa_path as string | null | undefined], actor.user.id);
     return mobileBffFailure({ status: 409, code: 'DUPLICATE_REQUEST', message: 'A pending HTE request already exists or the request could not be saved.' });
   }
   return Response.json({ data, error: null }, { status: 200, headers: { 'Cache-Control': 'no-store' } });

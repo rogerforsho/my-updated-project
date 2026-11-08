@@ -5,6 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 const { TextDecoder } = require('node:util');
+const { mobileBffMock } = require('./mobile-bff-harness.cjs');
 
 const root = path.resolve(__dirname, '..');
 
@@ -235,6 +236,7 @@ test('mobile schedules require all four approved gateway documents before saving
   const fixture = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }], reports: [] } });
   const route = load('apps/web/app/api/mobile/schedule-proposals/route.ts', {
     '@supabase/supabase-js': { createClient: () => fixture.client },
+    '@/src/services/auth/internal': { async authActionLimit() { return null; } },
     '@ojt/shared': { ...load('shared/schedulePolicy.ts'), ...load('shared/gateway.ts'), ...load('shared/courses.ts') },
   }, { NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test' });
   const request = () => new Request('https://portal.test/api/mobile/schedule-proposals', {
@@ -260,6 +262,7 @@ test('students already placed with an active assignment are exempt from the gate
   } });
   const route = load('apps/web/app/api/mobile/schedule-proposals/route.ts', {
     '@supabase/supabase-js': { createClient: () => fixture.client },
+    '@/src/services/auth/internal': { async authActionLimit() { return null; } },
     '@ojt/shared': { ...load('shared/schedulePolicy.ts'), ...load('shared/gateway.ts'), ...load('shared/courses.ts') },
   }, { NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test' });
   const response = await route.POST(new Request('https://portal.test/api/mobile/schedule-proposals', {
@@ -274,10 +277,7 @@ test('completed students get a closed-record response before report upload or su
   const fixture = workflowFixture('Student', { tables: { certificates: [{ student_id: 'student', certificate_id: 'certificate' }] } });
   for (const filename of ['reports/route.ts', 'reports/upload/route.ts']) {
     const route = load('apps/web/app/api/mobile/' + filename, {
-      '@/src/lib/mobile-bff': {
-        async authenticateMobileStudent() { return { actor: { user: { id: 'actor' }, studentId: 'student', supabase: fixture.client }, error: null }; },
-        mobileBffFailure(error) { return Response.json({ error }, { status: error.status }); },
-      },
+      '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'actor' }, studentId: 'student', supabase: fixture.client }),
       '@/src/lib/supabase/service': { getServiceClient: () => fixture.service },
       '@/src/services/auth/internal': { async authActionLimit() { return null; } },
       '@/src/lib/uploadValidation': { validateUploadedBytes: () => ({ data: true, error: null }) },
@@ -299,10 +299,7 @@ test('attendance policy query failures report service unavailability rather than
   });
   const route = load('apps/web/app/api/mobile/attendance/route.ts', {
     '@ojt/shared': { getAttendanceDate: () => '2026-10-19', getPhilippineClock: () => new Date('2026-10-19T08:00:00Z') },
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent() { return { actor: { user: { id: 'actor' }, studentId: 'student', supabase: fixture.client }, error: null }; },
-      mobileBffFailure(error) { return Response.json({ error }, { status: error.status }); },
-    },
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'actor' }, studentId: 'student', supabase: fixture.client }),
     '@/src/lib/supabase/service': { getServiceClient: () => ({ ...fixture.service, storage: { from: () => ({
       async info() { return { data: { size: 1, contentType: 'image/jpeg' }, error: null }; },
       async download() { return { data: new Blob(['x'], { type: 'image/jpeg' }), error: null }; },
@@ -2069,10 +2066,7 @@ test('attendance rejects a date outside the student assignment range before writ
       getPhilippineClock: () => new Date('2026-10-19T09:00:00Z'),
       isWithinGeofence: () => ({ isWithin: true, distanceMeters: 0 }),
     },
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent() { return { actor: { user: { id: 'user' }, studentId: 'student' }, error: null }; },
-      mobileBffFailure(error) { return Response.json({ error: error.code }, { status: error.status }); },
-    },
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'user' }, studentId: 'student' }),
     '@/src/lib/supabase/service': { getServiceClient: () => service },
     '@/src/services/auth/internal': { async authActionLimit() { return null; } },
     '@/src/lib/uploadValidation': { validateUploadedBytes() { return { data: true, error: null }; } },
@@ -2094,10 +2088,7 @@ test('attendance rejects future-dated Time In and Time Out against the server cl
       ...load('shared/attendanceDate.ts'),
       isWithinGeofence: () => ({ isWithin: true, distanceMeters: 0 }),
     },
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent() { return { actor: { user: { id: 'user' }, studentId: 'student' }, error: null }; },
-      mobileBffFailure(error) { return Response.json({ error: error.code }, { status: error.status }); },
-    },
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'user' }, studentId: 'student' }),
     '@/src/lib/supabase/service': { getServiceClient: () => ({
       from() { throw new Error('future attendance must not reach the database'); },
       storage: { from() { throw new Error('future attendance must not reach storage'); } },
@@ -2116,7 +2107,7 @@ test('attendance rejects future-dated Time In and Time Out against the server cl
   ]) {
     const response = await post(body);
     assert.equal(response.status, 400, body.action);
-    assert.equal((await response.json()).error, 'VALIDATION_FAILURE');
+    assert.equal((await response.json()).error.code, 'VALIDATION_FAILURE');
   }
 });
 
@@ -2152,10 +2143,7 @@ test('only a pending automatic Time Out can be replaced with captured offline ev
   const route = load('apps/web/app/api/mobile/attendance/route.ts', {
     '@ojt/shared': { AUTO_TIME_OUT_REASON: reason, getAttendanceDate: () => '2026-10-26',
       getPhilippineClock: date => date, isWithinGeofence: () => ({ isWithin: true, distanceMeters: 0 }) },
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent() { return { actor: { user: { id: 'user' }, studentId: 'student', supabase: client }, error: null }; },
-      mobileBffFailure(error) { return Response.json({ error: error.code }, { status: error.status }); },
-    },
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'user' }, studentId: 'student', supabase: client }),
     '@/src/lib/supabase/service': { getServiceClient: () => client },
     '@/src/services/auth/internal': { async authActionLimit() { return null; } },
     '@/src/lib/uploadValidation': { validateUploadedBytes() { return { data: true, error: null }; } },
@@ -2210,10 +2198,7 @@ test('offline attendance from a closed assignment syncs within its placement dat
       getPhilippineClock: () => new Date('2026-10-19T09:00:00Z'),
       isWithinGeofence: () => ({ isWithin: true, distanceMeters: 0 }),
     },
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent() { return { actor: { user: { id: 'user' }, studentId: 'student', supabase: client }, error: null }; },
-      mobileBffFailure(error) { return Response.json({ error: error.code }, { status: error.status }); },
-    },
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'user' }, studentId: 'student', supabase: client }),
     '@/src/lib/supabase/service': { getServiceClient: () => ({ ...client, storage: { from: () => ({
       async info() { return { data: { size: 1, contentType: 'image/jpeg' }, error: null }; },
       async download() { return { data: { type: 'image/jpeg', async arrayBuffer() { return new ArrayBuffer(1); } }, error: null }; },
@@ -2237,15 +2222,8 @@ test('offline attendance from a closed assignment syncs within its placement dat
 test('student resubmission requires the rejected-student BFF and bounds streamed JSON', async () => {
   let submitted = null;
   const route = load('apps/web/app/api/mobile/registration/resubmit/route.ts', {
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent(_request, status) {
-        assert.equal(status, 'rejected');
-        return { actor: { user: { id: 'student-user' }, studentId: 'student-row' }, error: null };
-      },
-      mobileBffFailure(error) {
-        return Response.json({ data: null, error: { code: error.code } }, { status: error.status });
-      },
-    },
+    // Only a rejected-status account passes the real preamble, so this also pins the required status.
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'student-user' }, studentId: 'student-row', status: 'rejected' }),
     '@/src/lib/supabase/service': { getServiceClient() { throw new Error('POST must not read registration data directly'); } },
     '@/src/services/auth/registration': {
       async resubmitStudentRegistration(userId, input) {
@@ -2471,4 +2449,15 @@ test('Super Admin user list shows each account\'s department and filters by it',
   const ibe = await admin.listAllUsers(1, 20, 'all', 'all', '', 'IBE');
   assert.equal(ibe.error, null);
   assert.deepEqual(ibe.data.users.map(row => row.user_id).sort(), ['co-ibe', 'stu-ibe']);
+});
+
+test('unknown or empty courses have no department and are never treated as IBE', () => {
+  const departments = load('apps/web/src/lib/departments.ts');
+  for (const course of ['BS Nursing', '', null]) {
+    assert.equal(departments.getDepartmentByCourse(course), null);
+    assert.equal(departments.isIBECourse(course), false);
+    assert.equal(departments.getDepartmentFullName(course ?? ''), 'Unknown department');
+  }
+  assert.equal(departments.getDepartmentByCourse('BSCPE'), 'ICS');
+  assert.equal(departments.getDepartmentByCourse('BSA'), 'IBE');
 });
