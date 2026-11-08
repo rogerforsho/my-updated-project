@@ -50,4 +50,20 @@ function mobileBffFor(actor, { limit = null, onLimit } = {}) {
   });
 }
 
-module.exports = { mobileBffFor };
+/** Same as mobileBffFor, but adds a bearer header when a route test's request has none (the actor is fixed anyway). */
+function mobileBffMock(actor, options) {
+  const bff = mobileBffFor(actor, options);
+  const bearer = (request) => {
+    if (request.headers.get('authorization')) return request;
+    const headers = new Headers(request.headers);
+    headers.set('authorization', 'Bearer test');
+    return new Request(request, { headers, duplex: 'half' });
+  };
+  return {
+    ...bff,
+    authenticateMobileStudent: (request, status) => bff.authenticateMobileStudent(bearer(request), status),
+    mobileBffPreamble: (request, opts) => bff.mobileBffPreamble(bearer(request), opts),
+  };
+}
+
+module.exports = { mobileBffFor, mobileBffMock };

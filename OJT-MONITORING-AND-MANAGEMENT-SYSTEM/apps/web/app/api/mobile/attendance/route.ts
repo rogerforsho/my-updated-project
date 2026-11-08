@@ -1,9 +1,7 @@
 import { AUTO_TIME_OUT_REASON, getAttendanceDate, getPhilippineClock } from '@ojt/shared';
-import { authenticateMobileStudent, mobileBffFailure, type MobileSupabaseClient } from '@/src/lib/mobile-bff';
+import { mobileBffFailure, mobileBffPreamble, type MobileSupabaseClient } from '@/src/lib/mobile-bff';
 import { getServiceClient } from '@/src/lib/supabase/service';
-import { authActionLimit } from '@/src/services/auth/internal';
 import { validateUploadedBytes } from '@/src/lib/uploadValidation';
-import { readLimitedJson } from '@/src/lib/read-limited-json';
 import { captureTimeFailure, deriveLocationEvidence, lateStatusFor, timeOutDecision, type AttendancePolicy } from '@/src/lib/attendance-recording';
 
 export const runtime = 'nodejs';
@@ -95,27 +93,14 @@ async function calculateLateStatus(
 }
 
 export async function POST(request: Request) {
-  const auth = await authenticateMobileStudent(request);
-  if (auth.error) return mobileBffFailure(auth.error);
-  const limitError = await authActionLimit('attendance_submit', auth.actor.user.id, 60, 3600, 'user');
-  if (limitError) return mobileBffFailure({
-    status: limitError.code === 'RATE_LIMITED' ? 429 : 503,
-    code: limitError.code,
-    message: limitError.message,
+  const pre = await mobileBffPreamble(request, {
+    limit: { action: 'attendance_submit', max: 60, windowSeconds: 3600 },
+    body: { maxBytes: 16 * 1024, label: 'Attendance request' },
   });
-
-  const parsed = await readLimitedJson(request, 16 * 1024);
-  if (parsed.error === 'too_large')
-    return mobileBffFailure({ status: 413, code: 'VALIDATION_FAILURE', message: 'Attendance request is too large.' });
-  if (parsed.error)
-    return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Attendance request could not be read.' });
-  const body = parsed.data;
-  if (!body || typeof body !== 'object' || Array.isArray(body))
-    return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Invalid attendance request.' });
-
-  const input = body as Record<string, unknown>;
+  if (pre.response) return pre.response;
+  const { actor, body: input } = pre;
   const service = getServiceClient();
-  const studentId = auth.actor.studentId;
+  const studentId = actor.studentId;
   const latitude = input.latitude;
   const longitude = input.longitude;
   const clientReason = input.flag_reason;
@@ -151,7 +136,7 @@ export async function POST(request: Request) {
     if (existing)
       return mobileBffFailure({ status: 409, code: 'DUPLICATE_REQUEST', message: 'You already have an attendance record for today.' });
 
-    const lateStatus = await calculateLateStatus(auth.actor.supabase, policy.companyId, capturedAt);
+    const lateStatus = await calculateLateStatus(actor.supabase, policy.companyId, capturedAt);
     const receivedAt = new Date().toISOString();
     const { data: record, error } = await service.from('attendance').insert({
       student_id: studentId,

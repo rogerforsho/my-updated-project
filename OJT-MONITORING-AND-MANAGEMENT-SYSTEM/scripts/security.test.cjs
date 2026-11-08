@@ -5,6 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 const { TextDecoder } = require('node:util');
+const { mobileBffMock } = require('./mobile-bff-harness.cjs');
 
 const root = path.resolve(__dirname, '..');
 
@@ -273,10 +274,7 @@ test('completed students get a closed-record response before report upload or su
   const fixture = workflowFixture('Student', { tables: { certificates: [{ student_id: 'student', certificate_id: 'certificate' }] } });
   for (const filename of ['reports/route.ts', 'reports/upload/route.ts']) {
     const route = load('apps/web/app/api/mobile/' + filename, {
-      '@/src/lib/mobile-bff': {
-        async authenticateMobileStudent() { return { actor: { user: { id: 'actor' }, studentId: 'student', supabase: fixture.client }, error: null }; },
-        mobileBffFailure(error) { return Response.json({ error }, { status: error.status }); },
-      },
+      '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'actor' }, studentId: 'student', supabase: fixture.client }),
       '@/src/lib/supabase/service': { getServiceClient: () => fixture.service },
       '@/src/services/auth/internal': { async authActionLimit() { return null; } },
       '@/src/lib/uploadValidation': { validateUploadedBytes: () => ({ data: true, error: null }) },
@@ -298,10 +296,7 @@ test('attendance policy query failures report service unavailability rather than
   });
   const route = load('apps/web/app/api/mobile/attendance/route.ts', {
     '@ojt/shared': { getAttendanceDate: () => '2026-10-19', getPhilippineClock: () => new Date('2026-10-19T08:00:00Z') },
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent() { return { actor: { user: { id: 'actor' }, studentId: 'student', supabase: fixture.client }, error: null }; },
-      mobileBffFailure(error) { return Response.json({ error }, { status: error.status }); },
-    },
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'actor' }, studentId: 'student', supabase: fixture.client }),
     '@/src/lib/supabase/service': { getServiceClient: () => ({ ...fixture.service, storage: { from: () => ({
       async info() { return { data: { size: 1, contentType: 'image/jpeg' }, error: null }; },
       async download() { return { data: new Blob(['x'], { type: 'image/jpeg' }), error: null }; },
@@ -2060,10 +2055,7 @@ test('attendance rejects a date outside the student assignment range before writ
       getPhilippineClock: () => new Date('2026-10-19T09:00:00Z'),
       isWithinGeofence: () => ({ isWithin: true, distanceMeters: 0 }),
     },
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent() { return { actor: { user: { id: 'user' }, studentId: 'student' }, error: null }; },
-      mobileBffFailure(error) { return Response.json({ error: error.code }, { status: error.status }); },
-    },
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'user' }, studentId: 'student' }),
     '@/src/lib/supabase/service': { getServiceClient: () => service },
     '@/src/services/auth/internal': { async authActionLimit() { return null; } },
     '@/src/lib/uploadValidation': { validateUploadedBytes() { return { data: true, error: null }; } },
@@ -2085,10 +2077,7 @@ test('attendance rejects future-dated Time In and Time Out against the server cl
       ...load('shared/attendanceDate.ts'),
       isWithinGeofence: () => ({ isWithin: true, distanceMeters: 0 }),
     },
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent() { return { actor: { user: { id: 'user' }, studentId: 'student' }, error: null }; },
-      mobileBffFailure(error) { return Response.json({ error: error.code }, { status: error.status }); },
-    },
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'user' }, studentId: 'student' }),
     '@/src/lib/supabase/service': { getServiceClient: () => ({
       from() { throw new Error('future attendance must not reach the database'); },
       storage: { from() { throw new Error('future attendance must not reach storage'); } },
@@ -2107,7 +2096,7 @@ test('attendance rejects future-dated Time In and Time Out against the server cl
   ]) {
     const response = await post(body);
     assert.equal(response.status, 400, body.action);
-    assert.equal((await response.json()).error, 'VALIDATION_FAILURE');
+    assert.equal((await response.json()).error.code, 'VALIDATION_FAILURE');
   }
 });
 
@@ -2143,10 +2132,7 @@ test('only a pending automatic Time Out can be replaced with captured offline ev
   const route = load('apps/web/app/api/mobile/attendance/route.ts', {
     '@ojt/shared': { AUTO_TIME_OUT_REASON: reason, getAttendanceDate: () => '2026-10-26',
       getPhilippineClock: date => date, isWithinGeofence: () => ({ isWithin: true, distanceMeters: 0 }) },
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent() { return { actor: { user: { id: 'user' }, studentId: 'student', supabase: client }, error: null }; },
-      mobileBffFailure(error) { return Response.json({ error: error.code }, { status: error.status }); },
-    },
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'user' }, studentId: 'student', supabase: client }),
     '@/src/lib/supabase/service': { getServiceClient: () => client },
     '@/src/services/auth/internal': { async authActionLimit() { return null; } },
     '@/src/lib/uploadValidation': { validateUploadedBytes() { return { data: true, error: null }; } },
@@ -2201,10 +2187,7 @@ test('offline attendance from a closed assignment syncs within its placement dat
       getPhilippineClock: () => new Date('2026-10-19T09:00:00Z'),
       isWithinGeofence: () => ({ isWithin: true, distanceMeters: 0 }),
     },
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent() { return { actor: { user: { id: 'user' }, studentId: 'student', supabase: client }, error: null }; },
-      mobileBffFailure(error) { return Response.json({ error: error.code }, { status: error.status }); },
-    },
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'user' }, studentId: 'student', supabase: client }),
     '@/src/lib/supabase/service': { getServiceClient: () => ({ ...client, storage: { from: () => ({
       async info() { return { data: { size: 1, contentType: 'image/jpeg' }, error: null }; },
       async download() { return { data: { type: 'image/jpeg', async arrayBuffer() { return new ArrayBuffer(1); } }, error: null }; },
