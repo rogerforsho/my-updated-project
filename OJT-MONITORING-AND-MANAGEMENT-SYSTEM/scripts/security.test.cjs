@@ -321,7 +321,7 @@ test('attendance policy query failures report service unavailability rather than
 test('mobile report listing exposes certificate completion so completed students cannot open the submission UI', async () => {
   const fixture = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }], certificates: [{ student_id: 'student', certificate_id: 'certificate' }] } });
   const reports = load('apps/mobile/src/services/reports.ts', {
-    '../lib/supabase': { supabase: fixture.client },
+    '../lib/supabase': { supabase: fixture.client }, './supabase': { supabase: fixture.client },
     '../lib/storage': {}, '../lib/webBff': {},
   });
   const response = await reports.listStudentReports();
