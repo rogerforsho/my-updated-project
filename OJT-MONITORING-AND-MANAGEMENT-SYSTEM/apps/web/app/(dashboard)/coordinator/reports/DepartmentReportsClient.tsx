@@ -199,7 +199,7 @@ export default function DepartmentReportsClient({
           <CardContent className="p-5 flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                {activeDept} Enrolled Trainees
+                Enrolled Trainees
               </p>
               <p className="text-2xl font-bold text-slate-900 mt-1">{deptMetrics.total}</p>
               <p className="text-xs text-slate-400 mt-0.5">Active senior cohort</p>
@@ -241,7 +241,7 @@ export default function DepartmentReportsClient({
         <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
           <CardContent className="p-5 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Rendered Hours</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rendered Hours</p>
               <p className="text-2xl font-bold text-slate-900 mt-1">{deptMetrics.hours.toFixed(1)}</p>
               <p className="text-xs text-slate-400 mt-0.5">Verified Industry Hours</p>
             </div>
@@ -568,7 +568,7 @@ export default function DepartmentReportsClient({
                           {s.progress_status === 'completed'
                             ? '🎓 COMPLETED'
                             : s.progress_status === 'in_progress'
-                            ? '⏳ IN PROGRESS'
+                            ? 'IN PROGRESS'
                             : 'NOT STARTED'}
                         </span>
                       </td>
