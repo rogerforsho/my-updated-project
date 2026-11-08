@@ -1,7 +1,6 @@
 'use server';
 
-import { createClient } from '@/src/lib/supabase/server';
-import { departmentScope } from '@/src/lib/department-scope';
+import { getCoordinator } from '@/src/lib/actor';
 import { provisionSupervisor } from '@/src/lib/provision-supervisor';
 import type { AppResult } from '@ojt/shared';
 
@@ -20,20 +19,6 @@ export interface SupervisorWithCompany {
   companies: { company_name: string };
 }
 
-async function assertCoordinator() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { supabase, authorized: false };
-  const { data } = await supabase
-    .from('users')
-    .select('role, account_status')
-    .eq('user_id', user.id)
-    .single();
-  if (data?.role !== 'Coordinator' || data.account_status !== 'active') return { supabase, authorized: false };
-  const scope = await departmentScope(supabase, user.id, data.role);
-  return { supabase, authorized: !scope.error };
-}
-
 function validateSupervisorInput(input: SupervisorInput): string | null {
   if (!input.full_name?.trim()) return 'Full name is required.';
   if (!input.email?.trim()) return 'Email is required.';
@@ -47,7 +32,7 @@ export async function listSupervisors(
   pageSize = 20,
   search = ''
 ): Promise<AppResult<{ supervisors: SupervisorWithCompany[]; total: number }>> {
-  const { supabase, authorized } = await assertCoordinator();
+  const { supabase, authorized } = await getCoordinator();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
   const from = (page - 1) * pageSize;
@@ -105,7 +90,7 @@ export async function createSupervisor(input: SupervisorInput): Promise<AppResul
   const validationError = validateSupervisorInput(input);
   if (validationError) return { data: null, error: { code: 'VALIDATION_FAILURE', message: validationError } };
 
-  const { authorized } = await assertCoordinator();
+  const { authorized } = await getCoordinator();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
   return provisionSupervisor(input);
