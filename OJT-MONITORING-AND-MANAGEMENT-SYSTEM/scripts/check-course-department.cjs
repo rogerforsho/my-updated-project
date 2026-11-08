@@ -33,12 +33,17 @@ async function main() {
     assert.equal(rows[0].d, department, `${course} must map to ${department} in both app and database`);
   }
   // The web classifier (the single app-side rule) must agree with the database, including ambiguous and unknown courses.
-  const { courseDepartment: appDepartment, isICSCourse, isIBECourse } = await import('../apps/web/src/lib/departments.ts');
-  for (const course of ['BSIT', 'BS-CPE', 'BSCpE', 'Computer Science Entrepreneurship', 'Computer Studies', 'BSBA-MKT', 'BSBA-HRM', 'BSA', 'BS Accountancy', 'BSEntrep', 'BS Nursing', '', null, undefined]) {
+  const { courseDepartment: appDepartment, isICSCourse, isIBECourse } = await import('../shared/courses.ts');
+  for (const course of ['BSIT', 'BS-CPE', 'BSCpE', 'BSCPE', 'bsa', 'Computer Science Entrepreneurship', 'Computer Studies', 'BSBA-MKT', 'BSBA-HRM', 'BSA', 'BS Accountancy', 'BSEntrep', 'BS Nursing', '', null, undefined]) {
     const { rows } = await db.query('SELECT public.course_department($1) AS d', [course ?? null]);
     assert.equal(appDepartment(course), rows[0].d, `courseDepartment(${JSON.stringify(course)}) must match the database`);
     assert.equal(isICSCourse(course), rows[0].d === 'ICS', `isICSCourse(${JSON.stringify(course)})`);
     assert.equal(isIBECourse(course), rows[0].d === 'IBE', `isIBECourse(${JSON.stringify(course)})`);
+  }
+  // Unknown or empty courses are denied, never defaulted to a department.
+  for (const course of ['BS Nursing', '', null, undefined]) {
+    assert.equal(appDepartment(course), null, `${JSON.stringify(course)} has no department`);
+    assert.equal(isICSCourse(course) || isIBECourse(course), false);
   }
   console.log('PASS: students must have a course in ICS or IBE; legacy rows survive; app course mapping matches the database.');
 }

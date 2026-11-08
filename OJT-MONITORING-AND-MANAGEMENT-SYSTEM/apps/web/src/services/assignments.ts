@@ -1,7 +1,7 @@
 'use server';
 
-import { createClient } from '@/src/lib/supabase/server';
-import { departmentScope, canManageDepartmentStudent, canManageDepartmentRecord } from '@/src/lib/department-scope';
+import { getCoordinator } from '@/src/lib/actor';
+import { canManageDepartmentStudent, canManageDepartmentRecord } from '@/src/lib/department-scope';
 import { recordAuditEvent } from '@/src/lib/audit';
 import { checkStudentGatewayStatus } from './reports';
 import { GATEWAY_DOCUMENT_SPECS, matchesDoc, practicumWindowError } from '@ojt/shared';
@@ -23,25 +23,6 @@ export interface AssignmentDetail extends DbStudentAssignment {
   supervisors: { position: string; users: { full_name: string; email: string } };
 }
 
-async function assertCoordinator() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { supabase, user: null, role: '', authorized: false, scope: undefined };
-  const { data } = await supabase
-    .from('users')
-    .select('role, account_status')
-    .eq('user_id', user.id)
-    .single();
-  const scope = await departmentScope(supabase, user.id, data?.role ?? '');
-  return {
-    supabase,
-    user,
-    role: data?.role ?? '',
-    scope,
-    authorized: !scope.error && data?.role === 'Coordinator' && data?.account_status === 'active',
-  };
-}
-
 function applyAssignmentSearch(query: any, q?: string) {
   // one table per query: a student number has digits, otherwise match the name
   if (!q) return query;
@@ -55,7 +36,7 @@ function applyAssignmentSearch(query: any, q?: string) {
 export async function listAssignmentGroups(
   search?: string
 ): Promise<AppResult<{ groups: Array<{ company_id: string; company_name: string; count: number; active: number }> }>> {
-  const { supabase, authorized } = await assertCoordinator();
+  const { supabase, authorized } = await getCoordinator();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
   const q = search?.trim().replace(/[%_,()]/g, '');
@@ -83,7 +64,7 @@ export async function listAssignments(
   search?: string,
   companyId?: string
 ): Promise<AppResult<{ assignments: AssignmentDetail[]; total: number }>> {
-  const { supabase, authorized } = await assertCoordinator();
+  const { supabase, authorized } = await getCoordinator();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
   const from = (page - 1) * pageSize;
@@ -123,7 +104,7 @@ export async function createAssignment(input: AssignmentInput): Promise<AppResul
   const windowError = practicumWindowError(input.start_date, input.end_date);
   if (windowError) return { data: null, error: { code: 'VALIDATION_FAILURE', message: windowError } };
 
-  const { supabase, user, role, authorized, scope } = await assertCoordinator();
+  const { supabase, user, role, authorized, scope } = await getCoordinator();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   if (!await canManageDepartmentStudent(supabase, user.id, role, input.student_id, 'student_id', scope))
     return { data: null, error: { code: 'FORBIDDEN', message: 'Student is outside your department.' } };
@@ -203,7 +184,7 @@ export async function updateAssignmentStatus(
 ): Promise<AppResult<null>> {
   if (!assignment_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Assignment ID is required.' } };
 
-  const { supabase, user, role, authorized, scope } = await assertCoordinator();
+  const { supabase, user, role, authorized, scope } = await getCoordinator();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   if (!await canManageDepartmentRecord(supabase, user.id, role, 'student_assignments', 'assignment_id', assignment_id))
     return { data: null, error: { code: 'FORBIDDEN', message: 'Assignment is outside your department.' } };
@@ -235,7 +216,7 @@ export async function updateStudentStatus(
   if (!(['dropped', 'inc', 'terminated'] as StudentStatus[]).includes(status))
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Status must be DROPPED, INC, or TERMINATED.' } };
 
-  const { supabase, user, role, authorized, scope } = await assertCoordinator();
+  const { supabase, user, role, authorized, scope } = await getCoordinator();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   if (!await canManageDepartmentStudent(supabase, user.id, role, student_id, 'student_id', scope))
     return { data: null, error: { code: 'FORBIDDEN', message: 'Student is outside your department.' } };
@@ -270,7 +251,7 @@ export async function reassignStudent(
   new_supervisor_id: string,
   start_date: string
 ): Promise<AppResult<DbStudentAssignment>> {
-  const { supabase, user, role, authorized, scope } = await assertCoordinator();
+  const { supabase, user, role, authorized, scope } = await getCoordinator();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   if (!await canManageDepartmentStudent(supabase, user.id, role, student_id, 'student_id', scope))
     return { data: null, error: { code: 'FORBIDDEN', message: 'Student is outside your department.' } };
@@ -327,7 +308,7 @@ export interface StudentAssignmentOption {
 }
 
 export async function listStudentsForAssignment(): Promise<AppResult<StudentAssignmentOption[]>> {
-  const { supabase, authorized } = await assertCoordinator();
+  const { supabase, authorized } = await getCoordinator();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
   // 1. Fetch active students
@@ -401,7 +382,7 @@ export async function listSupervisorsForCompany(
 ): Promise<AppResult<{ supervisor_id: string; full_name: string; position: string }[]>> {
   if (!company_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Company ID is required.' } };
 
-  const { supabase, authorized } = await assertCoordinator();
+  const { supabase, authorized } = await getCoordinator();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
   const { data, error } = await supabase

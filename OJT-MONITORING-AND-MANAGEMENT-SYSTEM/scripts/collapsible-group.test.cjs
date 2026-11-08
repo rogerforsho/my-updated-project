@@ -12,7 +12,8 @@ test('a search never makes a group header unclickable', () => {
 });
 
 test('each group steps back a page when its last page empties', () => {
-  for (const [n, src] of pages) assert.match(src, /\(page - 1\) \* pageSize >= t\) \{ setPage\(Math\.ceil\(t \/ pageSize\)\)/, n);
+  assert.match(read('apps/web/src/components/ui/ListControls.tsx'), /outOfRangePage\(page, pageSize, t\);\s+if \(back\) \{ setPage\(back\)/);
+  for (const [n, src] of pages) assert.match(src, /usePagedList</, n);
 });
 
 test('header counts and rows share one search filter and one Unspecified label', () => {

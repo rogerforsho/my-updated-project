@@ -6,7 +6,7 @@ import Button from '@/src/components/ui/Button';
 import { Badge } from '@/src/components/ui/Badge';
 import { Skeleton } from '@/src/components/ui/Skeleton';
 import { Search, Users } from '@/src/components/ui/Icons';
-import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
+import { PagerBar, usePagedList } from '@/src/components/ui/ListControls';
 import { RowMenu } from '@/src/components/ui/RowMenu';
 import Modal from '@/src/components/ui/Modal';
 import { CollapsibleGroup, useGroupFold } from '@/src/components/ui/CollapsibleGroup';
@@ -25,39 +25,15 @@ type ActiveStudent = {
 };
 
 function GroupRows({ course, search, onReset }: { course: string; search: string; onReset: (s: ActiveStudent) => void }) {
-  const [students, setStudents] = useState<ActiveStudent[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, changePageSize] = usePageSize();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => { setPage(1); }, [search]);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError('');
-    listActiveStudents(page, pageSize, search, course).then((result) => {
-      if (!active) return;
-      if (result.error) setError(result.error.message);
-      else {
-        const t = result.data?.total ?? 0;
-        if (t > 0 && (page - 1) * pageSize >= t) { setPage(Math.ceil(t / pageSize)); return; }
-        setStudents(result.data?.students ?? []); setTotal(t);
-      }
-      setLoading(false);
-    }).catch(() => {
-      if (!active) return;
-      setError('Failed to load students.');
-      setLoading(false);
-    });
-    return () => { active = false; };
-  }, [page, pageSize, search, course]);
+  const { items: students, page, setPage, pageSize, loading, error, totalPages, total, setPageSize } = usePagedList<ActiveStudent>(
+    (p, size) => listActiveStudents(p, size, search, course).then((r) => ({ error: r.error, data: r.data && { items: r.data.students, total: r.data.total } })),
+    [search, course],
+    search,
+    'Failed to load students.',
+  );
 
   if (loading && students.length === 0) return <div className="p-5 space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full rounded" />)}</div>;
   if (error) return <div className="p-4"><Alert type="error" message={error} /></div>;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   return (
     <>
       <div className="overflow-x-auto">
@@ -116,7 +92,7 @@ function GroupRows({ course, search, onReset }: { course: string; search: string
           </tbody>
         </table>
       </div>
-      <div className="p-3"><PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={(n) => { changePageSize(n); setPage(1); }} /></div>
+      <div className="p-3"><PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize} /></div>
     </>
   );
 }

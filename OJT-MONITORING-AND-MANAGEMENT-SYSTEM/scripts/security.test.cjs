@@ -197,20 +197,21 @@ function workflowFixture(role = 'Admin', options = {}) {
     return { data: {}, error: null };
   } } };
   const modules = {};
+  const trustedActor = load('apps/web/src/lib/trusted-actor.ts', { 'server-only': {}, '@/src/lib/supabase/server': { createClient: async () => client } });
+  const departmentScopeModule = load('apps/web/src/lib/department-scope.ts', { 'server-only': {} });
   function module(name) {
     return modules[name] ||= load(`apps/web/src/services/${name}.ts`, {
       '@/src/lib/supabase/server': { createClient: async () => client },
-      '@/src/lib/trusted-actor': { async getTrustedActor() {
-        const { data: { user } } = await client.auth.getUser();
-        const profile = user ? (tables.users || []).find(row => row.user_id === user.id) || null : null;
-        return profile?.account_status === 'active'
-          ? { supabase: client, user, profile }
-          : { supabase: client, user: null, profile: null };
-      } },
+      '@/src/lib/trusted-actor': trustedActor,
+      '@/src/lib/actor': load('apps/web/src/lib/actor.ts', {
+        'server-only': {}, '@/src/lib/trusted-actor': trustedActor,
+        '@/src/lib/department-scope': departmentScopeModule,
+        '@/src/lib/actor-access': load('apps/web/src/lib/actor-access.ts'),
+      }),
       '@/src/lib/supabase/service': { getServiceClient: () => { serviceCalls++; return service; } },
       '@/src/lib/supabase/public-url': load('apps/web/src/lib/supabase/public-url.ts'),
       '@/src/lib/departments': load('apps/web/src/lib/departments.ts'),
-      '@/src/lib/department-scope': load('apps/web/src/lib/department-scope.ts', { 'server-only': {} }),
+      '@/src/lib/department-scope': departmentScopeModule,
       '@/src/lib/email/send-account-status': { sendAccountStatusEmail: async () => { emailCount++; return { success: true }; } },
       '@/src/lib/audit': { recordAuditEvent: async input => { events.push(input); } },
       './reports': { checkStudentGatewayStatus: async () => ({ isCleared: true, approvedCount: 5, missing: [] }) },
@@ -318,7 +319,7 @@ test('attendance policy query failures report service unavailability rather than
 test('mobile report listing exposes certificate completion so completed students cannot open the submission UI', async () => {
   const fixture = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }], certificates: [{ student_id: 'student', certificate_id: 'certificate' }] } });
   const reports = load('apps/mobile/src/services/reports.ts', {
-    '../lib/supabase': { supabase: fixture.client },
+    '../lib/supabase': { supabase: fixture.client }, './supabase': { supabase: fixture.client },
     '../lib/storage': {}, '../lib/webBff': {},
   });
   const response = await reports.listStudentReports();
@@ -1808,7 +1809,11 @@ test('supervisor onboarding sends a setup invitation without creating a password
   const supervisors = load('apps/web/src/services/supervisors.ts', {
     '@/src/lib/supabase/server': { createClient: async () => supabase },
     '@/src/lib/supabase/service': { getServiceClient: () => service },
-    '@/src/lib/department-scope': { async departmentScope() { return { error: null }; } },
+    '@/src/lib/actor': load('apps/web/src/lib/actor.ts', {
+      'server-only': {}, '@/src/lib/actor-access': load('apps/web/src/lib/actor-access.ts'),
+      '@/src/lib/trusted-actor': { async getTrustedActor() { return { supabase, user: { id: 'coordinator-1' }, profile: { role: 'Coordinator' } }; } },
+      '@/src/lib/department-scope': { async departmentScope() { return { error: null }; } },
+    }),
   }, { NEXT_PUBLIC_APP_URL: 'https://portal.test' });
   const result = await supervisors.createSupervisor({
     full_name: 'Test Supervisor', email: 'supervisor@example.test',
@@ -1848,7 +1853,11 @@ test('supervisor onboarding rolls back only the newly invited account when profi
   const supervisors = load('apps/web/src/services/supervisors.ts', {
     '@/src/lib/supabase/server': { createClient: async () => supabase },
     '@/src/lib/supabase/service': { getServiceClient: () => service },
-    '@/src/lib/department-scope': { async departmentScope() { return { error: null }; } },
+    '@/src/lib/actor': load('apps/web/src/lib/actor.ts', {
+      'server-only': {}, '@/src/lib/actor-access': load('apps/web/src/lib/actor-access.ts'),
+      '@/src/lib/trusted-actor': { async getTrustedActor() { return { supabase, user: { id: 'coordinator-1' }, profile: { role: 'Coordinator' } }; } },
+      '@/src/lib/department-scope': { async departmentScope() { return { error: null }; } },
+    }),
   }, { NEXT_PUBLIC_APP_URL: 'https://portal.test' });
   const result = await supervisors.createSupervisor({
     full_name: 'Test Supervisor', email: 'supervisor@example.test',
@@ -2440,4 +2449,15 @@ test('Super Admin user list shows each account\'s department and filters by it',
   const ibe = await admin.listAllUsers(1, 20, 'all', 'all', '', 'IBE');
   assert.equal(ibe.error, null);
   assert.deepEqual(ibe.data.users.map(row => row.user_id).sort(), ['co-ibe', 'stu-ibe']);
+});
+
+test('unknown or empty courses have no department and are never treated as IBE', () => {
+  const departments = load('apps/web/src/lib/departments.ts');
+  for (const course of ['BS Nursing', '', null]) {
+    assert.equal(departments.getDepartmentByCourse(course), null);
+    assert.equal(departments.isIBECourse(course), false);
+    assert.equal(departments.getDepartmentFullName(course ?? ''), 'Unknown department');
+  }
+  assert.equal(departments.getDepartmentByCourse('BSCPE'), 'ICS');
+  assert.equal(departments.getDepartmentByCourse('BSA'), 'IBE');
 });

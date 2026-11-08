@@ -17,7 +17,7 @@ import {
 } from '@/src/services/reports';
 import { CollapsibleGroup, useGroupFold } from '@/src/components/ui/CollapsibleGroup';
 import { getSignedDocumentUrl } from '@/src/services/storage';
-import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
+import { PagerBar, usePageSize, usePagedList } from '@/src/components/ui/ListControls';
 import { GATEWAY_DOCUMENT_SPECS, isCoordinatorReviewType, SUPERVISOR_REVIEW_REPORT_TYPES } from '@ojt/shared';
 
 
@@ -26,37 +26,15 @@ function ReportGroupRows({ status, refreshKey, openingDocId, onOpen, onReview }:
   onOpen: (filePath: string, reportId: string) => void;
   onReview: (report: ReportWithStudent) => void;
 }) {
-  const [reports, setReports] = useState<ReportWithStudent[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, changePageSize] = usePageSize();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError('');
-    listReportsForCoordinator(page, pageSize, status).then((res) => {
-      if (!active) return;
-      if (res.error) setError(res.error.message);
-      else {
-        const t = res.data!.total;
-        if (t > 0 && (page - 1) * pageSize >= t) { setPage(Math.ceil(t / pageSize)); return; }
-        setReports(res.data!.reports); setTotal(t);
-      }
-      setLoading(false);
-    }).catch(() => {
-      if (!active) return;
-      setError('Failed to load submissions.');
-      setLoading(false);
-    });
-    return () => { active = false; };
-  }, [page, pageSize, status, refreshKey]);
+  const { items: reports, page, setPage, pageSize, loading, error, totalPages, total, setPageSize } = usePagedList<ReportWithStudent>(
+    (p, size) => listReportsForCoordinator(p, size, status).then((r) => ({ error: r.error, data: r.data && { items: r.data.reports, total: r.data.total } })),
+    [status, refreshKey],
+    null,
+    'Failed to load submissions.',
+  );
 
   if (loading && reports.length === 0) return <div className="flex items-center justify-center py-10 text-slate-400 text-sm">Loading submissions...</div>;
   if (error) return <div className="p-4"><Alert type="error" message={error} /></div>;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   return (
     <>
       <div className="overflow-x-auto">
@@ -138,7 +116,7 @@ function ReportGroupRows({ status, refreshKey, openingDocId, onOpen, onReview }:
           </tbody>
         </table>
       </div>
-      <div className="p-3"><PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={(n) => { changePageSize(n); setPage(1); }} /></div>
+      <div className="p-3"><PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize} /></div>
     </>
   );
 }
