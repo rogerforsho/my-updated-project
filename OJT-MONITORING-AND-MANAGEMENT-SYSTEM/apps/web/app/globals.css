@@ -236,3 +236,7 @@ textarea,
 /* Department themes for Coordinators with a department grant: ICS orange, IBE blue. Super Admin and Supervisor stay on the default green. */
 [data-dept='ICS'] { --cdm-dark: #3A1D0A; --cdm-green: #B45309; --cdm-green-light: #C2570C; --cdm-olive: #B45309; }
 [data-dept='IBE'] { --cdm-dark: #0B2447; --cdm-green: #1D4ED8; --cdm-green-light: #2563EB; --cdm-olive: #1D4ED8; }
+
+/* Balanced headline wrapping; aligned digits in tables. */
+h1, h2, h3 { text-wrap: balance; }
+td, th { font-variant-numeric: tabular-nums; }
