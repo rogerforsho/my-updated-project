@@ -1,5 +1,6 @@
 'use client';
 
+import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Alert from '@/src/components/ui/Alert';
 import Button from '@/src/components/ui/Button';
@@ -223,7 +224,18 @@ export default function CoordinatorApprovalsPage() {
 
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-slate-400 text-sm">Loading pending students...</div>
+          <div className="divide-y divide-slate-100" aria-busy="true" aria-label="Loading pending students">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-4 p-4">
+                <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-3.5 w-1/3 rounded" />
+                  <Skeleton className="h-3 w-1/2 rounded" />
+                </div>
+                <Skeleton className="h-8 w-24 rounded-xl" />
+              </div>
+            ))}
+          </div>
         ) : error ? (
           <div className="p-8 text-center"><Button variant="outline" onClick={() => load(page)}>Retry loading registrations</Button></div>
         ) : filteredStudents.length === 0 ? (

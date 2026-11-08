@@ -159,7 +159,7 @@ export default async function DashboardPage() {
       {user.role === 'Coordinator' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { href: '/coordinator/approvals', label: 'Pending Registrations', value: stats.pendingApprovals, note: 'Review queue →', Icon: UserCheck, tone: 'text-amber-600 dark:text-amber-400', alert: stats.pendingApprovals > 0 },
+            { href: '/coordinator/approvals', label: 'Pending Approvals', value: stats.pendingApprovals, note: 'Review queue →', Icon: UserCheck, tone: 'text-amber-600 dark:text-amber-400', alert: stats.pendingApprovals > 0 },
             { href: '/coordinator/students', label: 'Active Trainees', value: stats.activeStudents, note: 'Deployed across HTEs', Icon: Users, tone: 'text-slate-900 dark:text-white', alert: false },
             { href: '/coordinator/companies', label: 'Partner Companies', value: stats.totalCompanies, note: 'Active establishments', Icon: Building2, tone: 'text-slate-900 dark:text-white', alert: false },
             { href: '/coordinator/progress', label: 'Low Progress Alert', value: stats.atRiskCount, note: '< 100 hrs rendered', Icon: AlertTriangle, tone: stats.atRiskCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white', alert: stats.atRiskCount > 0 },

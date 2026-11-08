@@ -83,9 +83,6 @@ export default function CampusBulletin({ announcements = [] }: Props) {
             <p className="text-xs text-slate-500 dark:text-slate-400">Institutional Announcements</p>
           </div>
         </div>
-        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 uppercase tracking-wider">
-          Notice Board
-        </span>
       </div>
 
       {/* Active Unread Announcements */}
