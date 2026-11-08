@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { requireStudent } from '../lib/studentIdentity';
 import type { AppResult, DbEvaluation, DbEvaluationAppeal } from '@ojt/shared';
 
 export type StudentEvaluationRecord = DbEvaluation & {
@@ -17,11 +18,9 @@ export async function listOwnEvaluations(): Promise<AppResult<{
   evaluations: StudentEvaluationRecord[];
   completion: StudentCompletionRecord | null;
 }>> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { data: null, error: { code: 'UNAUTHORIZED', message: 'Sign in again to view evaluations.' } };
-  const { data: student, error: studentError } = await supabase.from('students')
-    .select('student_id').eq('user_id', user.id).maybeSingle();
-  if (studentError || !student) return { data: null, error: { code: 'NOT_FOUND', message: 'Student profile not found.' } };
+  const who = await requireStudent('Sign in again to view evaluations.');
+  if (!who.data) return { data: null, error: who.error };
+  const student = who.data;
   const [{ data: grade, error: gradeError }, { data: certificate, error: certificateError }] = await Promise.all([
     supabase.from('ojt_final_grades').select('final_grade, recorded_at').eq('student_id', student.student_id).maybeSingle(),
     supabase.from('certificates').select('finalized_at, status').eq('student_id', student.student_id).maybeSingle(),
@@ -67,15 +66,13 @@ export async function submitOwnEvaluationAppeal(input: {
   const evidence = input.supporting_details?.trim() || null;
   if (!input.evaluation_id || !reason || reason.length < 20 || reason.length > 3000 || (evidence && evidence.length > 3000))
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Explain the basis for your appeal in 20 to 3,000 characters.' } };
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { data: null, error: { code: 'UNAUTHORIZED', message: 'Sign in again before submitting an appeal.' } };
-  const { data: student, error: studentError } = await supabase.from('students')
-    .select('student_id').eq('user_id', user.id).maybeSingle();
-  if (studentError || !student) return { data: null, error: { code: 'NOT_FOUND', message: 'Student profile not found.' } };
+  const who = await requireStudent('Sign in again before submitting an appeal.');
+  if (!who.data) return { data: null, error: who.error };
+  const student = who.data;
   const { error } = await supabase.from('evaluation_appeals').insert({
     evaluation_id: input.evaluation_id,
     student_id: student.student_id,
-    submitted_by: user.id,
+    submitted_by: student.user_id,
     appeal_reason: reason,
     supporting_details: evidence,
   });

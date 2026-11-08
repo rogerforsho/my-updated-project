@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { requireStudent } from '../lib/studentIdentity';
 import { validateSchedulePolicy } from '@ojt/shared';
 import type { AppResult, DbPracticumSchedule, WorkModality } from '@ojt/shared';
 import { postWebBff } from '../lib/webBff';
@@ -36,16 +37,9 @@ export async function fetchCompaniesList(): Promise<AppResult<Array<{ company_id
 
 export async function fetchStudentScheduleProposal(): Promise<AppResult<DbPracticumSchedule | null>> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { data: null, error: { code: 'UNAUTHORIZED', message: 'Not logged in.' } };
-
-    const { data: student } = await supabase
-      .from('students')
-      .select('student_id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!student) return { data: null, error: { code: 'NOT_FOUND', message: 'Student not found.' } };
+    const who = await requireStudent('Not logged in.', 'Student not found.');
+    if (!who.data) return { data: null, error: who.error };
+    const student = who.data;
 
     const { data, error } = await supabase
       .from('practicum_schedules')
