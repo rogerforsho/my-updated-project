@@ -79,3 +79,7 @@ _Avoid_: OJT Staff–Supervisor pair
 **Conversation**:
 The single ongoing private message thread shared by one eligible OJT Coordinator–Supervisor pair. It remains available as read-only history while the pair has no active matching placement.
 _Avoid_: Trainee-specific chat
+
+**Collapsed Group**:
+A titled group of related records on an OJT Coordinator screen that can be folded down to its header and expanded again. Folding only hides the records from view; it never removes or changes them.
+_Avoid_: Archive, hide, delete (those imply the records are gone or changed)

@@ -9,15 +9,135 @@ import {
   getGatewayComplianceSummary,
   sendRequirementReminder,
   listReportsForCoordinator,
+  listReportGroups,
   reviewReport,
   type ReportWithStudent,
   type StudentGatewayStatus,
   type GatewayComplianceSummary,
 } from '@/src/services/reports';
+import { CollapsibleGroup, useGroupFold } from '@/src/components/ui/CollapsibleGroup';
 import { getSignedDocumentUrl } from '@/src/services/storage';
 import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
 import { GATEWAY_DOCUMENT_SPECS, isCoordinatorReviewType, SUPERVISOR_REVIEW_REPORT_TYPES } from '@ojt/shared';
 
+
+function ReportGroupRows({ status, refreshKey, openingDocId, onOpen, onReview }: {
+  status: string; refreshKey: number; openingDocId: string | null;
+  onOpen: (filePath: string, reportId: string) => void;
+  onReview: (report: ReportWithStudent) => void;
+}) {
+  const [reports, setReports] = useState<ReportWithStudent[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, changePageSize] = usePageSize();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    listReportsForCoordinator(page, pageSize, status).then((res) => {
+      if (!active) return;
+      if (res.error) setError(res.error.message);
+      else { setReports(res.data!.reports); setTotal(res.data!.total); }
+      setLoading(false);
+    }).catch(() => {
+      if (!active) return;
+      setError('Failed to load submissions.');
+      setLoading(false);
+    });
+    return () => { active = false; };
+  }, [page, pageSize, status, refreshKey]);
+
+  if (loading) return <div className="flex items-center justify-center py-10 text-slate-400 text-sm">Loading submissions...</div>;
+  if (error) return <div className="p-4"><Alert type="error" message={error} /></div>;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  return (
+    <>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="border-b border-slate-200/80 bg-slate-50/80 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <tr>
+              <th className="text-left px-5 py-3.5">Student Trainee</th>
+              <th className="text-left px-5 py-3.5">Document Requirement</th>
+              <th className="text-left px-5 py-3.5">Document File</th>
+              <th className="text-left px-5 py-3.5">Supervisor Decision / Notes</th>
+              <th className="text-left px-5 py-3.5">Workflow Status</th>
+              <th className="text-right px-5 py-3.5">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {reports.map(r => (
+              <tr key={r.report_id} className="hover:bg-slate-50/60 transition-colors">
+                <td className="px-5 py-4">
+                  <p className="font-bold text-slate-900">{r.students?.users?.full_name}</p>
+                  <p className="text-xs text-slate-500 font-mono tabular-nums mt-0.5">
+                    {r.students?.student_number} • {r.students?.course}
+                  </p>
+                </td>
+                <td className="px-5 py-4">
+                  <span className="font-semibold text-slate-800 capitalize">
+                    {r.report_type.replace(/_/g, ' ')}
+                  </span>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Submitted {new Date(r.submission_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </p>
+                  {r.remarks && (
+                    <p className="text-xs text-slate-600 bg-slate-50 p-1.5 rounded mt-1 border border-slate-100">
+                      <span className="font-bold text-slate-500">Student Note:</span> {r.remarks}
+                    </p>
+                  )}
+                </td>
+                <td className="px-5 py-4">
+                  <button
+                    onClick={() => onOpen(r.file_path, r.report_id)}
+                    disabled={openingDocId === r.report_id}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-[#0A3824] border border-emerald-200 hover:bg-emerald-100 text-xs font-bold transition-all cursor-pointer"
+                  >
+                    {openingDocId === r.report_id ? 'Opening...' : '📄 View Document'}
+                  </button>
+                </td>
+                <td className="px-5 py-4 text-xs">
+                  {r.supervisor_feedback || r.supervisor_decision ? (
+                    <div className="bg-emerald-50/70 border border-emerald-200 p-2 rounded-lg max-w-xs">
+                      {r.supervisor_decision && <p className="font-bold uppercase text-emerald-900">{r.supervisor_decision}</p>}
+                      <p className="text-emerald-900 font-semibold">{r.supervisor_feedback}</p>
+                      <span className="text-xs text-emerald-700 block mt-1">
+                        Decision recorded {r.supervisor_decided_at ? new Date(r.supervisor_decided_at).toLocaleDateString() : ''}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-slate-400 italic">No supervisor remarks</span>
+                  )}
+                </td>
+                <td className="px-5 py-4">
+                  <Badge className={`text-xs font-bold ${
+                    (r.supervisor_decision || r.status) === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                    (r.supervisor_decision || r.status) === 'rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                    'bg-amber-50 text-amber-700 border-amber-200'
+                  }`}>
+                    {(r.supervisor_decision || r.status).replace(/_/g, ' ').toUpperCase()}
+                  </Badge>
+                </td>
+                <td className="px-5 py-4 text-right">
+                  {isCoordinatorReviewType(r.report_type) ? <Button
+                    variant="ghost"
+                    onClick={() => onReview(r)}
+                    className="text-xs font-bold text-[#0A3824] hover:bg-emerald-50 cursor-pointer"
+                  >
+                    Review gateway document
+                  </Button> : <span className="text-xs text-slate-500">{r.report_type.toLowerCase().includes('incident') ? 'Coordinator follow-up' : SUPERVISOR_REVIEW_REPORT_TYPES.some(type => type.toLowerCase() === r.report_type.trim().toLowerCase()) ? 'Supervisor review' : 'Progress tracking'}</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="p-3"><PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={(n) => { changePageSize(n); setPage(1); }} /></div>
+    </>
+  );
+}
 
 export default function CoordinatorSubmissionsPage() {
   // Top-level tab: 'compliance' (Who needs requirements) vs 'feed' (Document review stream)
@@ -31,18 +151,17 @@ export default function CoordinatorSubmissionsPage() {
   const [courseFilter, setCourseFilter] = useState<string>('all');
   const [rosterPage, setRosterPage] = useState(1);
   const [pageSize, changePageSize] = usePageSize();
-  const setPageSize = (n: number) => { changePageSize(n); setRosterPage(1); setReportPage(1); };
+  const setPageSize = (n: number) => { changePageSize(n); setRosterPage(1); };
   useEffect(() => { setRosterPage(1); }, [complianceSearch, courseFilter, complianceFilter]);
   const [inspectingStudent, setInspectingStudent] = useState<StudentGatewayStatus | null>(null);
   const [remindingStudentId, setRemindingStudentId] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   // Document Feed State
-  const [reports, setReports] = useState<ReportWithStudent[]>([]);
-  const [totalReports, setTotalReports] = useState(0);
-  const [reportPage, setReportPage] = useState(1);
+  const [reportGroups, setReportGroups] = useState<Array<{ status: string; count: number }>>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [loadingReports, setLoadingReports] = useState(true);
-  const [feedStatusFilter, setFeedStatusFilter] = useState<'all' | 'submitted' | 'approved' | 'rejected'>('all');
+  const fold = useGroupFold('coordinator-submissions-fold');
   const [reviewingReport, setReviewingReport] = useState<ReportWithStudent | null>(null);
   const [reviewRemarks, setReviewRemarks] = useState('');
   const [submittingAction, setSubmittingAction] = useState(false);
@@ -63,17 +182,18 @@ export default function CoordinatorSubmissionsPage() {
   }, []);
 
   // ─── Load Document Feed Data ───────────────────────────────────────────────
-  const loadReports = useCallback(async (p: number) => {
+  // Reloads the status headers (true counts) and tells any open group to refetch its rows.
+  const loadReports = useCallback(async () => {
     setLoadingReports(true);
-    const res = await listReportsForCoordinator(p, pageSize, feedStatusFilter);
+    const res = await listReportGroups();
     setLoadingReports(false);
     if (res.error) {
       setError(res.error.message);
       return;
     }
-    setReports(res.data!.reports);
-    setTotalReports(res.data!.total);
-  }, [feedStatusFilter, pageSize]);
+    setReportGroups(res.data!.groups);
+    setRefreshKey((k) => k + 1);
+  }, []);
 
   useEffect(() => {
     loadCompliance();
@@ -81,9 +201,9 @@ export default function CoordinatorSubmissionsPage() {
 
   useEffect(() => {
     if (activeTab === 'feed') {
-      loadReports(reportPage);
+      loadReports();
     }
-  }, [activeTab, reportPage, loadReports]);
+  }, [activeTab, loadReports]);
 
   // ─── Document Preview Handler ──────────────────────────────────────────────
   async function handleOpenDocument(filePath: string, reportId: string) {
@@ -112,7 +232,7 @@ export default function CoordinatorSubmissionsPage() {
     setSuccessToast(`Submission successfully marked as ${status}.`);
     setTimeout(() => setSuccessToast(null), 4000);
     // Refresh both views
-    loadReports(reportPage);
+    loadReports();
     loadCompliance();
   }
 
@@ -170,9 +290,8 @@ export default function CoordinatorSubmissionsPage() {
   }, [complianceData, complianceSearch, courseFilter, complianceFilter]);
 
   // ─── Filtered Document Feed ────────────────────────────────────────────────
-  const filteredReports = reports;
-
-  const totalPages = Math.max(1, Math.ceil(totalReports / pageSize));
+  const totalReports = reportGroups.reduce((n, g) => n + g.count, 0);
+  const reportStatuses = reportGroups.map((g) => g.status);
   // shortcut: roster is paged client-side over the full compliance summary, move server-side past a few thousand trainees
 
 
@@ -566,126 +685,51 @@ export default function CoordinatorSubmissionsPage() {
       {/* ═══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'feed' && (
         <div className="space-y-6">
-          {/* Status Filter Buttons */}
           <div className="flex items-center justify-between gap-4">
             <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">
-              Submitted Documents ({filteredReports.length} Shown)
+              Submitted Documents ({totalReports})
             </p>
-            <div className="flex items-center gap-2">
-              {(['all', 'submitted', 'approved', 'rejected'] as const).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => { setFeedStatusFilter(tab); setReportPage(1); }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer ${
-                    feedStatusFilter === tab
-                      ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] shadow-sm'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  {tab === 'all' ? 'All Submissions' : tab}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-            {loadingReports ? (
-              <div className="flex items-center justify-center py-20 text-slate-400 text-sm">
-                Loading submissions...
-              </div>
-            ) : filteredReports.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                <span className="text-4xl mb-3">📁</span>
-                <p className="text-sm font-semibold text-slate-700">No submissions found</p>
-                <p className="text-xs text-slate-400 mt-1">No documents match the current filter.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="border-b border-slate-200/80 bg-slate-50/80 text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                    <tr>
-                      <th className="text-left px-5 py-3.5">Student Trainee</th>
-                      <th className="text-left px-5 py-3.5">Document Requirement</th>
-                      <th className="text-left px-5 py-3.5">Document File</th>
-                      <th className="text-left px-5 py-3.5">Supervisor Decision / Notes</th>
-                      <th className="text-left px-5 py-3.5">Workflow Status</th>
-                      <th className="text-right px-5 py-3.5">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredReports.map(r => (
-                      <tr key={r.report_id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="px-5 py-4">
-                          <p className="font-bold text-slate-900">{r.students?.users?.full_name}</p>
-                          <p className="text-xs text-slate-500 font-mono tabular-nums mt-0.5">
-                            {r.students?.student_number} • {r.students?.course}
-                          </p>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className="font-semibold text-slate-800 capitalize">
-                            {r.report_type.replace(/_/g, ' ')}
-                          </span>
-                          <p className="text-xs text-slate-400 mt-0.5">
-                            Submitted {new Date(r.submission_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </p>
-                          {r.remarks && (
-                            <p className="text-xs text-slate-600 bg-slate-50 p-1.5 rounded mt-1 border border-slate-100">
-                              <span className="font-bold text-slate-500">Student Note:</span> {r.remarks}
-                            </p>
-                          )}
-                        </td>
-                        <td className="px-5 py-4">
-                          <button
-                            onClick={() => handleOpenDocument(r.file_path, r.report_id)}
-                            disabled={openingDocId === r.report_id}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-[#0A3824] border border-emerald-200 hover:bg-emerald-100 text-xs font-bold transition-all cursor-pointer"
-                          >
-                            {openingDocId === r.report_id ? 'Opening...' : '📄 View Document'}
-                          </button>
-                        </td>
-                        <td className="px-5 py-4 text-xs">
-                          {r.supervisor_feedback || r.supervisor_decision ? (
-                            <div className="bg-emerald-50/70 border border-emerald-200 p-2 rounded-lg max-w-xs">
-                              {r.supervisor_decision && <p className="font-bold uppercase text-emerald-900">{r.supervisor_decision}</p>}
-                              <p className="text-emerald-900 font-semibold">{r.supervisor_feedback}</p>
-                              <span className="text-xs text-emerald-700 block mt-1">
-                                Decision recorded {r.supervisor_decided_at ? new Date(r.supervisor_decided_at).toLocaleDateString() : ''}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-slate-400 italic">No supervisor remarks</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-4">
-                          <Badge className={`text-xs font-bold ${
-                            (r.supervisor_decision || r.status) === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                            (r.supervisor_decision || r.status) === 'rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                            'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}>
-                            {(r.supervisor_decision || r.status).replace(/_/g, ' ').toUpperCase()}
-                          </Badge>
-                        </td>
-                        <td className="px-5 py-4 text-right">
-                          {isCoordinatorReviewType(r.report_type) ? <Button
-                            variant="ghost"
-                            onClick={() => {
-                              setReviewingReport(r);
-                              setReviewRemarks(r.remarks || '');
-                            }}
-                            className="text-xs font-bold text-[#0A3824] hover:bg-emerald-50 cursor-pointer"
-                          >
-                            Review gateway document
-                          </Button> : <span className="text-xs text-slate-500">{r.report_type.toLowerCase().includes('incident') ? 'Coordinator follow-up' : SUPERVISOR_REVIEW_REPORT_TYPES.some(type => type.toLowerCase() === r.report_type.trim().toLowerCase()) ? 'Supervisor review' : 'Progress tracking'}</span>}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {reportGroups.length > 1 && (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => fold.setAll(reportStatuses, true)}>Expand all</Button>
+                <Button variant="outline" onClick={() => fold.setAll(reportStatuses, false)}>Collapse all</Button>
               </div>
             )}
           </div>
 
-          <div className="mt-4"><PagerBar page={reportPage} totalPages={totalPages} total={totalReports} setPage={setReportPage} pageSize={pageSize} setPageSize={setPageSize} /></div>
+          {loadingReports && reportGroups.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-center py-20 text-slate-400 text-sm">
+              Loading submissions...
+            </div>
+          ) : reportGroups.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm flex flex-col items-center justify-center py-20 text-slate-400">
+              <span className="text-4xl mb-3">📁</span>
+              <p className="text-sm font-semibold text-slate-700">No submissions found</p>
+              <p className="text-xs text-slate-400 mt-1">No documents have been submitted yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {reportGroups.map((g) => (
+                <CollapsibleGroup
+                  key={g.status}
+                  title={g.status.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())}
+                  summary={`${g.count} ${g.count === 1 ? 'document' : 'documents'}`}
+                  badge={g.status === 'submitted' ? <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200">{g.count} to review</span> : undefined}
+                  // Only documents waiting for review start open; the rest stay folded until opened.
+                  open={fold.isOpen(g.status, g.status === 'submitted')}
+                  onToggle={() => fold.toggle(g.status, g.status === 'submitted')}
+                >
+                  <ReportGroupRows
+                    status={g.status}
+                    refreshKey={refreshKey}
+                    openingDocId={openingDocId}
+                    onOpen={handleOpenDocument}
+                    onReview={(r) => { setReviewingReport(r); setReviewRemarks(r.remarks || ''); }}
+                  />
+                </CollapsibleGroup>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

@@ -7,10 +7,11 @@ import Badge from '@/src/components/ui/Badge';
 import Modal from '@/src/components/ui/Modal';
 import Input from '@/src/components/ui/Input';
 import {
-  listAssignments, createAssignment, updateAssignmentStatus, updateStudentStatus,
+  listAssignments, listAssignmentGroups, createAssignment, updateAssignmentStatus, updateStudentStatus,
   listStudentsForAssignment, listSupervisorsForCompany,
   type AssignmentDetail, type StudentAssignmentOption,
 } from '@/src/services/assignments';
+import { CollapsibleGroup, useGroupFold } from '@/src/components/ui/CollapsibleGroup';
 import { CompanyPicker } from '@/src/components/ui/CompanyPicker';
 import { listCompanyBranches, getCompanyCapacity } from '@/src/services/companies';
 import {
@@ -23,12 +24,105 @@ import { GATEWAY_DOCUMENT_SPECS, type AssignmentStatus, type DbCompanyBranch, ty
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export default function AssignmentsPage() {
-  const [activeTab, setActiveTab] = useState<'assignments' | 'proposals'>('assignments');
+function AssignmentGroupRows({ companyId, search, refreshKey, onComplete, onTerminate, onStudentStatus }: {
+  companyId: string; search: string; refreshKey: number;
+  onComplete: (id: string) => void; onTerminate: (id: string) => void;
+  onStudentStatus: (studentId: string, status: StudentStatus) => void;
+}) {
   const [assignments, setAssignments] = useState<AssignmentDetail[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, changePageSize] = usePageSize();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => { setPage(1); }, [search]);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    listAssignments(page, pageSize, search, companyId).then((result) => {
+      if (!active) return;
+      if (result.error) setError(result.error.message);
+      else { setAssignments(result.data!.assignments); setTotal(result.data!.total); }
+      setLoading(false);
+    }).catch(() => {
+      if (!active) return;
+      setError('Failed to load assignments.');
+      setLoading(false);
+    });
+    return () => { active = false; };
+  }, [page, pageSize, search, companyId, refreshKey]);
+
+  if (loading) return <div className="flex items-center justify-center py-10 text-slate-400 text-sm">Loading...</div>;
+  if (error) return <div className="p-4"><Alert type="error" message={error} /></div>;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  return (
+    <>
+      <div className="overflow-x-auto" role="region" aria-label="Active trainee assignments" tabIndex={0}>
+      <table className="w-full min-w-[800px] text-sm">
+        <thead>
+          <tr className="border-b border-slate-100 bg-slate-50/50">
+            <th className="text-left px-5 py-3.5 font-medium text-slate-500">Student</th>
+            <th className="text-left px-5 py-3.5 font-medium text-slate-500">Host Establishment</th>
+            <th className="text-left px-5 py-3.5 font-medium text-slate-500">Designated Supervisor</th>
+            <th className="text-left px-5 py-3.5 font-medium text-slate-500">Placement Date</th>
+            <th className="text-left px-5 py-3.5 font-medium text-slate-500">Status</th>
+            <th className="px-5 py-3.5" />
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-50">
+          {assignments.map(a => (
+            <tr key={a.assignment_id} className="hover:bg-slate-50/50 transition-colors">
+              <td className="px-5 py-4">
+                <p className="font-medium text-slate-900">{a.students?.users?.full_name}</p>
+                <p className="text-xs text-slate-500 tabular-nums">{a.students?.student_number} • {a.students?.course}</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <Badge status={a.students?.status}>{a.students?.status?.toUpperCase()}</Badge>
+                  <select
+                    aria-label={`Set student status for ${a.students?.users?.full_name ?? 'student'}`}
+                    value=""
+                    onChange={e => e.target.value && onStudentStatus(a.student_id, e.target.value as StudentStatus)}
+                    className="text-xs border border-slate-200 rounded px-1 py-0.5"
+                  >
+                    <option value="">Set status…</option>
+                    <option value="dropped">DROPPED</option>
+                    <option value="inc">INC</option>
+                    <option value="terminated">TERMINATED</option>
+                  </select>
+                </div>
+              </td>
+              <td className="px-5 py-4 text-slate-700 font-medium">{a.companies?.company_name}<span className="block text-xs font-normal text-slate-500">{a.company_branches?.branch_name || 'Branch unavailable'}</span></td>
+              <td className="px-5 py-4">
+                <p className="text-slate-700">{a.supervisors?.users?.full_name}</p>
+                <p className="text-xs text-slate-400">{a.supervisors?.position}</p>
+              </td>
+              <td className="px-5 py-4 text-slate-500">{a.start_date}</td>
+              <td className="px-5 py-4"><Badge status={a.assignment_status} /></td>
+              <td className="px-5 py-4">
+                {a.assignment_status === 'active' && (
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="ghost" onClick={() => onComplete(a.assignment_id)}>Complete</Button>
+                    <Button variant="ghost" onClick={() => onTerminate(a.assignment_id)} className="text-rose-600 hover:bg-rose-50">Terminate</Button>
+                  </div>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      </div>
+      <div className="p-3"><PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={(n) => { changePageSize(n); setPage(1); }} /></div>
+    </>
+  );
+}
+
+export default function AssignmentsPage() {
+  const [activeTab, setActiveTab] = useState<'assignments' | 'proposals'>('assignments');
+  const [groups, setGroups] = useState<Array<{ company_id: string; company_name: string; count: number; active: number }>>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const fold = useGroupFold('coordinator-assignments-fold');
   const [searchText, setSearchText] = useState('');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -71,18 +165,19 @@ export default function AssignmentsPage() {
   const [reviewError, setReviewError] = useState('');
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
-  const loadAssignments = useCallback(async (p: number) => {
+  // Reloads the company headers (true counts) and tells any open group to refetch its rows.
+  const loadAssignments = useCallback(async () => {
     setLoading(true);
     setError('');
-    const result = await listAssignments(p, pageSize, search);
+    const result = await listAssignmentGroups(search);
     setLoading(false);
     if (result.error) { setError(result.error.message); return; }
-    setAssignments(result.data!.assignments);
-    setTotal(result.data!.total);
-  }, [pageSize, search]);
+    setGroups(result.data!.groups);
+    setRefreshKey((k) => k + 1);
+  }, [search]);
 
   useEffect(() => {
-    const t = setTimeout(() => { setSearch(searchText.trim()); setPage(1); }, 300);
+    const t = setTimeout(() => { setSearch(searchText.trim()); }, 300);
     return () => clearTimeout(t);
   }, [searchText]);
 
@@ -100,7 +195,7 @@ export default function AssignmentsPage() {
 
     const fetchData = async () => {
       if (isMounted) {
-        await loadAssignments(page);
+        await loadAssignments();
         await loadProposals(proposalsFilter);
       }
     };
@@ -109,7 +204,7 @@ export default function AssignmentsPage() {
     return () => {
       isMounted = false;
     };
-  }, [page, loadAssignments, loadProposals, proposalsFilter]);
+  }, [loadAssignments, loadProposals, proposalsFilter]);
 
   async function openCreate() {
     setForm({ student_id: '', company_id: '', branch_id: '', supervisor_id: '', start_date: '', end_date: '' });
@@ -163,20 +258,20 @@ export default function AssignmentsPage() {
     setSaving(false);
     if (result.error) { setFormError(result.error.message); return; }
     setModalOpen(false);
-    loadAssignments(page);
+    loadAssignments();
   }
 
   async function handleStatusChange(assignment_id: string, status: AssignmentStatus) {
     const result = await updateAssignmentStatus(assignment_id, status);
     if (result.error) { setError(result.error.message); return; }
-    loadAssignments(page);
+    loadAssignments();
   }
 
   async function handleStudentStatusChange(student_id: string, status: StudentStatus) {
     if (!window.confirm(`Set this student's status to ${status.toUpperCase()}?`)) return;
     const result = await updateStudentStatus(student_id, status);
     if (result.error) { setError(result.error.message); return; }
-    loadAssignments(page);
+    loadAssignments();
   }
 
   // Handle reviewing a student proposal
@@ -281,10 +376,11 @@ export default function AssignmentsPage() {
 
     setReviewModalOpen(false);
     loadProposals(proposalsFilter);
-    loadAssignments(page);
+    loadAssignments();
   }
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const total = groups.reduce((n, g) => n + g.count, 0);
+  const companyIds = groups.map((g) => g.company_id);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto page-fade-in">
@@ -336,72 +432,43 @@ export default function AssignmentsPage() {
       {activeTab === 'assignments' ? (
         <>
           <div className="mb-3"><SearchBox value={searchText} onChange={setSearchText} placeholder="Search student name or ID..." /></div>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            {loading ? (
-              <div className="flex items-center justify-center py-20 text-slate-400 text-sm">Loading...</div>
-            ) : assignments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                <span className="text-4xl mb-3">📋</span>
-                <p className="text-sm">{search ? 'No assignments match your search.' : 'No assignments recorded yet.'}</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto" role="region" aria-label="Active trainee assignments" tabIndex={0}>
-              <table className="w-full min-w-[800px] text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/50">
-                    <th className="text-left px-5 py-3.5 font-medium text-slate-500">Student</th>
-                    <th className="text-left px-5 py-3.5 font-medium text-slate-500">Host Establishment</th>
-                    <th className="text-left px-5 py-3.5 font-medium text-slate-500">Designated Supervisor</th>
-                    <th className="text-left px-5 py-3.5 font-medium text-slate-500">Placement Date</th>
-                    <th className="text-left px-5 py-3.5 font-medium text-slate-500">Status</th>
-                    <th className="px-5 py-3.5" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {assignments.map(a => (
-                    <tr key={a.assignment_id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-5 py-4">
-                        <p className="font-medium text-slate-900">{a.students?.users?.full_name}</p>
-                        <p className="text-xs text-slate-500 tabular-nums">{a.students?.student_number} • {a.students?.course}</p>
-                        <div className="mt-1 flex items-center gap-2">
-                          <Badge status={a.students?.status}>{a.students?.status?.toUpperCase()}</Badge>
-                          <select
-                            aria-label={`Set student status for ${a.students?.users?.full_name ?? 'student'}`}
-                            value=""
-                            onChange={e => e.target.value && handleStudentStatusChange(a.student_id, e.target.value as StudentStatus)}
-                            className="text-xs border border-slate-200 rounded px-1 py-0.5"
-                          >
-                            <option value="">Set status…</option>
-                            <option value="dropped">DROPPED</option>
-                            <option value="inc">INC</option>
-                            <option value="terminated">TERMINATED</option>
-                          </select>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-slate-700 font-medium">{a.companies?.company_name}<span className="block text-xs font-normal text-slate-500">{a.company_branches?.branch_name || 'Branch unavailable'}</span></td>
-                      <td className="px-5 py-4">
-                        <p className="text-slate-700">{a.supervisors?.users?.full_name}</p>
-                        <p className="text-xs text-slate-400">{a.supervisors?.position}</p>
-                      </td>
-                      <td className="px-5 py-4 text-slate-500">{a.start_date}</td>
-                      <td className="px-5 py-4"><Badge status={a.assignment_status} /></td>
-                      <td className="px-5 py-4">
-                        {a.assignment_status === 'active' && (
-                          <div className="flex gap-2 justify-end">
-                            <Button variant="ghost" onClick={() => handleStatusChange(a.assignment_id, 'completed')}>Complete</Button>
-                            <Button variant="ghost" onClick={() => handleStatusChange(a.assignment_id, 'terminated')} className="text-rose-600 hover:bg-rose-50">Terminate</Button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-4"><PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={(n) => { changePageSize(n); setPage(1); }} /></div>
+          {groups.length > 1 && (
+            <div className="mb-3 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => fold.setAll(companyIds, true)}>Expand all</Button>
+              <Button variant="outline" onClick={() => fold.setAll(companyIds, false)}>Collapse all</Button>
+            </div>
+          )}
+          {loading && groups.length === 0 ? (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex items-center justify-center py-20 text-slate-400 text-sm">Loading...</div>
+          ) : groups.length === 0 ? (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center py-20 text-slate-400">
+              <span className="text-4xl mb-3">📋</span>
+              <p className="text-sm">{search ? 'No assignments match your search.' : 'No assignments recorded yet.'}</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {groups.map((g) => (
+                <CollapsibleGroup
+                  key={g.company_id}
+                  title={g.company_name}
+                  summary={`${g.count} ${g.count === 1 ? 'assignment' : 'assignments'}`}
+                  badge={g.active > 0 ? <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">{g.active} active</span> : undefined}
+                  // Companies with active placements start open; a search opens every match without changing what was folded.
+                  open={!!search || fold.isOpen(g.company_id, g.active > 0)}
+                  onToggle={() => fold.toggle(g.company_id, g.active > 0)}
+                >
+                  <AssignmentGroupRows
+                    companyId={g.company_id}
+                    search={search}
+                    refreshKey={refreshKey}
+                    onComplete={(id) => handleStatusChange(id, 'completed')}
+                    onTerminate={(id) => handleStatusChange(id, 'terminated')}
+                    onStudentStatus={handleStudentStatusChange}
+                  />
+                </CollapsibleGroup>
+              ))}
+            </div>
+          )}
         </>
       ) : (
         /* Schedule Proposals Tab */

@@ -42,10 +42,46 @@ async function assertCoordinator() {
   };
 }
 
+function applyAssignmentSearch(query: any, q?: string) {
+  // one table per query: a student number has digits, otherwise match the name
+  if (!q) return query;
+  return /\d/.test(q)
+    ? query.ilike('students.student_number', `%${q}%`)
+    : query.ilike('students.users.full_name', `%${q}%`);
+}
+
+// One row per company with its true assignment count and how many are still active, so folded groups need no row load.
+// shortcut: counts in JS from a narrow select, fine for a department-sized list; move to a SQL group-by past ~1000 assignments.
+export async function listAssignmentGroups(
+  search?: string
+): Promise<AppResult<{ groups: Array<{ company_id: string; company_name: string; count: number; active: number }> }>> {
+  const { supabase, authorized } = await assertCoordinator();
+  if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
+
+  const q = search?.trim().replace(/[%_,()]/g, '');
+  const { data, error } = await applyAssignmentSearch(
+    supabase
+      .from('student_assignments')
+      .select(`company_id, assignment_status, companies ( company_name ), students${q ? '!inner' : ''} ( student_number, users${q ? '!inner' : ''} ( full_name ) )`),
+    q
+  ).limit(5000);
+  if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load assignment groups.' } };
+
+  const byCompany = new Map<string, { company_id: string; company_name: string; count: number; active: number }>();
+  for (const row of (data ?? []) as any[]) {
+    const g = byCompany.get(row.company_id) ?? { company_id: row.company_id, company_name: row.companies?.company_name ?? 'Unknown company', count: 0, active: 0 };
+    g.count += 1;
+    if (row.assignment_status === 'active') g.active += 1;
+    byCompany.set(row.company_id, g);
+  }
+  return { data: { groups: [...byCompany.values()].sort((a, b) => a.company_name.localeCompare(b.company_name)) }, error: null };
+}
+
 export async function listAssignments(
   page = 1,
   pageSize = 20,
-  search?: string
+  search?: string,
+  companyId?: string
 ): Promise<AppResult<{ assignments: AssignmentDetail[]; total: number }>> {
   const { supabase, authorized } = await assertCoordinator();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
@@ -71,10 +107,8 @@ export async function listAssignments(
     `, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
-  // one table per query: a student number has digits, otherwise match the name
-  if (q) query = /\d/.test(q)
-    ? query.ilike('students.student_number', `%${q}%`)
-    : query.ilike('students.users.full_name', `%${q}%`);
+  query = applyAssignmentSearch(query, q);
+  if (companyId) query = query.eq('company_id', companyId);
 
   const { data, error, count } = await query;
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load assignments.' } };

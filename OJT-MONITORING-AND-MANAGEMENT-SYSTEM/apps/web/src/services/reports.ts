@@ -138,6 +138,24 @@ export async function listReportsForCoordinator(page = 1, pageSize = 20, status?
   return { data: { reports: (data ?? []) as ReportWithStudent[], total: count ?? 0 }, error: null };
 }
 
+// One row per workflow status with its true report count, so folded groups need no row load.
+// shortcut: counts in JS from one column, fine for a department-sized feed; move to a SQL group-by past ~1000 reports.
+export async function listReportGroups(): Promise<AppResult<{ groups: Array<{ status: string; count: number }> }>> {
+  const { supabase, profile } = await getTrustedActor();
+  if (!profile || profile.role !== 'Coordinator' || profile.account_status !== 'active')
+    return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
+
+  const { data, error } = await supabase.from('reports').select('status').limit(5000);
+  if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load report groups.' } };
+
+  const counts = new Map<string, number>();
+  for (const row of data ?? []) counts.set(row.status, (counts.get(row.status) ?? 0) + 1);
+  // 'submitted' (waiting for review) always comes first.
+  const groups = [...counts].map(([status, count]) => ({ status, count }))
+    .sort((a, b) => (a.status === 'submitted' ? -1 : b.status === 'submitted' ? 1 : a.status.localeCompare(b.status)));
+  return { data: { groups }, error: null };
+}
+
 export async function reviewReport(
   report_id: string,
   status: 'reviewed' | 'approved' | 'rejected',

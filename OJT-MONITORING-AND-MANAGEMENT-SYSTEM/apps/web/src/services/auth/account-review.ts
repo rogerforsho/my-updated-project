@@ -85,10 +85,49 @@ export async function listPendingStudents(
   return { data: { students, total: count ?? 0, departments }, error: null };
 }
 
+function cleanSearchTerm(searchQuery: string) {
+  return searchQuery.trim().replace(/[%,_*()\\]/g, ' ').replace(/\s+/g, ' ').slice(0, 100);
+}
+
+function applyStudentSearch(query: any, term: string) {
+  if (!term) return query;
+  const pattern = '*' + term + '*';
+  return query.or('full_name.ilike.' + pattern + ',email.ilike.' + pattern + ',student_search.not.is.null')
+    .or('student_number.ilike.' + pattern + ',course.ilike.' + pattern, { referencedTable: 'student_search' });
+}
+
+// One row per program with its true student count, so folded groups can show counts without loading rows.
+// shortcut: counts in JS from one column, fine for a department-sized list; move to a SQL group-by if it passes ~1000 students.
+export async function listStudentGroups(
+  searchQuery = ''
+): Promise<AppResult<{ groups: Array<{ course: string; count: number }> }>> {
+  const { supabase, authorized } = await assertCoordinator();
+  if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
+
+  const { data, error } = await applyStudentSearch(
+    supabase
+      .from('users')
+      .select('students!inner(course), student_search:students()')
+      .eq('role', 'Student')
+      .eq('account_status', 'active'),
+    cleanSearchTerm(searchQuery)
+  ).limit(5000);
+  if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load student groups.' } };
+
+  const counts = new Map<string, number>();
+  for (const row of (data ?? []) as any[]) {
+    const course = row.students?.course || 'Unspecified';
+    counts.set(course, (counts.get(course) ?? 0) + 1);
+  }
+  const groups = [...counts].map(([course, count]) => ({ course, count })).sort((a, b) => a.course.localeCompare(b.course));
+  return { data: { groups }, error: null };
+}
+
 export async function listActiveStudents(
   page = 1,
   pageSize = 20,
-  searchQuery = ''
+  searchQuery = '',
+  course = ''
 ): Promise<AppResult<{ students: Array<{ user_id: string; full_name: string; email: string; student_number: string; course: string; year_level: number; account_status: string; created_at: string }>; total: number }>> {
   const { supabase, authorized } = await assertCoordinator();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
@@ -97,18 +136,15 @@ export async function listActiveStudents(
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
-  const term = searchQuery.trim().replace(/[%,_*()\\]/g, ' ').replace(/\s+/g, ' ').slice(0, 100);
 
   let query = supabase
     .from('users')
     .select('user_id, full_name, email, account_status, created_at, students!inner(student_number, course, year_level), student_search:students()', { count: 'exact' })
     .eq('role', 'Student')
     .eq('account_status', 'active');
-  if (term) {
-    const pattern = '*' + term + '*';
-    query = query.or('full_name.ilike.' + pattern + ',email.ilike.' + pattern + ',student_search.not.is.null')
-      .or('student_number.ilike.' + pattern + ',course.ilike.' + pattern, { referencedTable: 'student_search' });
-  }
+  query = applyStudentSearch(query, cleanSearchTerm(searchQuery));
+  // 'Unspecified' is the group label for students with an empty course (see listStudentGroups).
+  if (course) query = course === 'Unspecified' ? query.or('course.is.null,course.eq.', { referencedTable: 'students' }) : query.eq('students.course', course);
   const { data, error, count } = await query
     .order('created_at', { ascending: false })
     .range(from, to);
