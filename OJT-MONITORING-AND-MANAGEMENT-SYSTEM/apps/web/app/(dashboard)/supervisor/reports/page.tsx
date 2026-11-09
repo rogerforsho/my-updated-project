@@ -1,46 +1,43 @@
 'use client';
 
+import { RowsLoading } from '@/src/components/ui/RowsLoading';
 import { useEffect, useState, useCallback } from 'react';
 import Button from '@/src/components/ui/Button';
 import Alert from '@/src/components/ui/Alert';
-import { Badge } from '@/src/components/ui/Badge';
 import Modal from '@/src/components/ui/Modal';
+import { FileText } from '@/src/components/ui/Icons';
 import {
   listReportsForSupervisor,
   endorseReportBySupervisor,
   type ReportWithStudent
 } from '@/src/services/reports';
 import { getSignedDocumentUrl } from '@/src/services/storage';
-// PROTOTYPE (throwaway): three UI variants via ?variant=A|B|C on this route. Remove after a winner is picked.
-import { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import PrototypeSwitcher from './_prototype/PrototypeSwitcher';
-import { VariantA, VariantB, VariantC } from './_prototype/Variants';
+
+// Anything not approved or returned (including unexpected stored values) stays in Needs review so no report vanishes.
+const isDecided = (r: ReportWithStudent) => r.supervisor_decision === 'approved' || r.supervisor_decision === 'returned';
+
+const LANES = [
+  { key: 'pending', title: 'Needs review', dot: 'bg-amber-400', empty: 'Nothing is waiting for you.', test: (r: ReportWithStudent) => !isDecided(r) },
+  { key: 'approved', title: 'Approved', dot: 'bg-emerald-500', empty: 'No approved reports on this page.', test: (r: ReportWithStudent) => r.supervisor_decision === 'approved' },
+  { key: 'returned', title: 'Returned', dot: 'bg-rose-500', empty: 'No reports sent back for correction.', test: (r: ReportWithStudent) => r.supervisor_decision === 'returned' },
+] as const;
+
+const initials = (name?: string | null) => (name ?? '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+const shortDate = (d: string) => new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 
 export default function SupervisorReportsPage() {
-  return (
-    <Suspense>
-      <ReportsPageInner />
-      <PrototypeSwitcher />
-    </Suspense>
-  );
-}
-
-function ReportsPageInner() {
-  const variant = useSearchParams().get('variant');
   const [reports, setReports] = useState<ReportWithStudent[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+
   // Endorsement Modal
   const [endorsingReport, setEndorsingReport] = useState<ReportWithStudent | null>(null);
   const [feedback, setFeedback] = useState('');
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [openingDocId, setOpeningDocId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'endorsed'>('all');
 
   const load = useCallback(async (p: number) => {
     setLoading(true);
@@ -92,156 +89,115 @@ function ReportsPageInner() {
     load(page);
   }
 
-  const filteredReports = reports.filter((r) => {
-    if (filter === 'pending') return !r.supervisor_decision;
-    if (filter === 'endorsed') return !!r.supervisor_decision;
-    return true;
-  });
-
   const totalPages = Math.max(1, Math.ceil(total / 20));
-  const vp = {
-    reports: filteredReports,
-    filter,
-    setFilter,
-    openDoc: handleOpenDocument,
-    review: (r: ReportWithStudent) => { setEndorsingReport(r); setFeedback(r.supervisor_feedback || ''); },
-  };
+  const waiting = reports.filter((r) => !isDecided(r)).length;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto page-fade-in">
-      {variant === 'A' && <VariantA {...vp} />}
-      {variant === 'B' && <VariantB {...vp} />}
-      {variant === 'C' && <VariantC {...vp} />}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Trainee Accomplishment Reports</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Approve or return daily accomplishment reports for your assigned interns. Each submission receives one recorded decision.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {(['all', 'pending', 'endorsed'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer ${
-                filter === tab
-                  ? 'bg-[#0A3824] text-[var(--cdm-sand)] shadow-sm'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              {tab === 'all' ? 'All Reports' : tab === 'pending' ? 'Needs Review' : 'Decided'}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto page-fade-in">
+      <header>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Trainee Accomplishment Reports</h1>
+        <p className="text-sm text-slate-500 mt-0.5">
+          Approve or return daily accomplishment reports for your assigned interns. Each submission receives one recorded decision.
+          {!loading && reports.length > 0 && (
+            <span className="font-semibold text-slate-700"> {waiting === 0 ? 'You are all caught up.' : `${waiting} on this page ${waiting === 1 ? 'is' : 'are'} waiting for your review.`}</span>
+          )}
+        </p>
+      </header>
 
-      {success && (
-        <Alert
-          type="info"
-          message={success}
-        />
-      )}
+      {success && <Alert type="info" message={success} />}
       {error && <Alert type="error" message={error} />}
 
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-20 text-slate-400 text-sm">
-            Loading trainee reports...
-          </div>
-        ) : filteredReports.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-            <span className="text-4xl mb-3">📝</span>
-            <p className="text-sm font-semibold text-slate-700">No reports submitted yet</p>
-            <p className="text-xs text-slate-400 mt-1">
-              Your assigned trainees will submit their weekly accomplishment journals here.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-slate-200/80 bg-slate-50/80 text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                <tr>
-                  <th className="text-left px-5 py-3.5">Assigned Intern</th>
-                  <th className="text-left px-5 py-3.5">Report Category</th>
-                  <th className="text-left px-5 py-3.5">Document File</th>
-                  <th className="text-left px-5 py-3.5">Your Mentor Remarks</th>
-                  <th className="text-left px-5 py-3.5">Supervisor Decision</th>
-                  <th className="text-right px-5 py-3.5">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredReports.map((r) => (
-                  <tr key={r.report_id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="px-5 py-4">
-                      <p className="font-bold text-slate-900">{r.students?.users?.full_name}</p>
-                      <p className="text-xs text-slate-400 font-mono mt-0.5">
-                        {r.students?.student_number} • {r.students?.course}
-                      </p>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className="font-semibold text-slate-800 capitalize">
-                        {r.report_type.replace(/_/g, ' ')}
-                      </span>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Submitted {new Date(r.submission_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
-                      {r.remarks && (
-                        <p className="text-xs text-slate-600 bg-slate-50 p-1.5 rounded mt-1 border border-slate-100">
-                          <span className="font-bold text-slate-500">Intern Note:</span> {r.remarks}
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-5 py-4">
-                      <button
-                        onClick={() => handleOpenDocument(r.file_path, r.report_id)}
-                        disabled={openingDocId === r.report_id}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-[#0A3824] border border-emerald-200 hover:bg-emerald-100 text-xs font-bold transition-all cursor-pointer"
-                      >
-                        {openingDocId === r.report_id ? 'Opening...' : '📄 View Document'}
-                      </button>
-                    </td>
-                    <td className="px-5 py-4 text-xs">
-                      {r.supervisor_decision ? (
-                        <div className="bg-emerald-50/70 border border-emerald-200 p-2 rounded-lg max-w-xs">
-                          <p className="font-bold uppercase text-emerald-900">{r.supervisor_decision}</p>
-                          <p className="text-emerald-900 font-semibold">{r.supervisor_feedback}</p>
-                          <span className="text-xs text-emerald-700 block mt-1">
-                            Decision recorded {r.supervisor_decided_at ? new Date(r.supervisor_decided_at).toLocaleDateString() : ''}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-amber-600 font-medium">Pending your mentor review</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-4">
-                      <Badge className={`text-xs font-bold ${
-                        r.supervisor_decision === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                        r.supervisor_decision === 'returned' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                        'bg-amber-50 text-amber-700 border-amber-200'
-                      }`}>
-                        {(r.supervisor_decision ?? 'pending').toUpperCase()}
-                      </Badge>
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      {!r.supervisor_decision && <Button
-                        variant="ghost"
-                        onClick={() => {
-                          setEndorsingReport(r);
-                          setFeedback(r.supervisor_feedback || '');
-                        }}
-                        className="text-xs font-bold text-[#0A3824] hover:bg-emerald-50"
-                      >
-                        Review report
-                      </Button>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      {loading ? (
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+          <RowsLoading label="Loading trainee reports" />
+        </div>
+      ) : reports.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm flex flex-col items-center justify-center py-20">
+          <FileText className="w-8 h-8 text-slate-300 mb-3" />
+          <p className="text-sm font-semibold text-slate-700">No reports submitted yet</p>
+          <p className="text-xs text-slate-500 mt-1">
+            Your assigned trainees will submit their weekly accomplishment journals here.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+          {LANES.map((lane) => {
+            const items = reports.filter(lane.test);
+            return (
+              <section key={lane.key} aria-labelledby={`lane-${lane.key}`} className="rounded-2xl bg-slate-50 border border-slate-200/80 dark:border-slate-800 min-w-0">
+                <h2 id={`lane-${lane.key}`} className="px-4 py-3.5 flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
+                  <span className={`w-2.5 h-2.5 rounded-full ${lane.dot}`} aria-hidden="true" />
+                  {lane.title}
+                  <span className="ml-auto min-w-6 text-center rounded-full bg-white border border-slate-200 px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-600">{items.length}</span>
+                </h2>
+                <ul className="px-3 pb-3 space-y-3 lg:max-h-[calc(100vh-15rem)] lg:overflow-y-auto">
+                  {items.map((r) => {
+                    const name = r.students?.users?.full_name;
+                    return (
+                      <li key={r.report_id}>
+                        <article className="rounded-xl bg-white border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs space-y-3 transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-sm">
+                          <div className="flex items-center gap-3">
+                            <span aria-hidden="true" className="grid place-items-center w-9 h-9 shrink-0 rounded-full bg-emerald-50 text-xs font-bold text-[#0A3824]">{initials(name)}</span>
+                            <div className="min-w-0">
+                              <p className="font-bold text-sm text-slate-900 truncate">{name}</p>
+                              <p className="text-xs text-slate-500 font-mono truncate">{r.students?.student_number} • {r.students?.course}</p>
+                            </div>
+                          </div>
+
+                          <p className="text-sm font-semibold text-slate-800 capitalize">
+                            {r.report_type.replace(/_/g, ' ')}
+                            <span className="text-xs text-slate-500 font-normal normal-case"> · {shortDate(r.submission_date)}</span>
+                          </p>
+
+                          {r.remarks && (
+                            <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                              <span className="font-bold text-slate-500">Intern note:</span> {r.remarks}
+                            </p>
+                          )}
+                          {r.supervisor_feedback && (
+                            <p className={`text-xs p-2 rounded-lg border ${r.supervisor_decision === 'returned' ? 'bg-rose-50 border-rose-200 text-rose-900' : 'bg-emerald-50/70 border-emerald-200 text-emerald-900'}`}>
+                              <span className="font-bold">Your remarks:</span> {r.supervisor_feedback}
+                              {r.supervisor_decided_at && <span className="block mt-1 opacity-80">Decided {new Date(r.supervisor_decided_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</span>}
+                            </p>
+                          )}
+
+                          <div className="flex gap-2 pt-0.5">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => handleOpenDocument(r.file_path, r.report_id)}
+                              disabled={openingDocId === r.report_id}
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              {openingDocId === r.report_id ? 'Opening…' : 'View'}
+                            </Button>
+                            {!isDecided(r) && (
+                              <Button
+                                size="sm"
+                                className="flex-1"
+                                onClick={() => {
+                                  setEndorsingReport(r);
+                                  setFeedback(r.supervisor_feedback || '');
+                                }}
+                              >
+                                Review
+                              </Button>
+                            )}
+                          </div>
+                        </article>
+                      </li>
+                    );
+                  })}
+                  {items.length === 0 && (
+                    <li className="py-8 text-center text-xs text-slate-500">{lane.empty}</li>
+                  )}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
+      )}
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-4 text-sm text-slate-500">
@@ -288,7 +244,7 @@ function ReportsPageInner() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-700">
               Supervisor Mentor Feedback & Validation Remarks <span className="text-rose-500">*</span>
             </label>
             <textarea

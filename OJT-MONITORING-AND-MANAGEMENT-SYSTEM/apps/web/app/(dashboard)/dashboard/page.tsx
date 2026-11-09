@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import Image from 'next/image';
 import CampusBulletin from '@/src/components/dashboard/CampusBulletin';
 import { redirect } from 'next/navigation';
 
@@ -10,19 +9,7 @@ export const metadata: Metadata = {
 import { getAuthUser } from '@/src/services/auth';
 import { createClient } from '@/src/lib/supabase/server';
 import { listCohortProgress, type StudentProgressDetail } from '@/src/services/progress';
-import {
-  Timer,
-  Building2,
-  UserCheck,
-  Users,
-  AlertTriangle,
-  Star,
-  ArrowRight,
-  Clock,
-  ClipboardCheck,
-  Building,
-  TrendingUp,
-} from '@/src/components/ui/Icons';
+import { ArrowRight } from '@/src/components/ui/Icons';
 
 export default async function DashboardPage() {
   const user = await getAuthUser();
@@ -100,206 +87,89 @@ export default async function DashboardPage() {
     .order('created_at', { ascending: false })
     .limit(3);
 
+  const firstName = user.full_name.split(' ')[0];
+  const today = new Date().toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const primaryAction = user.role === 'Coordinator'
+    ? { href: '/coordinator/approvals', label: 'Review approvals' }
+    : { href: '/supervisor/attendance', label: 'Verify attendance logs' };
+
+  // One strip of numbers per role; each number links to the page that acts on it.
+  const metrics = user.role === 'Coordinator'
+    ? [
+        { href: '/coordinator/approvals', label: 'Pending approvals', value: stats.pendingApprovals, note: 'Registrations waiting', alert: stats.pendingApprovals > 0 ? 'amber' : '' },
+        { href: '/coordinator/students', label: 'Active trainees', value: stats.activeStudents, note: 'Deployed across HTEs', alert: '' },
+        { href: '/coordinator/companies', label: 'Partner companies', value: stats.totalCompanies, note: 'Active establishments', alert: '' },
+        { href: '/coordinator/progress', label: 'Behind on hours', value: stats.atRiskCount, note: 'Under 100 hrs rendered', alert: stats.atRiskCount > 0 ? 'red' : '' },
+      ]
+    : [
+        { href: '/supervisor/students', label: 'Assigned interns', value: stats.assignedStudents ?? 0, note: 'Active under your supervision', alert: '' },
+        { href: '/supervisor/attendance', label: 'Logs to verify', value: stats.pendingAttendance ?? 0, note: 'Awaiting your review', alert: (stats.pendingAttendance ?? 0) > 0 ? 'amber' : '' },
+        { href: '/supervisor/evaluations', label: 'Evaluations filed', value: stats.completedEvaluations ?? 0, note: 'Open to rate or revise', alert: '' },
+      ];
+
+  const attention = (user.role === 'Coordinator'
+    ? [
+        { href: '/coordinator/approvals', text: `${stats.pendingApprovals} student ${stats.pendingApprovals === 1 ? 'registration is' : 'registrations are'} waiting for approval`, n: stats.pendingApprovals },
+        { href: '/coordinator/progress', text: `${stats.atRiskCount} ${stats.atRiskCount === 1 ? 'trainee has' : 'trainees have'} rendered under 100 hours`, n: stats.atRiskCount },
+      ]
+    : [
+        { href: '/supervisor/attendance', text: `${stats.pendingAttendance ?? 0} attendance ${(stats.pendingAttendance ?? 0) === 1 ? 'log needs' : 'logs need'} your verification`, n: stats.pendingAttendance ?? 0 },
+      ]
+  ).filter((a) => a.n > 0);
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-5 max-w-7xl mx-auto page-fade-in">
-      {/* Compact welcome banner */}
-      <div className="rounded-2xl bg-[#092E1D] px-4 py-3.5 sm:px-5 text-white shadow-2xs border border-emerald-950/40">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-xl bg-white/10 p-1.5 border border-amber-400/30 flex items-center justify-center shrink-0">
-              <Image
-                src="/logo.png"
-                alt="Colegio de Montalban Seal"
-                width={40}
-                height={40}
-                className="w-full h-full object-contain"
-                priority
-              />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-wider text-amber-400">
-                Colegio de Montalban <span className="text-slate-500 font-medium">•</span>{' '}
-                <span className="text-slate-300 font-medium">
-                  {new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </span>
-              </p>
-              <h1 className="text-lg sm:text-xl font-black text-white font-serif tracking-tight truncate">
-                Welcome back, {user.full_name}
-              </h1>
-              <p className="text-xs text-slate-300">{departmentSubtitle}</p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-300 bg-emerald-950/80 border border-emerald-500/30 px-2.5 py-1 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              Portal Online
-            </span>
-            {user.role === 'Coordinator' && (
-              <Link
-                href="/coordinator/approvals"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-white/10 hover:bg-white/20 border border-white/25 px-3 py-1.5 rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-amber-400"
-              >
-                Review Approvals <ArrowRight className="w-3 h-3" />
-              </Link>
-            )}
-            {user.role === 'Supervisor' && (
-              <Link
-                href="/supervisor/attendance"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0A3824] bg-white hover:bg-amber-50 border border-white px-3.5 py-1.5 rounded-lg shadow-xs transition-colors focus-visible:outline-2 focus-visible:outline-amber-400"
-              >
-                Verify Logs <ArrowRight className="w-3 h-3" />
-              </Link>
-            )}
-          </div>
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto page-fade-in">
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--cdm-gold)]">{today}</p>
+          <h1 className="mt-1 text-2xl sm:text-3xl font-black font-serif text-slate-900 dark:text-white truncate">Welcome back, {firstName}</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{departmentSubtitle}</p>
         </div>
-      </div>
+        <Link
+          href={primaryAction.href}
+          className="inline-flex items-center justify-center gap-2 self-start sm:self-auto rounded-lg bg-[var(--cdm-green)] px-4 py-2.5 text-sm font-bold text-white shadow-xs transition-[background-color,transform] hover:bg-[var(--cdm-green-light)] active:translate-y-px focus-visible:outline-2 focus-visible:outline-[var(--cdm-green)]"
+        >
+          {primaryAction.label} <ArrowRight className="w-4 h-4" />
+        </Link>
+      </header>
 
-      {/* Hero: Role-Specific Primary Metric Cards - Standardized Height & Micro-interactions */}
-      {user.role === 'Coordinator' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { href: '/coordinator/approvals', label: 'Pending Approvals', value: stats.pendingApprovals, note: 'Review queue →', Icon: UserCheck, tone: 'text-amber-600 dark:text-amber-400', alert: stats.pendingApprovals > 0 },
-            { href: '/coordinator/students', label: 'Active Trainees', value: stats.activeStudents, note: 'Deployed across HTEs', Icon: Users, tone: 'text-slate-900 dark:text-white', alert: false },
-            { href: '/coordinator/companies', label: 'Partner Companies', value: stats.totalCompanies, note: 'Active establishments', Icon: Building2, tone: 'text-slate-900 dark:text-white', alert: false },
-            { href: '/coordinator/progress', label: 'Low Progress Alert', value: stats.atRiskCount, note: '< 100 hrs rendered', Icon: AlertTriangle, tone: stats.atRiskCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white', alert: stats.atRiskCount > 0 },
-          ].map(({ href, label, value, note, Icon, tone, alert }) => (
+      <section aria-label="Key figures" className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 divide-slate-200/80 dark:divide-slate-800 ${metrics.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
+          {metrics.map((m, i) => (
             <Link
-              key={label}
-              href={href}
-              className="group h-full min-h-[96px] p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-shadow flex items-center gap-3.5 focus-visible:outline-2 focus-visible:outline-[#0A3824]"
+              key={m.label}
+              href={m.href}
+              className={`group block px-5 py-5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--cdm-green)] ${i > 0 ? 'lg:border-l border-slate-200/80 dark:border-slate-800' : ''} ${i % 2 === 1 ? 'sm:border-l' : ''} ${i > 1 ? 'sm:border-t lg:border-t-0 border-slate-200/80 dark:border-slate-800' : ''}`}
             >
-              <div className={`w-11 h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 flex items-center justify-center shrink-0 ${alert ? tone : 'text-[#0A3824] dark:text-emerald-400'}`}>
-                <Icon className="w-5 h-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{label}</p>
-                <p className={`text-2xl font-bold leading-tight ${tone}`}>{value}</p>
-                <p className="text-xs text-slate-500 truncate group-hover:text-[#0A3824] dark:group-hover:text-emerald-400">{note}</p>
-              </div>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{m.label}</p>
+              <p className={`mt-1.5 text-4xl font-bold tabular-nums leading-none ${m.alert === 'red' ? 'text-red-600 dark:text-red-400' : m.alert === 'amber' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>{m.value}</p>
+              <p className="mt-2 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 group-hover:text-[var(--cdm-green)] dark:group-hover:text-emerald-400">
+                {m.note} <ArrowRight className="w-3 h-3 opacity-0 -translate-x-1 transition-[opacity,transform] group-hover:opacity-100 group-hover:translate-x-0" />
+              </p>
             </Link>
           ))}
         </div>
-      )}
+      </section>
 
-      {user.role === 'Supervisor' && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
-          <div className="group h-full min-h-[104px] p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-3.5 cursor-default">
-            <div className="w-12 h-12 rounded-full bg-emerald-500/10 dark:bg-emerald-400/15 text-[#0A3824] dark:text-emerald-400 flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105">
-              <Users className="w-6 h-6" />
-            </div>
-            <div className="flex-1 min-w-0 flex flex-col justify-center">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Assigned Interns</p>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5 leading-tight">{stats.assignedStudents}</h3>
-              <p className="text-xs text-slate-400 mt-0.5 truncate">Active under your supervision</p>
-            </div>
-          </div>
-
-          <div className="group h-full min-h-[104px] p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-3.5 cursor-default">
-            <div className="w-12 h-12 rounded-full bg-amber-500/10 dark:bg-amber-400/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105">
-              <Timer className="w-6 h-6" />
-            </div>
-            <div className="flex-1 min-w-0 flex flex-col justify-center">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pending Attendance</p>
-              <h3 className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-0.5 leading-tight">{stats.pendingAttendance}</h3>
-              <Link href="/supervisor/attendance" className="mt-0.5 text-xs text-[#0A3824] dark:text-emerald-400 font-bold hover:underline truncate">
-                Verify logs →
-              </Link>
-            </div>
-          </div>
-
-          <div className="group h-full min-h-[104px] p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-3.5 cursor-default">
-            <div className="w-12 h-12 rounded-full bg-emerald-500/10 dark:bg-emerald-400/15 text-[#0A3824] dark:text-emerald-400 flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105">
-              <Star className="w-6 h-6" />
-            </div>
-            <div className="flex-1 min-w-0 flex flex-col justify-center">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Evaluations</p>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5 leading-tight">{stats.completedEvaluations}</h3>
-              <Link href="/supervisor/evaluations" className="mt-0.5 text-xs text-[#0A3824] dark:text-emerald-400 font-bold hover:underline truncate">
-                Rate students →
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-
-
-
-      {/* Balanced 2-Column Lower Section: Quick Operations + Campus Bulletin Board */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] gap-5 items-start">
-        {/* Left / Primary Operations Hub (2 Columns on Large Screens) */}
-        <div className="space-y-5 min-w-0">
-          {user.role === 'Coordinator' && (
-            <section aria-labelledby="priority-actions" className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-              <h2 id="priority-actions" className="text-base font-bold text-slate-900 dark:text-white">Priority Actions</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 mb-4">Quick access to essential OJT coordination tasks.</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { href: '/coordinator/approvals', Icon: ClipboardCheck, title: 'Review Approvals', text: 'Review pending student registrations and verification requests.' },
-                  { href: '/coordinator/students', Icon: Users, title: 'Manage Students', text: 'View trainee profiles, assignments, and OJT records.' },
-                  { href: '/coordinator/company-requests', Icon: Building, title: 'HTE Requests', text: 'Review host training establishment requests.' },
-                  { href: '/coordinator/progress', Icon: TrendingUp, title: 'Monitor Progress', text: 'Track rendered hours and identify trainees requiring attention.' },
-                ].map(({ href, Icon, title, text }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/30 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-500/30 transition-colors flex items-start gap-3 focus-visible:outline-2 focus-visible:outline-[#0A3824]"
-                  >
-                    <span className="w-9 h-9 rounded-lg bg-[#0A3824] text-[var(--cdm-sand)] flex items-center justify-center shrink-0">
-                      <Icon className="w-4 h-4" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-bold text-slate-800 dark:text-slate-100">{title}</span>
-                      <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">{text}</span>
-                    </span>
+        <section aria-labelledby="needs-attention" className="min-w-0 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <h2 id="needs-attention" className="px-5 pt-5 text-base font-bold text-slate-900 dark:text-white">Needs your attention</h2>
+          {attention.length === 0 ? (
+            <p className="px-5 pb-5 pt-2 text-sm text-slate-500 dark:text-slate-400">Nothing is waiting on you right now.</p>
+          ) : (
+            <ul className="mt-3 divide-y divide-slate-100 dark:divide-slate-800 border-t border-slate-100 dark:border-slate-800">
+              {attention.map((a) => (
+                <li key={a.href}>
+                  <Link href={a.href} className="group flex items-center justify-between gap-4 px-5 py-3.5 text-sm text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--cdm-green)]">
+                    <span>{a.text}</span>
+                    <ArrowRight className="w-4 h-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--cdm-green)]" />
                   </Link>
-                ))}
-              </div>
-            </section>
+                </li>
+              ))}
+            </ul>
           )}
+        </section>
 
-
-          {user.role === 'Supervisor' && (
-            <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Industry Supervisor Workspace</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Daily trainee verification and performance evaluations</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <Link
-                  href="/supervisor/attendance"
-                  className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-500/30 transition-all flex items-center gap-3.5 group"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-[#0A3824] text-[var(--cdm-sand)] flex items-center justify-center shrink-0">
-                    <Clock className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-[#0A3824] dark:group-hover:text-emerald-400">Verify Attendance Logs</h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Review intern time-in and selfie captures</p>
-                  </div>
-                </Link>
-
-                <Link
-                  href="/supervisor/evaluations"
-                  className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-500/30 transition-all flex items-center gap-3.5 group"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-[#0A3824] text-[var(--cdm-sand)] flex items-center justify-center shrink-0">
-                    <Star className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-[#0A3824] dark:group-hover:text-emerald-400">Performance Evaluations</h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Grade trainees based on standard rubrics</p>
-                  </div>
-                </Link>
-              </div>
-            </div>
-          )}
-
-        </div>
-
-        {/* Right / Secondary Column: Interactive Campus Bulletin Board Widget */}
         <div className="min-w-0">
           <CampusBulletin announcements={latestAnnouncements || []} />
         </div>
