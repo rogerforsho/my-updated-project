@@ -182,7 +182,7 @@ export default function PublicFooter() {
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">1. Information We Collect</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">1. Information We Collect</h4>
                 <p>In accordance with CHED Memorandum Order (CMO) No. 104, Series of 2017, the system gathers:</p>
                 <ul className="list-disc list-inside mt-1 space-y-1 text-slate-600">
                   <li><strong>Trainee Identification:</strong> Student ID number, official name, institutional email address, academic department (ICS / IBE), and program section.</li>
@@ -193,7 +193,7 @@ export default function PublicFooter() {
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">2. Purpose of Data Processing</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">2. Purpose of Data Processing</h4>
                 <p>Data collected is strictly utilized to:</p>
                 <ul className="list-disc list-inside mt-1 space-y-1 text-slate-600">
                   <li>Validate student completion of mandatory practicum duty hours (BSIT 486, BS-CPE 240, BSBA-HRM 300, BSENTREP 300).</li>
@@ -203,21 +203,21 @@ export default function PublicFooter() {
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">3. Data Security & Storage</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">3. Data Security & Storage</h4>
                 <p>
                   Database records are governed by PostgreSQL Row-Level Security (RLS) policies. Sensitive media captures are kept in private cloud buckets accessible strictly to authorized OJT Coordinator and designated company supervisors.
                 </p>
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">4. Retention & Archival Standards (Selfie &amp; GPS Data)</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">4. Retention & Archival Standards (Selfie &amp; GPS Data)</h4>
                 <p>
                   Trainee practicum files, including attendance selfies and GPS records, are retained for five (5) academic years following student graduation in accordance with higher education recordkeeping standards, after which digital media files are purged.
                 </p>
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">5. Data Subject Rights & Contact</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">5. Data Subject Rights & Contact</h4>
                 <p>
                   Trainees have the right to inspect, correct, and request rectification of their practicum records. For inquiries, contact the Data Protection Officer at <span className="font-mono text-slate-800">vralphroger@gmail.com</span> or the Practicum Office at <span className="font-mono text-slate-800">vralphroger@gmail.com</span>.
                 </p>
@@ -263,14 +263,14 @@ export default function PublicFooter() {
             {/* Scrollable Content */}
             <div className="overflow-y-auto px-6 py-5 space-y-4 text-xs leading-relaxed text-slate-600">
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">1. User Agreement</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">1. User Agreement</h4>
                 <p>
                   By logging into the Colegio de Montalban OJT System, you agree to comply with these Terms of Service, the CdM Student Handbook, and official CHED practicum guidelines.
                 </p>
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">2. Academic Integrity & Anti-Spoofing</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">2. Academic Integrity & Anti-Spoofing</h4>
                 <p>Student trainees are strictly prohibited from:</p>
                 <ul className="list-disc list-inside mt-1 space-y-1 text-slate-600">
                   <li>Employing mock location software, GPS spoofers, emulators, or VPN workarounds.</li>
@@ -283,14 +283,14 @@ export default function PublicFooter() {
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">3. OJT Coordinator & Supervisor Authority</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">3. OJT Coordinator & Supervisor Authority</h4>
                 <p>
                   OJT Coordinator and Company Supervisors hold the sole authority to review, validate, approve, or reject logged hours based on actual host training performance.
                 </p>
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">4. CHED CMO 104 Practicum Rules Enforced by This System</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">4. CHED CMO 104 Practicum Rules Enforced by This System</h4>
                 <ul className="list-disc list-inside mt-1 space-y-1 text-slate-600">
                   <li>Required hours by program: BSIT 486, BS-CPE 240, BSBA-HRM 300, BSENTREP 300.</li>
                   <li>Before deployment: Parent/Guardian Consent Waiver (notarized), Medical Certificate, Pre-OJT Orientation Certificate, and Endorsement Letter, each reviewed by the OJT Coordinator.</li>
@@ -299,7 +299,7 @@ export default function PublicFooter() {
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">5. Maintenance & Support</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">5. Maintenance & Support</h4>
                 <p>
                   The system operates 24/7 with scheduled maintenance announced in advance. For support tickets or login concerns, email <span className="font-mono text-slate-800">vralphroger@gmail.com</span> or <span className="font-mono text-slate-800">vralphroger@gmail.com</span>.
                 </p>

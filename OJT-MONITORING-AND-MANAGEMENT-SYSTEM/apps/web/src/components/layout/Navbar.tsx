@@ -107,20 +107,13 @@ export default function Navbar({ user, isMenuOpen = false, onMenuToggle }: Navba
           <Menu className="w-5 h-5" />
         </button>
 
-        <p className="text-sm sm:text-base font-bold font-serif text-slate-900 dark:text-white truncate tracking-tight">
+        <p className="text-sm sm:text-base font-bold font-serif text-slate-900 dark:text-white truncate tracking-tight capitalize">
           {currentTitle}
         </p>
       </div>
 
       {/* Right: Security Pill, Notifications, Light/Dark Switcher, and Profile Dropdown */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        {/* ISO / Active Security Pill (Minimalist) */}
-        <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-xs text-slate-600 dark:text-slate-300">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="font-semibold text-slate-700 dark:text-slate-200">CdM Cloud</span>
-          <span className="text-slate-300 dark:text-slate-600">•</span>
-          <span className="text-slate-400 dark:text-slate-500 font-mono text-xs">ISO/IEC 25010</span>
-        </div>
 
         {/* Notifications Shortcut */}
         {user.role === 'Coordinator' || user.role === 'Supervisor' ? (
@@ -178,7 +171,7 @@ export default function Navbar({ user, isMenuOpen = false, onMenuToggle }: Navba
                     <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
                       {user.email}
                     </p>
-                    <span className={`inline-block text-xs font-bold px-2 py-0.5 rounded-full border mt-1.5 uppercase tracking-wider ${roleBadgeStyle}`}>
+                    <span className={`inline-block text-xs font-bold px-2 py-0.5 rounded-full border mt-1.5 ${roleBadgeStyle}`}>
                       {accountRoleLabel(user.role)}
                     </span>
                   </div>
