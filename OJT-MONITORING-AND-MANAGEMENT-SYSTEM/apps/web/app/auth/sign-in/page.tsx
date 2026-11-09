@@ -341,7 +341,7 @@ function SignInContent() {
 
         {savedProfiles.length > 1 && (
           <div className="mt-5 pt-4 border-t border-slate-100">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Other Saved Profiles</p>
+            <p className="text-xs font-bold text-slate-400 mb-2">Other Saved Profiles</p>
             <div className="space-y-1.5">
               {savedProfiles
                 .filter(p => p.email.toLowerCase() !== selectedProfile.email.toLowerCase())

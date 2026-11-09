@@ -13,7 +13,7 @@ export default function PendingPage() {
         </p>
       </div>
       <div className="w-full rounded-xl bg-[#0A3824]/5 border border-[#0A3824]/20 px-5 py-4 text-left">
-        <p className="text-xs font-bold text-[#0A3824] uppercase tracking-wider mb-2">What happens next</p>
+        <p className="text-xs font-bold text-[#0A3824] mb-2">What happens next</p>
         <ul className="text-xs text-slate-700 space-y-2">
           <li className="flex items-start gap-2">
             <span className="text-[#0A3824] font-bold">✓</span>

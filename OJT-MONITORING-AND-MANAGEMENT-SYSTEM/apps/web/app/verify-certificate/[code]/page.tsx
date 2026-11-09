@@ -16,7 +16,7 @@ export default async function PublicCertificateVerificationPage({ params }: Prop
       <div className="w-full max-w-xl space-y-6">
         {/* Header Branding */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0A3824]/10 text-[#0A3824] text-xs font-bold tracking-wider uppercase">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0A3824]/10 text-[#0A3824] text-xs font-bold ">
             <Shield className="w-4 h-4" />
             Official Credential Verification Portal
           </div>
@@ -47,35 +47,35 @@ export default async function PublicCertificateVerificationPage({ params }: Prop
             {/* Credential Details */}
             <div className="p-6 space-y-5">
               <div className="border-b border-slate-100 pb-4">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Trainee Graduate</p>
+                <p className="text-xs font-semibold text-slate-400">Trainee Graduate</p>
                 <h3 className="text-xl font-bold text-slate-900 mt-0.5">{cert.student_name}</h3>
                 <p className="text-xs text-slate-500 font-mono mt-0.5">{cert.student_number} • {cert.course}</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
-                  <div className="flex items-center gap-1.5 text-slate-400 font-semibold uppercase">
+                  <div className="flex items-center gap-1.5 text-slate-400 font-semibold ">
                     <Building className="w-3.5 h-3.5" /> Host Training Establishment
                   </div>
                   <p className="font-bold text-slate-800 text-sm">{cert.host_company_name}</p>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
-                  <div className="flex items-center gap-1.5 text-slate-400 font-semibold uppercase">
+                  <div className="flex items-center gap-1.5 text-slate-400 font-semibold ">
                     <Clock className="w-3.5 h-3.5" /> Rendered Practicum Hours
                   </div>
                   <p className="font-bold text-emerald-700 text-sm">{cert.hours_rendered?.toFixed(1)} Hours Verified</p>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
-                  <div className="flex items-center gap-1.5 text-slate-400 font-semibold uppercase">
+                  <div className="flex items-center gap-1.5 text-slate-400 font-semibold ">
                     <Award className="w-3.5 h-3.5" /> Academic Term
                   </div>
                   <p className="font-bold text-slate-800 text-sm">A.Y. {cert.academic_year}</p>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
-                  <div className="flex items-center gap-1.5 text-slate-400 font-semibold uppercase">
+                  <div className="flex items-center gap-1.5 text-slate-400 font-semibold ">
                     <FileText className="w-3.5 h-3.5" /> Date of Official Issuance
                   </div>
                   <p className="font-bold text-slate-800 text-sm">

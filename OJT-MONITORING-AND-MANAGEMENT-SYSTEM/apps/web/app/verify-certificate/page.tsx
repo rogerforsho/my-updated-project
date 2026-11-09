@@ -46,7 +46,7 @@ export default function CertificateSearchPage() {
           </div>
 
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0A3824]/10 text-[#0A3824] text-xs font-bold tracking-wider uppercase mb-1">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0A3824]/10 text-[#0A3824] text-xs font-bold mb-1">
               <Shield className="w-3.5 h-3.5 text-emerald-800" />
               Public Credential Verification
             </div>
@@ -70,7 +70,7 @@ export default function CertificateSearchPage() {
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="e.g. CDM-OJT-2026-0001"
                 required
-                className="font-mono uppercase tracking-wider text-base"
+                className="font-mono text-base"
               />
               <p className="text-xs text-slate-400 mt-1.5 flex items-center gap-1">
                 <span>💡</span> Find this alphanumeric code printed on the bottom of the official Certificate of Completion.
