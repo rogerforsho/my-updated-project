@@ -1,5 +1,6 @@
 'use client';
 
+import { RowsLoading } from '@/src/components/ui/RowsLoading';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent } from '@/src/components/ui/Card';
@@ -409,8 +410,8 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
       setMsg({
         type: 'success',
         text: anncDeliveryType === 'alert'
-          ? 'Urgent alert published and dispatched with 🚨 icon to all user inboxes!'
-          : 'Announcement published and dispatched with 📢 icon to all user inboxes!',
+          ? 'Urgent alert published and dispatched with icon to all user inboxes!'
+          : 'Announcement published and dispatched with icon to all user inboxes!',
       });
       loadAnnouncements();
       loadAudit();
@@ -477,32 +478,29 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
         </div>
         <Button
           onClick={() => { setCreateError(''); setCreateModalOpen(true); }}
-          className="bg-[#073D29] hover:bg-[#062D1F] text-white font-semibold rounded-xl shadow-xs hover:shadow-md transition-all duration-150 cursor-pointer active:scale-95 shrink-0"
+          className="shrink-0"
         >
           + Invite OJT Coordinator
         </Button>
       </div>
 
-      {/* System metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {([
-          { label: 'Total Users', value: overview.totalUsers, note: `${overview.activeUsers} active accounts`, Icon: Users, tone: 'bg-[#EEF5EF] text-[#073D29]' },
-          { label: 'Pending Approvals', value: overview.pendingUsers, note: 'Awaiting verification', Icon: Shield, tone: 'bg-amber-50 text-amber-700' },
-          { label: 'OJT Coordinators', value: overview.roleBreakdown['OJT Coordinator'] ?? 0, note: 'Registered accounts', Icon: Users, tone: 'bg-[#EEF5EF] text-[#073D29]' },
-          { label: 'Supervisors', value: overview.roleBreakdown['Supervisor'] ?? 0, note: 'Registered accounts', Icon: Users, tone: 'bg-orange-50 text-orange-700' },
-        ]).map(({ label, value, note, Icon, tone }) => (
-          <div key={label} className="h-full min-h-[104px] rounded-2xl border border-[#DFE7DF] dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs p-5 flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${tone}`}>
-              <Icon className="w-5 h-5" />
+      {/* System metrics: one ruled strip, same as the coordinator and supervisor dashboards */}
+      <section aria-label="System figures" className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className="grid grid-cols-2 lg:grid-cols-4">
+          {([
+            { label: 'Total users', value: overview.totalUsers, note: `${overview.activeUsers} active accounts`, alert: false },
+            { label: 'Pending approvals', value: overview.pendingUsers, note: 'Awaiting verification', alert: overview.pendingUsers > 0 },
+            { label: 'OJT coordinators', value: overview.roleBreakdown['OJT Coordinator'] ?? 0, note: 'Registered accounts', alert: false },
+            { label: 'Supervisors', value: overview.roleBreakdown['Supervisor'] ?? 0, note: 'Registered accounts', alert: false },
+          ]).map(({ label, value, note, alert }, i) => (
+            <div key={label} className={`px-5 py-5 border-slate-200/80 dark:border-slate-800 ${i % 2 === 1 ? 'border-l' : ''} ${i > 0 ? 'lg:border-l' : ''} ${i > 1 ? 'border-t lg:border-t-0' : ''}`}>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</p>
+              <p className={`mt-1.5 text-4xl font-bold tabular-nums leading-none ${alert ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>{value}</p>
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 truncate">{note}</p>
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-[#738478]">{label}</p>
-              <p className="text-3xl font-bold text-[#17271F] dark:text-white leading-tight">{value}</p>
-              <p className="text-xs text-[#738478] truncate">{note}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </section>
 
       {msg && (
         <div
@@ -834,7 +832,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
                           : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
                       }`}
                     >
-                      📢 General Notice
+                      General Notice
                     </button>
                     <button
                       type="button"
@@ -845,7 +843,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
                           : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
                       }`}
                     >
-                      🚨 Urgent Alert
+                      Urgent Alert
                     </button>
                   </div>
 
@@ -877,7 +875,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
 
               <div className="border-t border-slate-100 dark:border-slate-800">
                 {anncListLoading ? (
-                  <div className="p-8 text-center text-xs text-slate-400">Loading announcements...</div>
+                  <RowsLoading label="Loading announcements" rows={3} />
                 ) : anncListError ? (
                   <div role="alert" className="p-6 text-sm text-rose-700">
                     {anncListError} <button type="button" onClick={loadAnnouncements} className="underline font-semibold cursor-pointer">Retry</button>
@@ -893,7 +891,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
                       <div key={annc.announcement_id} className="p-4 sm:p-5 flex items-start justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-extrabold px-2 py-0.5 rounded bg-[#0A3824] text-[var(--cdm-sand)] uppercase tracking-wider">
+                            <span className="text-xs font-extrabold px-2 py-0.5 rounded bg-[#0A3824] text-[var(--cdm-sand)]">
                               {annc.target_department === 'All' ? 'Campus-Wide' : `${annc.target_department} Dept`}
                             </span>
                             <span className="text-xs text-slate-400 font-medium">
@@ -956,7 +954,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
         <Card className="border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden bg-white dark:bg-slate-900">
           <CardContent className="p-0">
             {auditLoading ? (
-              <div className="p-8 text-center text-xs text-slate-400">Loading audit records...</div>
+              <RowsLoading label="Loading audit records" />
             ) : auditError ? (
               <div role="alert" className="p-8 text-sm text-rose-700">{auditError} Use Refresh Log to retry.</div>
             ) : auditLogs.length === 0 ? (
@@ -1064,7 +1062,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500 font-medium">Current Status:</span>
-                <span className="font-semibold text-slate-700 uppercase text-xs">
+                <span className="font-semibold text-slate-700 text-xs">
                   {deleteTarget.account_status}
                 </span>
               </div>

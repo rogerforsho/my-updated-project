@@ -171,7 +171,7 @@ export function TraineeBoard({ trainees, intake }: { trainees: SupervisedTrainee
       {intake && <IntakeCard intake={intake} />}
       <p className="text-sm text-slate-600"><strong>{graduated}</strong> of your {trainees.length} trainees have graduated (completed placement with the required hours).</p>
       <div className="flex flex-wrap gap-2">
-        <SearchBox value={list.search} onChange={list.setSearch} placeholder="Search name, ID, course, department or status..." />
+        <SearchBox value={list.search} onChange={list.setSearch} placeholder="Search trainees" />
         <select aria-label="Filter trainees by status" value={filter} onChange={(e) => { setFilter(e.target.value as Filter); list.setPage(1); }}
           className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm">
           {FILTERS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}

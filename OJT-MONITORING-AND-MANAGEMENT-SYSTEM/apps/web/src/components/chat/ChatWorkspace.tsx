@@ -207,7 +207,7 @@ export default function ChatWorkspace({ userId, role }: { userId: string; role: 
                     {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
                     {message.attachment_name && <button type="button" onClick={() => void openAttachment(message.message_id)}
                       className={`mt-1 block max-w-full truncate rounded-lg border px-2.5 py-1 text-left text-xs font-medium underline ${mine ? 'border-teal-500 text-white' : 'border-slate-200 text-teal-800'}`}>
-                      📎 {message.attachment_name}</button>}
+                      {message.attachment_name}</button>}
                     <time className={`mt-1 block text-xs ${mine ? 'text-teal-100' : 'text-slate-400'}`} dateTime={message.created_at}>{new Date(message.created_at).toLocaleString()}</time>
                   </div>
                 </div>;

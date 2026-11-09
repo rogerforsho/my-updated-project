@@ -85,7 +85,7 @@ export function NonWorkingDaysPanel({ mode, departments = [] }: { mode: 'admin' 
             <div key={d.day_id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
               <div>
                 <span className="font-semibold text-slate-900">{d.day_date}</span> · {d.label}
-                <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold uppercase text-slate-600">
+                <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">
                   {d.scope === 'global' ? 'National' : d.scope === 'department' ? d.department : `${d.department} · ${d.companies?.company_name ?? 'Company'}`}
                 </span>
               </div>

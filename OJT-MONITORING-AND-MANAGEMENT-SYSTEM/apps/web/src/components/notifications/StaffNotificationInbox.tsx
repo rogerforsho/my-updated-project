@@ -49,9 +49,9 @@ export default async function StaffNotificationInbox({ role, page = 1 }: { role:
       </div> :
       <div className="space-y-3">{notifications.map((notification) => {
         const content = <div className={`rounded-xl border bg-white p-4 ${notification.status === 'unread' ? 'border-l-4 border-l-teal-600' : 'border-slate-200'}`}>
-          <p className="text-sm text-slate-800">{notification.message}</p>
+          <p className={`text-sm text-slate-800 ${notification.status === 'unread' ? 'font-semibold' : ''}`}>{notification.message}</p>
           <time className="mt-1 block text-xs text-slate-500" dateTime={notification.notification_date}>{new Date(notification.notification_date).toLocaleString()}</time>
-          {notification.status === 'unread' && <span className="mt-2 inline-block rounded-full bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-800">Unread</span>}
+          {notification.status === 'unread' && <span className="sr-only">Unread</span>}
         </div>;
         return notification.related_conversation_id ? <Link key={notification.notification_id} href={`${chatPath}?conversation=${notification.related_conversation_id}`} className="block rounded-xl outline-none focus:ring-2 focus:ring-teal-600">{content}</Link> : notification.status === 'unread' ? <MarkReadCard key={notification.notification_id} notificationId={notification.notification_id}>{content}</MarkReadCard> : <div key={notification.notification_id}>{content}</div>;
       })}</div>}

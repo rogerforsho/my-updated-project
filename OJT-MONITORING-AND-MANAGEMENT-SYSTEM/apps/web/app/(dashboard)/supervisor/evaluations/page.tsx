@@ -1,11 +1,13 @@
 'use client';
 
+import { RowsLoading } from '@/src/components/ui/RowsLoading';
 import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
 import { useEffect, useState, useCallback } from 'react';
 import Button from '@/src/components/ui/Button';
 import Alert from '@/src/components/ui/Alert';
 import Modal from '@/src/components/ui/Modal';
 import { Badge } from '@/src/components/ui/Badge';
+import { Star } from '@/src/components/ui/Icons';
 import {
   createEvaluation, listAssignedStudentsForEvaluation, listEvaluationsForSupervisor,
   type EvaluationRubricCriteria
@@ -209,10 +211,10 @@ export default function SupervisorEvaluationsPage() {
 
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-slate-400 text-sm">Loading evaluations...</div>
+          <RowsLoading label="Loading evaluations" />
         ) : evaluations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-            <span className="text-4xl mb-3">⭐</span>
+            <Star className="mb-3 w-9 h-9 text-slate-300" aria-hidden="true" />
             <p className="text-sm font-semibold text-slate-700">{search || typeFilter !== 'all' ? 'No evaluations match your filters' : 'No evaluations submitted yet'}</p>
             <p className="text-xs text-slate-400 mt-1">Submit competency ratings for your assigned interns.</p>
           </div>
@@ -236,7 +238,7 @@ export default function SupervisorEvaluationsPage() {
                     <p className="text-xs text-slate-500 font-mono tabular-nums mt-0.5">{e.students?.student_number} • {e.students?.course}</p>
                   </td>
                   <td className="px-5 py-4">
-                    <Badge className={`text-xs font-extrabold uppercase ${
+                    <Badge className={`text-xs font-extrabold ${
                       e.evaluation_type === 'midterm'
                         ? 'bg-amber-50 text-amber-800 border-amber-200'
                         : 'bg-[#0A3824]/10 text-[#0A3824] border-[#0A3824]/30'
@@ -294,7 +296,7 @@ export default function SupervisorEvaluationsPage() {
         <div className="space-y-4">
           {/* Evaluation Stage Selector */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-700">
               Practicum Evaluation Milestone Stage <span className="text-rose-500">*</span>
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -338,7 +340,7 @@ export default function SupervisorEvaluationsPage() {
 
           {/* Trainee Selection */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-700">
               Assigned Trainee <span className="text-rose-500">*</span>
             </label>
             {students.length === 0 ? (
@@ -388,7 +390,7 @@ export default function SupervisorEvaluationsPage() {
           {/* Rubric Dimension Sliders / Inputs */}
           <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 border border-slate-200/90 space-y-3.5 shadow-inner">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-              <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+              <h4 className="text-xs font-black text-slate-900">
                 CHED Practicum Competency Rubric
               </h4>
               <span className="text-xs font-bold text-[#0A3824] bg-emerald-100/80 px-2.5 py-0.5 rounded-full border border-emerald-300">
@@ -440,7 +442,7 @@ export default function SupervisorEvaluationsPage() {
 
           {/* Qualitative Feedback */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-700">
               Qualitative Feedback & Mentor Remarks {commentRequired && <span className="text-rose-500">*</span>}
             </label>
             <p className={`text-xs ${commentRequired ? 'text-red-700 font-semibold' : 'text-slate-500'}`}>

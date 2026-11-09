@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/src/lib/supabase/client';
+import { Timer } from '@/src/components/ui/Icons';
 
 const INACTIVITY_LIMIT_MS = 30 * 60 * 1000; // 30 minutes
 const WARNING_THRESHOLD_MS = 28 * 60 * 1000; // 28 minutes (2-minute warning)
@@ -92,8 +93,8 @@ export default function SessionTimeoutProvider({ children }: { children: React.R
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
         >
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto text-2xl">
-              ⏱️
+            <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
+              <Timer className="w-6 h-6" aria-hidden="true" />
             </div>
 
             <div className="space-y-1">

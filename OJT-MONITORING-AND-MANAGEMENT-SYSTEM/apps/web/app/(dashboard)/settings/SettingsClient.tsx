@@ -147,7 +147,7 @@ export default function SettingsClient({ user, extraDetails }: Props) {
                 <div className="w-14 h-14 rounded-2xl bg-[#0A3824] text-amber-300 border-4 border-white dark:border-slate-900 shadow-2xs flex items-center justify-center font-bold text-lg">
                   {user.full_name ? user.full_name[0].toUpperCase() : 'U'}
                 </div>
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#0A3824] text-amber-300 uppercase tracking-wider border border-amber-400/30 shadow-2xs">
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#0A3824] text-amber-300 border border-amber-400/30 shadow-2xs">
                   {accountRoleLabel(user.role)}
                 </span>
               </div>
@@ -160,7 +160,7 @@ export default function SettingsClient({ user, extraDetails }: Props) {
               <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2.5 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 dark:text-slate-500 font-medium">Account Status</span>
-                  <span className="font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/60 uppercase text-xs">
+                  <span className="font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/60 text-xs">
                     {user.account_status}
                   </span>
                 </div>
@@ -217,7 +217,7 @@ export default function SettingsClient({ user, extraDetails }: Props) {
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Windows 10 / 11 (64-bit)</p>
                   </div>
                 </div>
-                <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
+                <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
                   v1.0.0
                 </span>
               </div>

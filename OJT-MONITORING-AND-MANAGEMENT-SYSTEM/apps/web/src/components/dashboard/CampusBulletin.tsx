@@ -80,7 +80,6 @@ export default function CampusBulletin({ announcements = [] }: Props) {
           </div>
           <div>
             <h3 className="text-xs font-bold text-slate-900 dark:text-white">Campus Bulletin</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Institutional Announcements</p>
           </div>
         </div>
       </div>
@@ -95,8 +94,7 @@ export default function CampusBulletin({ announcements = [] }: Props) {
             >
               <div className="flex items-center justify-between gap-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1 text-xs font-extrabold px-1.5 py-0.5 rounded bg-[#0A3824] text-[var(--cdm-sand)] uppercase tracking-wider">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--cdm-sand)] animate-pulse" />
+                  <span className="inline-flex items-center gap-1 text-xs font-extrabold px-1.5 py-0.5 rounded bg-[#0A3824] text-[var(--cdm-sand)]">
                     {annc.target_department === 'All' ? 'Campus-Wide' : `${annc.target_department} Dept`}
                   </span>
                   <span className="text-xs text-slate-400 font-medium">
@@ -151,7 +149,7 @@ export default function CampusBulletin({ announcements = [] }: Props) {
           {showDismissed && (
             <div className="space-y-2 mt-2 pt-2 border-t border-slate-100/80 dark:border-slate-800 page-fade-in">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <span className="text-xs font-bold text-slate-400">
                   Dismissed Archive
                 </span>
                 <button
@@ -171,7 +169,7 @@ export default function CampusBulletin({ announcements = [] }: Props) {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-xs font-bold px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 uppercase">
+                      <span className="text-xs font-bold px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 ">
                         {annc.target_department}
                       </span>
                       <span className="text-xs text-slate-400">

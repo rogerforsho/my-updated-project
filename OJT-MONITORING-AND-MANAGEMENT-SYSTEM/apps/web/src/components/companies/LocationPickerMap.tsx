@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
+import { MapPin, Search } from '@/src/components/ui/Icons';
 
 interface LocationPickerMapProps {
   latitude?: number | null;
@@ -251,7 +252,7 @@ export default function LocationPickerMap({
               }}
               className="w-full text-xs sm:text-sm pl-8 pr-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
             />
-            <span className="absolute left-2.5 top-2.5 text-slate-400 text-xs">🔍</span>
+            <Search className="absolute left-2.5 top-2.5 text-slate-400 w-4 h-4 shrink-0" aria-hidden="true" />
           </div>
           <button
             type="button"
@@ -279,7 +280,7 @@ export default function LocationPickerMap({
         {/* Search Results Dropdown */}
         {searchResults.length > 0 && (
           <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-[1000] overflow-hidden max-h-56 overflow-y-auto">
-            <div className="p-1.5 bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <div className="p-1.5 bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500">
               Select Matching Location
             </div>
             {searchResults.map((item) => (
@@ -289,7 +290,7 @@ export default function LocationPickerMap({
                 onClick={() => selectSearchResult(item)}
                 className="w-full text-left px-3 py-2 text-xs hover:bg-emerald-50 border-b border-slate-50 last:border-0 transition-colors flex items-start gap-2"
               >
-                <span className="text-emerald-600 mt-0.5">📍</span>
+                <MapPin className="text-emerald-600 mt-0.5 w-4 h-4 shrink-0" aria-hidden="true" />
                 <span className="text-slate-700 line-clamp-2">{item.display_name}</span>
               </button>
             ))}
@@ -307,14 +308,13 @@ export default function LocationPickerMap({
 
         {/* Floating Instruction overlay */}
         <div className="absolute top-2 left-2 z-[400] bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-md text-xs text-slate-600 shadow-sm border border-slate-200/80 pointer-events-none flex items-center gap-1.5">
-          <span>👆</span>
           <span>Click anywhere to place pin or drag marker</span>
         </div>
 
         {/* Active Geofence Badge Overlay */}
         {hasCoordinates && (
           <div className="absolute bottom-2 right-2 z-[400] bg-emerald-900/90 backdrop-blur-xs text-white px-2.5 py-1 rounded-md text-xs font-semibold shadow-md flex items-center gap-1.5 pointer-events-none">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
             <span>Perimeter: {radiusMeters}m</span>
           </div>
         )}
@@ -370,7 +370,7 @@ export default function LocationPickerMap({
           </div>
         ) : (
           <p className="text-xs text-amber-600 font-medium pt-1">
-            ⚠️ No pin placed yet. Search an address above or click on the map.
+            No pin placed yet. Search an address above or click on the map.
           </p>
         )}
       </div>
