@@ -237,6 +237,20 @@ textarea,
 [data-dept='ICS'] { --cdm-dark: #3A1D0A; --cdm-green: #B45309; --cdm-green-light: #C2570C; --cdm-olive: #B45309; }
 [data-dept='IBE'] { --cdm-dark: #0B2447; --cdm-green: #1D4ED8; --cdm-green-light: #2563EB; --cdm-olive: #1D4ED8; }
 
+/* One select look everywhere: flat field with our own chevron instead of the browser's. Selects that draw their own chevron opt out with .appearance-none. */
+select:not([multiple]):not([size]):not(.appearance-none) {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2rem;
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 0.9rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235A6A5E' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+.dark select:not([multiple]):not([size]):not(.appearance-none) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A9B5AA' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
 /* Balanced headline wrapping; aligned digits in tables. */
 h1, h2, h3 { text-wrap: balance; }
 td, th { font-variant-numeric: tabular-nums; }
