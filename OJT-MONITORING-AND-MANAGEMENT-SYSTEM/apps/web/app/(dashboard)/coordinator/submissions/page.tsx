@@ -19,6 +19,7 @@ import { CollapsibleGroup, useGroupFold } from '@/src/components/ui/CollapsibleG
 import { getSignedDocumentUrl } from '@/src/services/storage';
 import { PagerBar, usePageSize, usePagedList } from '@/src/components/ui/ListControls';
 import { GATEWAY_DOCUMENT_SPECS, isCoordinatorReviewType, SUPERVISOR_REVIEW_REPORT_TYPES } from '@ojt/shared';
+import { AlertTriangle, Building2, CheckCircle2, FileText, GraduationCap, Hourglass, Search } from '@/src/components/ui/Icons';
 
 
 function ReportGroupRows({ status, refreshKey, openingDocId, onOpen, onReview }: {
@@ -77,7 +78,7 @@ function ReportGroupRows({ status, refreshKey, openingDocId, onOpen, onReview }:
                     disabled={openingDocId === r.report_id}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-[#0A3824] border border-emerald-200 hover:bg-emerald-100 text-xs font-bold transition-all cursor-pointer"
                   >
-                    {openingDocId === r.report_id ? 'Opening...' : '📄 View Document'}
+                    {openingDocId === r.report_id ? 'Opening...' : 'View Document'}
                   </button>
                 </td>
                 <td className="px-5 py-4 text-xs">
@@ -303,7 +304,7 @@ export default function CoordinatorSubmissionsPage() {
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <span>📋 Pre-Deployment Tracker</span>
+            <span>Pre-Deployment Tracker</span>
             {complianceData && complianceData.needs_requirements > 0 && (
               <span className={`px-1.5 py-0.5 rounded-full text-xs font-black ${
                 activeTab === 'compliance' ? 'bg-[var(--cdm-sand)] text-[#0A3824]' : 'bg-rose-500 text-white'
@@ -320,7 +321,7 @@ export default function CoordinatorSubmissionsPage() {
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <span>📑 Document Review Feed</span>
+            <span>Document Review Feed</span>
             {totalReports > 0 && (
               <span className={`px-1.5 py-0.5 rounded-full text-xs font-black ${
                 activeTab === 'feed' ? 'bg-[var(--cdm-sand)] text-[#0A3824]' : 'bg-slate-300 text-slate-700'
@@ -354,7 +355,7 @@ export default function CoordinatorSubmissionsPage() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Needs Requirements</span>
-                <span className="text-lg">⚠️</span>
+                <AlertTriangle className="w-5 h-5" aria-hidden="true" />
               </div>
               <p className="text-3xl font-black text-amber-900 mt-2">
                 {complianceData?.needs_requirements ?? 0}
@@ -375,7 +376,7 @@ export default function CoordinatorSubmissionsPage() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-blue-800 uppercase tracking-wider">Ready for Review</span>
-                <span className="text-lg">⏳</span>
+                <Hourglass className="w-5 h-5 text-blue-700" aria-hidden="true" />
               </div>
               <p className="text-3xl font-black text-blue-900 mt-2">
                 {complianceData?.ready_for_review ?? 0}
@@ -396,7 +397,7 @@ export default function CoordinatorSubmissionsPage() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Ready for Placement</span>
-                <span className="text-lg">🎯</span>
+                <CheckCircle2 className="w-5 h-5" aria-hidden="true" />
               </div>
               <p className="text-3xl font-black text-emerald-900 mt-2">
                 {complianceData?.ready_for_placement ?? 0}
@@ -417,7 +418,7 @@ export default function CoordinatorSubmissionsPage() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-[#0A3824] uppercase tracking-wider">Active Deployed</span>
-                <span className="text-lg">🏢</span>
+                <Building2 className="w-5 h-5" aria-hidden="true" />
               </div>
               <p className="text-3xl font-black text-[#0A3824] mt-2">
                 {complianceData?.deployed ?? 0}
@@ -439,7 +440,7 @@ export default function CoordinatorSubmissionsPage() {
                 placeholder="Search trainee name or student number..."
                 className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0A3824]"
               />
-              <span className="absolute left-3 top-2.5 text-slate-400 text-sm">🔍</span>
+              <Search className="absolute left-3 top-2.5 text-slate-400 w-4 h-4 shrink-0" aria-hidden="true" />
               {complianceSearch && (
                 <button
                   onClick={() => setComplianceSearch('')}
@@ -468,10 +469,10 @@ export default function CoordinatorSubmissionsPage() {
                 {(
                   [
                     { key: 'all', label: 'All Trainees' },
-                    { key: 'needs_requirements', label: '⚠️ Incomplete' },
+                    { key: 'needs_requirements', label: 'Incomplete' },
                     { key: 'ready_for_review', label: 'Needs Review' },
-                    { key: 'ready_for_placement', label: '🎯 Cleared' },
-                    { key: 'deployed', label: '🏢 Deployed' },
+                    { key: 'ready_for_placement', label: 'Cleared' },
+                    { key: 'deployed', label: 'Deployed' },
                   ] as const
                 ).map(tab => (
                   <button
@@ -500,7 +501,7 @@ export default function CoordinatorSubmissionsPage() {
               </div>
             ) : filteredStudents.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                <span className="text-4xl mb-3">🎓</span>
+                <GraduationCap className="mb-3 w-9 h-9 text-slate-300" aria-hidden="true" />
                 <p className="text-sm font-semibold text-slate-700">No students match this filter</p>
                 <p className="text-xs text-slate-400 mt-1">Try clearing your search query or selecting &quot;All Trainees&quot;.</p>
               </div>
@@ -569,7 +570,7 @@ export default function CoordinatorSubmissionsPage() {
                                   icon = '✓';
                                 } else if (doc.status === 'submitted') {
                                   badgeClass = 'bg-amber-50 text-amber-700 border-amber-200 font-semibold';
-                                  icon = '⏳';
+                                  icon = '…';
                                 } else if (doc.status === 'rejected') {
                                   badgeClass = 'bg-rose-50 text-rose-700 border-rose-200 line-through';
                                   icon = '✕';
@@ -599,7 +600,7 @@ export default function CoordinatorSubmissionsPage() {
                             {student.compliance_state === 'deployed' && (
                               <div>
                                 <Badge className="bg-[var(--cdm-green)]/10 text-[#0A3824] border-[#0A3824]/20 text-xs font-bold">
-                                  🏢 DEPLOYED
+                                  DEPLOYED
                                 </Badge>
                                 <p className="text-xs text-slate-500 font-medium mt-0.5 truncate max-w-[150px]">
                                   {student.assigned_company}
@@ -608,7 +609,7 @@ export default function CoordinatorSubmissionsPage() {
                             )}
                             {student.compliance_state === 'ready_for_placement' && (
                               <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-xs font-bold">
-                                🎯 READY FOR PLACEMENT
+                                READY FOR PLACEMENT
                               </Badge>
                             )}
                             {student.compliance_state === 'ready_for_review' && (
@@ -618,7 +619,7 @@ export default function CoordinatorSubmissionsPage() {
                             )}
                             {student.compliance_state === 'in_progress' && (
                               <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-xs font-bold">
-                                ⚠️ INCOMPLETE ({student.missing_documents.length} MISSING)
+                                INCOMPLETE ({student.missing_documents.length} MISSING)
                               </Badge>
                             )}
                             {student.compliance_state === 'not_started' && (
@@ -638,7 +639,7 @@ export default function CoordinatorSubmissionsPage() {
                                   title="Send in-app reminder notification to this student"
                                   className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-all cursor-pointer disabled:opacity-50"
                                 >
-                                  {remindingStudentId === student.student_id ? 'Sending...' : '🔔 Remind'}
+                                  {remindingStudentId === student.student_id ? 'Sending...' : 'Remind'}
                                 </button>
                               )}
                               <Button
@@ -685,7 +686,7 @@ export default function CoordinatorSubmissionsPage() {
             </div>
           ) : reportGroups.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm flex flex-col items-center justify-center py-20 text-slate-400">
-              <span className="text-4xl mb-3">📁</span>
+              <FileText className="mb-3 w-9 h-9 text-slate-300" aria-hidden="true" />
               <p className="text-sm font-semibold text-slate-700">No submissions found</p>
               <p className="text-xs text-slate-400 mt-1">No documents have been submitted yet.</p>
             </div>
@@ -732,7 +733,7 @@ export default function CoordinatorSubmissionsPage() {
                 disabled={remindingStudentId === inspectingStudent?.student_id}
                 className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 cursor-pointer"
               >
-                {remindingStudentId === inspectingStudent?.student_id ? 'Sending...' : '🔔 Dispatch Requirement Reminder'}
+                {remindingStudentId === inspectingStudent?.student_id ? 'Sending...' : 'Dispatch Requirement Reminder'}
               </button>
             ) : (
               <span className="text-xs text-emerald-700 font-semibold">

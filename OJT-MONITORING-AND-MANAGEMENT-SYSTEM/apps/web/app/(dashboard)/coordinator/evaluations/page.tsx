@@ -47,7 +47,7 @@ export default function CoordinatorEvaluationAppealsPage() {
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-5xl mx-auto page-fade-in">
       <CoordinatorSectionNav section="evaluations" />
       <div>
-        <p className="text-xs font-black uppercase tracking-widest text-emerald-800">Academic review</p>
+        <p className="text-xs font-black st text-emerald-800">Academic review</p>
         <h1 className="text-2xl font-bold text-slate-900">Evaluation appeals</h1>
         <p className="text-sm text-slate-500 mt-1">Review appeals within your department. Decisions are recorded separately from the original evaluation.</p>
       </div>
@@ -69,11 +69,11 @@ export default function CoordinatorEvaluationAppealsPage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl bg-slate-50 p-3">
-              <p className="text-xs font-bold uppercase text-slate-500">Original evaluation</p>
+              <p className="text-xs font-bold text-slate-500">Original evaluation</p>
               <p className="mt-1 text-sm font-semibold text-slate-800">{appeal.evaluations.performance_score ?? 'Not scored'}% · {appeal.evaluations.feedback}</p>
             </div>
             <div className="rounded-xl bg-emerald-50/70 p-3">
-              <p className="text-xs font-bold uppercase text-emerald-800">Student appeal</p>
+              <p className="text-xs font-bold text-emerald-800">Student appeal</p>
               <p className="mt-1 text-sm text-slate-700">{appeal.appeal_reason}</p>
               {!!appeal.supporting_details && <p className="mt-2 text-xs text-slate-600">Supporting details: {appeal.supporting_details}</p>}
             </div>

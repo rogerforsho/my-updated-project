@@ -9,6 +9,7 @@ import Modal from '@/src/components/ui/Modal';
 import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
 import { listPendingStudents, updateStudentAccountStatus } from '@/src/services/auth';
 import { COURSE_DEPARTMENT, STUDENT_REGISTRATION_COURSES } from '@ojt/shared';
+import { FileText, GraduationCap } from '@/src/components/ui/Icons';
 
 const MIN_REJECTION_REASON = 10;
 
@@ -240,7 +241,7 @@ export default function CoordinatorApprovalsPage() {
           <div className="p-8 text-center"><Button variant="outline" onClick={() => load(page)}>Retry loading registrations</Button></div>
         ) : filteredStudents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-            <span className="text-4xl mb-3">🎓</span>
+            <GraduationCap className="mb-3 w-9 h-9 text-slate-300" aria-hidden="true" />
             <p className="text-sm font-medium text-slate-600">No pending registrations match this view.</p>
             <p className="text-xs text-slate-400 mt-1">Try another degree program or page.</p>
           </div>
@@ -304,7 +305,7 @@ export default function CoordinatorApprovalsPage() {
                             })}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
                           >
-                            <span>🪪</span> Inspect ID
+                            <FileText className="w-4 h-4 shrink-0" aria-hidden="true" /> Inspect ID
                           </button>
                         ) : (
                           <span className="text-xs text-slate-400 italic">Not attached</span>
@@ -401,7 +402,7 @@ export default function CoordinatorApprovalsPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="rejection-reason" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              <label htmlFor="rejection-reason" className="text-xs font-bold text-slate-700">
                 Reason for Rejection / Correction Instructions
               </label>
               <textarea

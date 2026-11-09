@@ -1,5 +1,6 @@
 'use client';
 
+import { RowsLoading } from '@/src/components/ui/RowsLoading';
 import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Button from '@/src/components/ui/Button';
@@ -9,7 +10,7 @@ import Badge from '@/src/components/ui/Badge';
 import Modal from '@/src/components/ui/Modal';
 import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
 import { RowMenu } from '@/src/components/ui/RowMenu';
-import { Trash2, AlertTriangle, RotateCcw, Search, Filter } from '@/src/components/ui/Icons';
+import { Trash2, AlertTriangle, RotateCcw, Search, Filter, Building2 } from '@/src/components/ui/Icons';
 import {
   listCompanies, createCompany, updateCompany, setCompanyStatus, deleteCompany,
   type CompanyInput, type CompanyWithSupervisors,
@@ -255,13 +256,10 @@ export default function CoordinatorCompaniesPage() {
 
         {/* Table Body */}
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-slate-400 text-sm">
-            <RotateCcw className="w-5 h-5 animate-spin mr-2 text-emerald-700" />
-            Loading partner companies...
-          </div>
+          <RowsLoading label="Loading partner companies" />
         ) : filteredCompanies.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-            <span className="text-4xl mb-3">🏢</span>
+            <Building2 className="mb-3 w-9 h-9 text-slate-300" aria-hidden="true" />
             <p className="text-sm font-medium text-slate-600">
               {searchQuery || statusFilter !== 'all' ? 'No companies match your filters.' : 'No companies registered yet.'}
             </p>
@@ -340,7 +338,7 @@ export default function CoordinatorCompaniesPage() {
                     <td className="px-3.5 py-3.5 whitespace-nowrap">
                       {c.geofence_enabled && c.latitude != null && c.longitude != null ? (
                         <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          📍 {c.geofence_radius_meters ?? 50}m
+                          {c.geofence_radius_meters ?? 50}m
                         </span>
                       ) : (
                         <span className="text-xs text-slate-400 font-medium" title="GPS Location not configured">—</span>

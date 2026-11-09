@@ -25,7 +25,7 @@ export default function CoordinatorSupervisorEvaluationsPage() {
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-5xl mx-auto page-fade-in">
       <CoordinatorSectionNav section="evaluations" />
       <div>
-        <p className="text-xs font-black uppercase tracking-widest text-emerald-800">Academic review</p>
+        <p className="text-xs font-black st text-emerald-800">Academic review</p>
         <h1 className="text-2xl font-bold text-slate-900">Supervisor evaluations</h1>
         <p className="text-sm text-slate-500 mt-1">Evaluations submitted by Supervisors for students in your department.</p>
       </div>

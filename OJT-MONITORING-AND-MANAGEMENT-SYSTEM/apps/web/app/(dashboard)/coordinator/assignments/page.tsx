@@ -20,6 +20,7 @@ import {
 } from '@/src/services/schedule';
 import { PagerBar, SearchBox, usePagedList } from '@/src/components/ui/ListControls';
 import { GATEWAY_DOCUMENT_SPECS, type AssignmentStatus, type DbCompanyBranch, type StudentStatus } from '@ojt/shared';
+import { AlertTriangle, Calendar, ClipboardCheck } from '@/src/components/ui/Icons';
 
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -422,7 +423,7 @@ export default function AssignmentsPage() {
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex items-center justify-center py-20 text-slate-400 text-sm">Loading...</div>
           ) : groups.length === 0 ? (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col items-center justify-center py-20 text-slate-400">
-              <span className="text-4xl mb-3">📋</span>
+              <ClipboardCheck className="mb-3 w-9 h-9 text-slate-300" aria-hidden="true" />
               <p className="text-sm">{search ? 'No assignments match your search.' : 'No assignments recorded yet.'}</p>
             </div>
           ) : (
@@ -486,7 +487,7 @@ export default function AssignmentsPage() {
               <div className="flex items-center justify-center py-20 text-slate-400 text-sm">Loading proposals...</div>
             ) : proposals.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                <span className="text-4xl mb-3">🗓️</span>
+                <Calendar className="mb-3 w-9 h-9 text-slate-300" aria-hidden="true" />
                 <p className="text-sm">No practicum schedule proposals found.</p>
               </div>
             ) : (
@@ -763,7 +764,7 @@ export default function AssignmentsPage() {
               <option value="">Select trainee</option>
               {students.map(s => (
                 <option key={s.student_id} value={s.student_id} disabled={s.has_active_assignment}>
-                  {s.is_gateway_cleared ? '✓' : '⚠️'} {s.full_name} ({s.student_number} - {s.course}) {s.is_gateway_cleared ? '[CLEARED 2/2]' : `[INCOMPLETE: ${s.gateway_approved_count}/2]`}{s.has_active_assignment ? ' (Already Deployed)' : ''}
+                  {s.is_gateway_cleared ? '✓' : '!'} {s.full_name} ({s.student_number} - {s.course}) {s.is_gateway_cleared ? '[CLEARED 2/2]' : `[INCOMPLETE: ${s.gateway_approved_count}/2]`}{s.has_active_assignment ? ' (Already Deployed)' : ''}
                 </option>
               ))}
             </select>
@@ -786,7 +787,7 @@ export default function AssignmentsPage() {
               return (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
                   <p className="font-bold flex items-center gap-1.5 text-amber-800">
-                    <span>⚠️</span> Pre-Deployment Gateway Incomplete ({selectedStudent.gateway_approved_count}/2)
+                    <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" /> Pre-Deployment Gateway Incomplete ({selectedStudent.gateway_approved_count}/2)
                   </p>
                   <p className="text-amber-800">
                     This trainee cannot be deployed yet. Missing/unapproved credentials:

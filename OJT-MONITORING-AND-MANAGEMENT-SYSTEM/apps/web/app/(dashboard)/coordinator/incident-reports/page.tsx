@@ -56,7 +56,7 @@ export default function IncidentReportsPage() {
         className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left hover:border-emerald-700">
         <span className="flex flex-wrap items-center justify-between gap-2">
           <span className="font-semibold text-slate-900">{CATEGORY_LABELS[row.category] ?? row.category} · {row.student_name} ({row.student_number})</span>
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold uppercase text-slate-700">{row.status}</span>
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{row.status}</span>
         </span>
         <span className="mt-1 block truncate text-sm text-slate-600">{row.description}</span>
         <span className="mt-1 block text-xs text-slate-500">{row.course} · submitted {new Date(row.created_at).toLocaleString()}</span>

@@ -87,7 +87,7 @@ export default function ClearanceActionModal({
             : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
         }`}
       >
-        {completedHours >= requiredHours ? '🎓 Clearance' : 'Inspect'}
+        {completedHours >= requiredHours ? 'Clearance' : 'Inspect'}
       </button>
 
       <Modal
@@ -134,7 +134,7 @@ export default function ClearanceActionModal({
 
             {/* 3 Clearance Pillars Checklist */}
             <div className="space-y-2.5">
-              <h4 className="font-extrabold text-slate-800 uppercase tracking-wider text-xs flex items-center gap-1.5">
+              <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
                 <Shield className="w-3.5 h-3.5 text-[#0A3824]" /> Institutional Clearance Gateways
               </h4>
 
@@ -155,7 +155,7 @@ export default function ClearanceActionModal({
                 </div>
 
                 <Badge className={clearance.hours_met ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}>
-                  {clearance.hours_met ? 'COMPLETED' : 'INCOMPLETE'}
+                  {clearance.hours_met ? 'Completed' : 'Incomplete'}
                 </Badge>
               </div>
 
@@ -175,7 +175,7 @@ export default function ClearanceActionModal({
                   </div>
                 </div>
                 <Badge className={clearance.final_report_approved ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}>
-                  {clearance.final_report_approved ? 'APPROVED' : 'PENDING'}
+                  {clearance.final_report_approved ? 'Approved' : 'Pending'}
                 </Badge>
               </div>
 
@@ -197,7 +197,7 @@ export default function ClearanceActionModal({
                   </div>
                 </div>
                 <Badge className={clearance.evaluation_passed ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}>
-                  {clearance.evaluation_appeal_pending ? 'APPEAL PENDING' : clearance.evaluation_passed ? `${clearance.evaluation_score}% PASSED` : 'AWAITING'}
+                  {clearance.evaluation_appeal_pending ? 'Appeal pending' : clearance.evaluation_passed ? `${clearance.evaluation_score}% passed` : 'Awaiting'}
                 </Badge>
               </div>
             </div>

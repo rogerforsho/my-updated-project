@@ -1,5 +1,6 @@
 'use client';
 
+import { RowsLoading } from '@/src/components/ui/RowsLoading';
 import { useEffect, useState, useCallback } from 'react';
 import Button from '@/src/components/ui/Button';
 import Input from '@/src/components/ui/Input';
@@ -9,6 +10,7 @@ import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
 import { createSupervisor, listSupervisors, type SupervisorInput } from '@/src/services/supervisors';
 import { SupervisorInvitesPanel } from '@/src/components/SupervisorInvitesPanel';
 import { CompanyPicker } from '@/src/components/ui/CompanyPicker';
+import { Users } from '@/src/components/ui/Icons';
 
 const EMPTY_FORM: SupervisorInput = {
   full_name: '',
@@ -92,10 +94,10 @@ export default function SupervisorsPage() {
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-slate-400 text-sm">Loading supervisors...</div>
+          <RowsLoading label="Loading supervisors" />
         ) : supervisors.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-            <span className="text-4xl mb-3">👩‍🏫</span>
+            <Users className="mb-3 w-9 h-9 text-slate-300" aria-hidden="true" />
             <p className="text-sm">{search ? 'No supervisors match your search.' : 'No supervisors yet.'}</p>
           </div>
         ) : (

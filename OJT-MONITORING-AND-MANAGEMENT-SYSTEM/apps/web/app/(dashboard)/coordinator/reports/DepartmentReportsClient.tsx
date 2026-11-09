@@ -148,10 +148,9 @@ export default function DepartmentReportsClient({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs uppercase font-extrabold tracking-wider text-[var(--cdm-sand)] bg-[var(--cdm-green)] px-2.5 py-0.5 rounded-full border border-[var(--cdm-sand)]/40">
+            <span className="text-xs font-extrabold text-[var(--cdm-sand)] bg-[var(--cdm-green)] px-2.5 py-0.5 rounded-full border border-[var(--cdm-sand)]/40">
               {isICSView ? 'ICS Department' : 'IBE Department'}
             </span>
-            <span className="text-xs text-slate-500 font-medium">Academic Practicum Analytics</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-serif tracking-tight mt-1">
             {isICSView
@@ -198,10 +197,10 @@ export default function DepartmentReportsClient({
         <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
           <CardContent className="p-5 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <p className="text-xs font-semibold text-slate-400">
                 Enrolled Trainees
               </p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{deptMetrics.total}</p>
+              <p className="text-2xl font-bold tabular-nums text-slate-900 mt-1">{deptMetrics.total}</p>
               <p className="text-xs text-slate-400 mt-0.5">Active senior cohort</p>
             </div>
             <div className="w-11 h-11 rounded-xl bg-slate-50 border border-slate-200/90 text-[#0A3824] flex items-center justify-center">
@@ -213,8 +212,8 @@ export default function DepartmentReportsClient({
         <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
           <CardContent className="p-5 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active In Field</p>
-              <p className="text-2xl font-bold text-[#0A3824] mt-1">
+              <p className="text-xs font-semibold text-slate-400">Active In Field</p>
+              <p className="text-2xl font-bold tabular-nums text-[#0A3824] mt-1">
                 {isICSView ? summary.ics.bsit.active + summary.ics.bscpe.active : summary.ibe.bsbaHrm.active + summary.ibe.bsEntrep.active}
               </p>
               <p className="text-xs text-slate-400 mt-0.5">Practicum in progress</p>
@@ -228,8 +227,8 @@ export default function DepartmentReportsClient({
         <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
           <CardContent className="p-5 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Completed Practicum</p>
-              <p className="text-2xl font-bold text-emerald-600 mt-1">{deptMetrics.completed}</p>
+              <p className="text-xs font-semibold text-slate-400">Completed Practicum</p>
+              <p className="text-2xl font-bold tabular-nums text-emerald-600 mt-1">{deptMetrics.completed}</p>
               <p className="text-xs text-slate-400 mt-0.5">Completed required practicum hours</p>
             </div>
             <div className="w-11 h-11 rounded-xl bg-slate-50 border border-slate-200/90 text-emerald-700 flex items-center justify-center">
@@ -241,8 +240,8 @@ export default function DepartmentReportsClient({
         <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
           <CardContent className="p-5 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Rendered Hours</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{deptMetrics.hours.toFixed(1)}</p>
+              <p className="text-xs font-semibold text-slate-400">Rendered Hours</p>
+              <p className="text-2xl font-bold tabular-nums text-slate-900 mt-1">{deptMetrics.hours.toFixed(1)}</p>
               <p className="text-xs text-slate-400 mt-0.5">Verified Industry Hours</p>
             </div>
             <div className="w-11 h-11 rounded-xl bg-slate-50 border border-slate-200/90 text-[#0A3824] flex items-center justify-center">
@@ -566,10 +565,10 @@ export default function DepartmentReportsClient({
                           }`}
                         >
                           {s.progress_status === 'completed'
-                            ? '🎓 COMPLETED'
+                            ? 'Completed'
                             : s.progress_status === 'in_progress'
-                            ? 'IN PROGRESS'
-                            : 'NOT STARTED'}
+                            ? 'In progress'
+                            : 'Not started'}
                         </span>
                       </td>
                     </tr>
