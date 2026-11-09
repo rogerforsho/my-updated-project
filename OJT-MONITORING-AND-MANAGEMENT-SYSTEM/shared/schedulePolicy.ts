@@ -37,9 +37,9 @@ export function addMonthsClamped(isoDate: string, months: number): string {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(Math.min(d, lastDay)).padStart(2, '0')}`;
 }
 
-/** Error text when the practicum window is missing or longer than the cap; null when it is fine. Dates are already valid YYYY-MM-DD. */
+/** Error text when an end date is given and is longer than the cap; null when it is fine or omitted (the end is projected from the schedule). */
 export function practicumWindowError(startDate: string, endDate: string | null | undefined): string | null {
-  if (!endDate) return `Enter the practicum end date. A practicum can last at most ${MAX_PRACTICUM_MONTHS} months.`;
+  if (!endDate) return null;
   const latest = addMonthsClamped(startDate, MAX_PRACTICUM_MONTHS);
   if (endDate > latest) {
     return `A practicum can last at most ${MAX_PRACTICUM_MONTHS} months. For a ${startDate} start, the latest end date is ${latest}.`;
@@ -48,14 +48,15 @@ export function practicumWindowError(startDate: string, endDate: string | null |
 }
 
 /**
- * Can the schedule reach the required hours inside the window? Counts scheduled weekdays from start to end;
- * holidays are not known here, so this is a lenient check (it never rejects a schedule that could finish).
+ * Can the schedule reach the required hours inside the window? Counts scheduled weekdays from start to end
+ * (the 5-month cap when no end date is given); holidays are not known here, so this is a lenient check.
  */
 export function validateScheduleFeasibility(input: {
-  start_date: string; end_date: string; work_days: number[]; daily_hours: number; required_hours: number;
+  start_date: string; end_date?: string | null; work_days: number[]; daily_hours: number; required_hours: number;
 }): { ok: true } | { ok: false; message: string } {
+  const endDate = input.end_date || addMonthsClamped(input.start_date, MAX_PRACTICUM_MONTHS);
   const cursor = new Date(`${input.start_date}T00:00:00.000Z`);
-  const end = new Date(`${input.end_date}T00:00:00.000Z`);
+  const end = new Date(`${endDate}T00:00:00.000Z`);
   let days = 0;
   for (; cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
     if (input.work_days.includes(cursor.getUTCDay())) days++;
@@ -64,7 +65,7 @@ export function validateScheduleFeasibility(input: {
   if (hours < input.required_hours) {
     return {
       ok: false,
-      message: `This schedule gives about ${hours} hours between ${input.start_date} and ${input.end_date}, but ${input.required_hours} hours are required. Add work days or lengthen the shift (up to ${MAX_DAILY_HOURS} hours a day) so the hours fit within ${MAX_PRACTICUM_MONTHS} months.`,
+      message: `This schedule gives about ${hours} hours between ${input.start_date} and ${endDate}, but ${input.required_hours} hours are required. Add work days or lengthen the shift (up to ${MAX_DAILY_HOURS} hours a day) so the hours fit within ${MAX_PRACTICUM_MONTHS} months.`,
     };
   }
   return { ok: true };

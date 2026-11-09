@@ -43,7 +43,6 @@ export default function ScheduleProposalModal({ visible, onClose, onSubmitted }:
   const [lunchMinutes, setLunchMinutes] = useState(60);
   const [lunchBreakStart, setLunchBreakStart] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState('');
   const [notes, setNotes] = useState('');
   const [existingProposal, setExistingProposal] = useState<DbPracticumSchedule | null>(null);
 
@@ -73,7 +72,6 @@ export default function ScheduleProposalModal({ visible, onClose, onSubmitted }:
       if (s.lunch_break_minutes != null) setLunchMinutes(s.lunch_break_minutes);
       if (s.lunch_break_start) setLunchBreakStart(s.lunch_break_start.substring(0, 5));
       if (s.start_date) setStartDate(s.start_date);
-      if (s.end_date) setEndDate(s.end_date);
       if (s.student_notes) setNotes(s.student_notes);
     } else if (compRes.data && compRes.data.length > 0 && !companyId) {
       setCompanyId(compRes.data[0].company_id);
@@ -106,7 +104,6 @@ export default function ScheduleProposalModal({ visible, onClose, onSubmitted }:
     lunch_break_minutes: lunchMinutes,
     lunch_break_start: lunchMinutes > 0 ? lunchBreakStart : null,
     start_date: startDate,
-    end_date: endDate || null,
     work_modality: modality,
   });
   const isChedCompliant = schedulePolicy.ok;
@@ -135,7 +132,6 @@ export default function ScheduleProposalModal({ visible, onClose, onSubmitted }:
       lunch_break_minutes: lunchMinutes,
       lunch_break_start: lunchMinutes > 0 ? lunchBreakStart : null,
       start_date: startDate,
-      end_date: endDate || null,
       student_notes: notes.trim() || null,
     });
     setSubmitting(false);
@@ -365,28 +361,15 @@ export default function ScheduleProposalModal({ visible, onClose, onSubmitted }:
               {/* Practicum Period */}
               <View style={s.section}>
                 <Text style={s.sectionTitle}>5. Practicum Period</Text>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.label}>Target Start Date (YYYY-MM-DD)</Text>
-                    <TextInput
-                      style={s.input}
-                      value={startDate}
-                      onChangeText={setStartDate}
-                      placeholder="2026-10-01"
-                      placeholderTextColor="#879687"
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.label}>End Date (required, max 5 months)</Text>
-                    <TextInput
-                      style={s.input}
-                      value={endDate}
-                      onChangeText={setEndDate}
-                      placeholder="2026-12-15"
-                      placeholderTextColor="#879687"
-                    />
-                  </View>
-                </View>
+                <Text style={s.label}>Target Start Date (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={s.input}
+                  value={startDate}
+                  onChangeText={setStartDate}
+                  placeholder="2026-10-01"
+                  placeholderTextColor="#879687"
+                />
+                <Text style={s.hint}>Your end date is projected from your schedule. Hours must fit within 5 months of the start.</Text>
               </View>
 
               {/* Remarks / Errand Notes */}
@@ -577,6 +560,7 @@ const s = StyleSheet.create({
   metricLabel: { fontSize: 10, color: '#526257', fontWeight: '600' },
   metricValue: { fontSize: 14, fontWeight: '800', color: '#0A3824', marginTop: 2 },
   metricSub: { fontSize: 9, color: '#879687' },
+  hint: { fontSize: 11, fontStyle: 'italic', color: '#879687', marginTop: 6 },
   metricDivider: { width: 1, backgroundColor: 'rgba(0,0,0,0.08)', marginHorizontal: 8 },
   complianceWarning: { fontSize: 11, color: '#b91c1c', marginTop: 4, fontWeight: '600' },
   errorBox: {

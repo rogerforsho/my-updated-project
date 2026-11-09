@@ -687,7 +687,7 @@ export default function AssignmentsPage() {
                 required
               />
               <Input
-                label="End Date (required, at most 5 months after start)"
+                label="End Date (optional, at most 5 months after start)"
                 type="date"
                 value={reviewForm.end_date}
                 onChange={e => setReviewForm(f => ({ ...f, end_date: e.target.value }))}
@@ -854,7 +854,7 @@ export default function AssignmentsPage() {
 
           {/* End Date */}
           <Input
-            label="End Date (required, at most 5 months after start)"
+            label="End Date (optional, at most 5 months after start)"
             type="date"
             value={form.end_date}
             onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))}

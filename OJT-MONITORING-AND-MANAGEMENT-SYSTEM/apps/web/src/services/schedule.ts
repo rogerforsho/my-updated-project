@@ -76,7 +76,7 @@ export async function submitPracticumSchedule(
   }
   const { lunch_break_minutes: lunchMinutes, lunch_break_start: lunchStart, daily_hours: dailyHours, weekly_hours: weeklyHours } = policy.value;
   const feasibility = validateScheduleFeasibility({
-    start_date: input.start_date!, end_date: input.end_date!, work_days: input.work_days,
+    start_date: input.start_date!, end_date: input.end_date, work_days: input.work_days,
     daily_hours: dailyHours, required_hours: resolveRequiredHours(student.required_hours, student.course),
   });
   if (!feasibility.ok) return { data: null, error: { code: 'VALIDATION_FAILURE', message: feasibility.message } };
@@ -227,7 +227,7 @@ export async function reviewPracticumSchedule(
     supervisor_id?: string;
     feedback?: string;
     start_date?: string;
-    end_date?: string;
+    end_date?: string | null;
   }
 ): Promise<AppResult<null>> {
   const { supabase, user, profile } = await getTrustedActor();

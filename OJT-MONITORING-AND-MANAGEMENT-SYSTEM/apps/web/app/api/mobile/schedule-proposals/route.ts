@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   if (studentError || !student)
     return failure('NOT_FOUND', 'Student profile not found.', 404);
   const feasibility = validateScheduleFeasibility({
-    start_date: input.start_date as string, end_date: input.end_date as string, work_days: input.work_days as number[],
+    start_date: input.start_date as string, end_date: input.end_date as string | null | undefined, work_days: input.work_days as number[],
     daily_hours: policy.value.daily_hours, required_hours: resolveRequiredHours(student.required_hours, student.course),
   });
   if (!feasibility.ok) return failure('VALIDATION_FAILURE', feasibility.message, 400);

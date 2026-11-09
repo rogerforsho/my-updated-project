@@ -176,9 +176,9 @@ test('shared schedule policy normalizes lunch input and enforces the same-day ca
   assert.equal(validateSchedulePolicy({ ...base, work_days: [1, 1] }).ok, false);
   assert.equal(validateSchedulePolicy({ ...base, time_out: '07:59' }).ok, false);
   assert.equal(validateSchedulePolicy({ ...base, time_out: '16:00', work_days: [1, 2, 3, 4], lunch_break_minutes: 0, lunch_break_start: '' }).ok, true);
-  assert.equal(validateSchedulePolicy({ ...base, end_date: undefined }).ok, false, 'an end date is required for every modality');
+  assert.equal(validateSchedulePolicy({ ...base, end_date: undefined }).ok, true, 'an end date is optional for every modality');
   assert.equal(validateSchedulePolicy({ ...base, end_date: '2027-03-13' }).ok, false, 'longer than 5 months');
-  assert.equal(validateSchedulePolicy({ ...base, work_modality: 'remote', end_date: undefined }).ok, false);
+  assert.equal(validateSchedulePolicy({ ...base, work_modality: 'remote', end_date: undefined }).ok, true);
   assert.equal(validateSchedulePolicy({ ...base, work_modality: 'hybrid', end_date: '2026-10-11' }).ok, false);
   assert.equal(validateSchedulePolicy({ ...base, work_modality: 'remote', end_date: '2026-10-31' }).ok, true);
   assert.equal(validateSchedulePolicy({ ...base, start_date: '2026-02-29' }).ok, false);
