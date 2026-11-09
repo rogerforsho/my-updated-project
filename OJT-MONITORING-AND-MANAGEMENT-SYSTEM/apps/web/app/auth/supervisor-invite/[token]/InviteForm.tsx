@@ -23,7 +23,7 @@ export function InviteForm({ token }: { token: string }) {
     return (
       <div role="status" className="rounded-xl border border-[#0A3824]/20 bg-[#0A3824]/5 p-5 text-xs text-slate-700 leading-relaxed">
         <p className="font-bold text-[#0A3824] mb-1">Check your email</p>
-        If this address can receive an invitation, we sent a one-time link to choose your password. Then sign in to the web portal.
+        We sent a one-time link to choose your password. Then sign in to the web portal.
       </div>
     );
   }

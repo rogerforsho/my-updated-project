@@ -120,7 +120,7 @@ export async function acceptSupervisorInvite(token: string, input: { full_name: 
   const result = await provisionSupervisor({ full_name, email, position, company_id: invite.company_id });
   if (result.error) {
     await db.rpc('release_supervisor_invite', { p_invite_id: invite.invite_id }); // the sign-up did not happen, so the use is returned
-    if (result.error.code === 'DUPLICATE_REQUEST') return { data: null, error: null };
+    if (result.error.code === 'DUPLICATE_REQUEST') return { data: null, error: { code: 'DUPLICATE_REQUEST', message: 'This email already has an account in this system. Sign in or reset your password, or use a different email.' } };
     return { data: null, error: { code: 'SERVER_FAILURE', message: 'Your account could not be set up. Please try again or ask your OJT Coordinator.' } };
   }
   await recordAuditEvent({ action: 'SUPERVISOR_INVITE_USED', entity_type: 'supervisor_invite', entity_id: invite.invite_id, details: { department: invite.department, company_id: invite.company_id } });
