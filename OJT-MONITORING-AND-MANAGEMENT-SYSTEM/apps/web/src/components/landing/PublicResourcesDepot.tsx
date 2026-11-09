@@ -13,7 +13,7 @@ export default function PublicResourcesDepot() {
         <div className="text-center max-w-3xl mx-auto space-y-3 mb-14">
           <div className="flex items-center justify-center gap-2">
             <span className="w-6 h-1 bg-[#0A3824] rounded-full" />
-            <span className="text-xs uppercase font-extrabold tracking-widest text-[#0A3824]">
+            <span className="text-xs font-extrabold st text-[#0A3824]">
               OFFICIAL TOOLS &amp; VERIFICATION
             </span>
             <span className="w-6 h-1 bg-[#0A3824] rounded-full" />
@@ -36,7 +36,7 @@ export default function PublicResourcesDepot() {
                 <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900">
                   v1.0.0 Production
                 </span>
-                <span className="text-xs font-mono text-slate-400">
+                <span className="text-xs text-slate-400">
                   EXE (Windows)
                 </span>
               </div>
@@ -46,7 +46,7 @@ export default function PublicResourcesDepot() {
               </div>
 
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                <span className="text-xs font-bold text-slate-400 block mb-1">
                   Desktop Software
                 </span>
                 <h3 className="text-base font-bold text-slate-900 leading-snug">
@@ -78,7 +78,7 @@ export default function PublicResourcesDepot() {
                 <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-900">
                   React Native / Expo Go
                 </span>
-                <span className="text-xs font-mono text-slate-400">
+                <span className="text-xs text-slate-400">
                   Mobile App
                 </span>
               </div>
@@ -88,7 +88,7 @@ export default function PublicResourcesDepot() {
               </div>
 
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                <span className="text-xs font-bold text-slate-400 block mb-1">
                   Student Trainee Client
                 </span>
                 <h3 className="text-base font-bold text-slate-900 leading-snug">
@@ -116,7 +116,7 @@ export default function PublicResourcesDepot() {
                 <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
                   Public Search
                 </span>
-                <span className="text-xs font-mono text-slate-400">
+                <span className="text-xs text-slate-400">
                   Live Verification
                 </span>
               </div>
@@ -126,7 +126,7 @@ export default function PublicResourcesDepot() {
               </div>
 
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                <span className="text-xs font-bold text-slate-400 block mb-1">
                   Academic Credentials
                 </span>
                 <h3 className="text-base font-bold text-slate-900 leading-snug">

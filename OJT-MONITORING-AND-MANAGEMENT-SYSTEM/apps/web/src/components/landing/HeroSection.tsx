@@ -33,7 +33,7 @@ export default function HeroSection({ onOpenAccessPortal }: HeroSectionProps) {
             {/* Kicker bar */}
             <div className="flex items-center gap-2">
               <span className="w-8 h-1 bg-[var(--cdm-sand)] rounded-full" />
-              <span className="text-xs uppercase font-extrabold tracking-widest text-[#0A3824]">
+              <span className="text-xs font-extrabold st text-[#0A3824]">
                 SHAPE YOUR PRACTICUM PATHWAY
               </span>
             </div>
@@ -120,7 +120,7 @@ export default function HeroSection({ onOpenAccessPortal }: HeroSectionProps) {
                     <span>Student Trainee</span>
                   </button>
                 </div>
-                <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider hidden sm:inline-block">
+                <span className="text-xs font-bold text-emerald-800 hidden sm:inline-block">
                   {heroView === 'campus' ? 'Kasiglahan Village' : '4th-Year Trainee'}
                 </span>
               </div>
@@ -179,10 +179,10 @@ export default function HeroSection({ onOpenAccessPortal }: HeroSectionProps) {
                   <Award className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2]" />
                 </div>
                 <div>
-                  <div className="text-lg sm:text-xl font-black text-slate-900 font-mono tracking-tight leading-none">
+                  <div className="text-lg sm:text-xl font-black text-slate-900 tabular-nums tracking-tight leading-none">
                     486<span className="text-amber-600">+</span>
                   </div>
-                  <span className="text-xs sm:text-xs font-bold text-slate-500 uppercase tracking-wider block mt-0.5">
+                  <span className="text-xs sm:text-xs font-bold text-slate-500 block mt-0.5">
                     Hours Certified
                   </span>
                 </div>
@@ -194,7 +194,7 @@ export default function HeroSection({ onOpenAccessPortal }: HeroSectionProps) {
                   <Check className="w-4 h-4 stroke-[3]" />
                 </div>
                 <div>
-                  <span className="text-xs sm:text-xs font-extrabold uppercase tracking-wider text-emerald-800 block">
+                  <span className="text-xs sm:text-xs font-extrabold text-emerald-800 block">
                     Point-in-Time GPS Verified
                   </span>
                   <span className="text-xs font-bold text-slate-800">

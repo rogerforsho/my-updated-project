@@ -86,8 +86,8 @@ export default function AccessPortalModal({ isOpen, onClose }: AccessPortalModal
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#E4DBC4]">Institutional Access</span>
-                <span className="text-xs text-emerald-300 font-mono flex items-center gap-1">
+                <span className="text-xs font-bold text-[#E4DBC4]">Institutional Access</span>
+                <span className="text-xs text-emerald-300 flex items-center gap-1">
                   <Shield className="w-3 h-3" /> Secure Gateway
                 </span>
               </div>

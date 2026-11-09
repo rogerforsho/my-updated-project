@@ -62,10 +62,10 @@ export default function ComplianceFramework() {
 
               {/* FLOATING BADGE */}
               <div className="absolute -bottom-4 -right-2 sm:-bottom-5 sm:-right-4 bg-[var(--cdm-sand)] text-slate-950 rounded-2xl p-4 shadow-xl border-2 border-white flex flex-col items-center justify-center text-center">
-                <span className="text-2xl sm:text-3xl font-black font-mono leading-none">
+                <span className="text-2xl sm:text-3xl font-black leading-none">
                   ISO
                 </span>
-                <span className="text-xs font-extrabold uppercase tracking-wider mt-1">
+                <span className="text-xs font-extrabold mt-1">
                   25010:2023<br />Evaluated
                 </span>
               </div>
@@ -79,7 +79,7 @@ export default function ComplianceFramework() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-1 bg-[#0A3824] rounded-full" />
-                <span className="text-xs uppercase font-extrabold tracking-widest text-[#0A3824]">
+                <span className="text-xs font-extrabold st text-[#0A3824]">
                   PRACTICUM MONITORING
                 </span>
               </div>

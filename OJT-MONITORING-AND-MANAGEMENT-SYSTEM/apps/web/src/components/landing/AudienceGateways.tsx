@@ -74,7 +74,7 @@ export default function AudienceGateways() {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="w-6 h-1 bg-[#0A3824] rounded-full" />
-              <span className="text-xs uppercase font-extrabold tracking-widest text-[#0A3824]">
+              <span className="text-xs font-extrabold st text-[#0A3824]">
                 ACADEMIC DEPARTMENTS
               </span>
             </div>
@@ -101,7 +101,7 @@ export default function AudienceGateways() {
                     <Icon className="w-6 h-6" />
                   </div>
 
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  <span className="text-xs font-bold text-slate-400 block mb-1">
                     {t.category}
                   </span>
 
@@ -115,7 +115,7 @@ export default function AudienceGateways() {
                 </div>
 
                 <div className="mt-6 pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500 font-mono">
+                  <span className="text-xs font-bold text-slate-500">
                     {t.badge}
                   </span>
                   <Link
