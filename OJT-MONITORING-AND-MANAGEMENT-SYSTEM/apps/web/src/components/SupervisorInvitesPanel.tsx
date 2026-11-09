@@ -7,9 +7,45 @@ import {
 } from '@/src/services/supervisorInvites';
 
 const STATUS: Record<SupervisorInviteRow['status'], string> = {
-  active: 'bg-emerald-50 text-emerald-800', used_up: 'bg-slate-100 text-slate-600',
-  expired: 'bg-slate-100 text-slate-600', revoked: 'bg-red-50 text-red-800',
+  active: 'bg-emerald-100 text-emerald-900', used_up: 'bg-slate-100 text-slate-600',
+  expired: 'bg-slate-100 text-slate-600', revoked: 'bg-red-100 text-red-900',
 };
+
+const COLS = 'grid grid-cols-[1.5rem_minmax(0,1fr)_3rem_3.5rem_6rem_5.5rem_4rem] items-center gap-x-3 px-3';
+const fmt = (iso: string) => new Date(iso).toLocaleString();
+
+/** One table row; the chevron or the row opens a drawer with the details that would not fit the columns. */
+function InviteRow({ invite: i, onRevoke }: { invite: SupervisorInviteRow; onRevoke: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const drawer = `invite-${i.invite_id}`;
+  return (
+    <div>
+      <div className={`${COLS} cursor-pointer py-1.5 hover:bg-slate-50`} onClick={() => setOpen((o) => !o)}>
+        <button type="button" aria-expanded={open} aria-controls={drawer} aria-label={`${open ? 'Hide' : 'Show'} details for ${i.company_name}`}
+          onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }} className="text-slate-500">
+          <span aria-hidden className={`inline-block transition-transform ${open ? 'rotate-180' : ''}`}>▼</span>
+        </button>
+        <span className="truncate font-semibold text-slate-900" title={i.company_name}>{i.company_name}</span>
+        <span className="text-xs text-slate-600">{i.department}</span>
+        <span className="text-xs tabular-nums text-slate-600">{i.use_count}/{i.max_uses}</span>
+        <span className="text-xs tabular-nums text-slate-600">{new Date(i.expires_at).toLocaleDateString()}</span>
+        <span><span className={`rounded-full px-2 py-0.5 text-xs font-bold ${STATUS[i.status]}`}>{i.status.replace('_', ' ')}</span></span>
+        <span className="text-right">
+          {i.status === 'active' && <button type="button" onClick={(e) => { e.stopPropagation(); onRevoke(i.invite_id); }} className="text-xs font-bold text-red-700 underline">Revoke</button>}
+        </span>
+      </div>
+      {open && (
+        <dl id={drawer} className="grid grid-cols-1 gap-x-6 gap-y-1 bg-slate-50 px-3 py-2 pl-[2.25rem] text-xs sm:grid-cols-2">
+          <div><dt className="inline font-semibold text-slate-500">Link ID </dt><dd className="inline break-all font-mono text-slate-800">{i.invite_id}</dd></div>
+          <div><dt className="inline font-semibold text-slate-500">Created by </dt><dd className="inline break-all font-mono text-slate-800">{i.created_by ?? 'unknown'}</dd></div>
+          <div><dt className="inline font-semibold text-slate-500">Created </dt><dd className="inline text-slate-800">{fmt(i.created_at)}</dd></div>
+          <div><dt className="inline font-semibold text-slate-500">Expires </dt><dd className="inline text-slate-800">{fmt(i.expires_at)}</dd></div>
+          {i.revoked_at && <div><dt className="inline font-semibold text-slate-500">Revoked </dt><dd className="inline text-slate-800">{fmt(i.revoked_at)}</dd></div>}
+        </dl>
+      )}
+    </div>
+  );
+}
 
 /** Coordinator-issued sign-up links for Supervisors: two uses, seven days, department and company fixed. */
 export function SupervisorInvitesPanel() {
@@ -74,19 +110,14 @@ export function SupervisorInvitesPanel() {
         </div>
       )}
       {msg && <p role="status" className="text-sm text-slate-700">{msg}</p>}
-      <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white">
-        {invites.map((i) => (
-          <div key={i.invite_id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
-            <div>
-              <span className="font-semibold text-slate-900">{i.company_name}</span>
-              <span className="ml-2 text-xs text-slate-500">{i.department} · used {i.use_count}/{i.max_uses} · expires {new Date(i.expires_at).toLocaleDateString()}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS[i.status]}`}>{i.status.replace('_', ' ')}</span>
-              {i.status === 'active' && <button type="button" onClick={() => revoke(i.invite_id)} className="text-xs font-bold text-red-700 underline">Revoke</button>}
-            </div>
-          </div>
-        ))}
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white text-sm">
+        <div className={`${COLS} border-b border-slate-200 bg-slate-50 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-500`} role="row">
+          <span />
+          <span>Company</span><span>Dept</span><span>Used</span><span>Expires</span><span>Status</span><span className="text-right">Action</span>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {invites.map((i) => <InviteRow key={i.invite_id} invite={i} onRevoke={revoke} />)}
+        </div>
         {!invites.length && <p className="p-6 text-sm text-slate-500">No invitation links yet.</p>}
       </div>
     </section>

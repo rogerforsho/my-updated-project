@@ -21,6 +21,8 @@ export interface SupervisorInviteRow {
   max_uses: number;
   expires_at: string;
   revoked_at: string | null;
+  created_at: string;
+  created_by: string | null;
   status: 'active' | 'used_up' | 'expired' | 'revoked';
 }
 
@@ -64,14 +66,14 @@ export async function listSupervisorInvites(): Promise<AppResult<{ departments: 
   const actor = await grantedCoordinator();
   if (!actor) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   const { data, error } = await getServiceClient().from('supervisor_invites')
-    .select('invite_id, department, use_count, max_uses, expires_at, revoked_at, companies(company_name)')
+    .select('invite_id, department, use_count, max_uses, expires_at, revoked_at, created_at, created_by, companies(company_name)')
     .in('department', actor.departments).order('created_at', { ascending: false }).limit(100);
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not load invitation links.' } };
   const now = Date.now();
   const rows = (data ?? []).map((r) => {
     const company = Array.isArray(r.companies) ? r.companies[0] : r.companies;
     const status: SupervisorInviteRow['status'] = r.revoked_at ? 'revoked' : new Date(r.expires_at).getTime() <= now ? 'expired' : r.use_count >= r.max_uses ? 'used_up' : 'active';
-    return { invite_id: r.invite_id, department: r.department, company_name: company?.company_name ?? '', use_count: r.use_count, max_uses: r.max_uses, expires_at: r.expires_at, revoked_at: r.revoked_at, status } as SupervisorInviteRow;
+    return { invite_id: r.invite_id, department: r.department, company_name: company?.company_name ?? '', use_count: r.use_count, max_uses: r.max_uses, expires_at: r.expires_at, revoked_at: r.revoked_at, created_at: r.created_at, created_by: r.created_by, status } as SupervisorInviteRow;
   });
   return { data: { departments: actor.departments, invites: rows }, error: null };
 }
