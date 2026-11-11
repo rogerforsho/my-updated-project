@@ -25,7 +25,7 @@ import { getCurrentCoordinates } from '../../services/location';
 import { syncPendingOfflineAttendance, isNetworkAvailable } from '../../lib/syncEngine';
 import { getOfflineQueue } from '../../lib/offlineQueue';
 import { optimizeSelfie } from '../../lib/imageOptimizer';
-import { GATEWAY_DOCUMENT_SPECS, isWithinGeofence, matchesDoc } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, getGatewayStatus, isWithinGeofence, matchesDoc } from '@ojt/shared';
 import NetworkToast from '../../components/NetworkToast';
 import ScheduleProposalModal from '../../components/ScheduleProposalModal';
 import { fetchStudentScheduleProposal } from '../../services/schedule';
@@ -171,9 +171,11 @@ export default function AttendanceScreen() {
     } else try {
       const repRes = await listStudentReports(1, 50);
       const reports = repRes.data?.reports || [];
-      // Same rule as the server (shared GATEWAY_DOCUMENT_SPECS); students already placed are exempt from newly added documents.
+      // Students already placed are exempt from newly added documents.
       const progress = GATEWAY_DOCUMENT_SPECS.map(spec => {
-        const found = reports.find(r => matchesDoc(r.report_type, spec.name));
+        // An approved submission wins: the same document type can be submitted more than once.
+        const found = reports.find(r => matchesDoc(r.report_type, spec.name) && r.status === 'approved')
+          ?? reports.find(r => matchesDoc(r.report_type, spec.name));
         return {
           id: spec.id,
           title: spec.name,
@@ -182,7 +184,8 @@ export default function AttendanceScreen() {
         };
       });
       setGatewayDocs(progress);
-      const cleared = Boolean(assign) || progress.every(p => p.status === 'approved');
+      // Same call and same approved-only filter as the server (schedule-proposals route, schedule.ts).
+      const cleared = Boolean(assign) || getGatewayStatus(reports.filter(r => r.status === 'approved')).isCleared;
       setIsGatewayCleared(cleared);
 
       let cachedSchedule: DbPracticumSchedule | null = null;
