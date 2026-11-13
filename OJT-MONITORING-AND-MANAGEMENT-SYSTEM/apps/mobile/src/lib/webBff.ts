@@ -1,19 +1,7 @@
 import { supabase } from './supabase';
 import { getWebPortalUrl } from './webPortal';
+import { fetchWithTimeout } from './fetchWithTimeout';
 import type { AppResult } from '@ojt/shared';
-
-// An unreachable server otherwise leaves fetch pending until the OS gives up, which shows as an endless spinner.
-const BFF_TIMEOUT_MS = 30000;
-
-async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), BFF_TIMEOUT_MS);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 async function callWebBff<T>(path: string, method: 'GET' | 'POST', payload?: unknown): Promise<AppResult<T>> {
   const { data: { session } } = await supabase.auth.getSession();

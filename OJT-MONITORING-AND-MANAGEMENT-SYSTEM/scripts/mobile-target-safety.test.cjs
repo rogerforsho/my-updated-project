@@ -43,6 +43,8 @@ function initializeSupabase(url, environment = 'preview', anonKey = 'test-anon-k
           deleteItemAsync() {},
         };
       }
+      if (name === 'react-native') return { AppState: { addEventListener() {} } };
+      if (name === './fetchWithTimeout') return { fetchWithTimeout() {} };
       throw new Error(`Unexpected import: ${name}`);
     },
   };

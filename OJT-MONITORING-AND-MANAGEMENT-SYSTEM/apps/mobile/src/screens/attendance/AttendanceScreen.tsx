@@ -146,8 +146,19 @@ export default function AttendanceScreen() {
     }
   }
 
+  // The spinner must always clear, even when a read throws, or the tab is stuck until the app restarts.
   async function loadState() {
     setLoading(true);
+    try {
+      await readState();
+    } catch {
+      setError('Could not load attendance. Pull down to try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function readState() {
     const assign = await getActiveAssignment();
     setActiveAssignment(assign);
 
@@ -213,7 +224,6 @@ export default function AttendanceScreen() {
     const queue = await getOfflineQueue();
     const queueIdentity = await getCachedAttendanceIdentity();
     applyQueue(queue, queueIdentity?.student_id);
-    setLoading(false);
   }
 
   const loadHistory = useCallback(async () => {
