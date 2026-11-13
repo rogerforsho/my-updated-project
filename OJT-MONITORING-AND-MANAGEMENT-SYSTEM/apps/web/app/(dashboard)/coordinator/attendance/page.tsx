@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { CompanyPicker } from '@/src/components/ui/CompanyPicker';
 import { exportTimecardCsv, listTimecard, type TimecardRow } from '@/src/services/timecard';
 import { ExceptionReview } from './ExceptionReview';
+import { DtrSheet } from './DtrSheet';
 import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
 
 const isoDaysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
@@ -33,6 +34,7 @@ function Timecard() {
   const [student, setStudent] = useState<{ id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showDtr, setShowDtr] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => { setSearch(searchText.trim()); setPage(1); }, 300);
@@ -80,6 +82,7 @@ function Timecard() {
               {student.name} <button type="button" aria-label="Show all students" onClick={() => { setStudent(null); setPage(1); }} className="ml-1 underline">clear</button>
             </span>
             <button type="button" onClick={download} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700">Download timecard (CSV)</button>
+            <button type="button" onClick={() => setShowDtr(true)} className="rounded-lg bg-[var(--cdm-green)] px-3 py-2 text-xs font-bold text-white">Download DTR</button>
           </>
         )}
       </div>
@@ -113,6 +116,8 @@ function Timecard() {
           </table>
         )}
       </div>
+
+      {showDtr && student && <DtrSheet studentId={student.id} initialMonth={to.slice(0, 7)} onClose={() => setShowDtr(false)} />}
 
       <PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={(n) => { changePageSize(n); setPage(1); }} />
     </div>
