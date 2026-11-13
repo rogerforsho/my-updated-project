@@ -48,6 +48,24 @@ export default async function CoordinatorProgressPage({ searchParams }: Props) {
           <p className="text-sm text-slate-500 mt-1">Real-time rendered hours and milestone tracking for 4th-year ICS & IBE trainees; targets follow each student’s configured requirement.</p>
         </div>
         <div className="flex items-center gap-2">
+          <details className="relative">
+            <summary className="list-none cursor-pointer rounded-lg border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              Download CSV
+            </summary>
+            <div className="absolute right-0 z-10 mt-1 w-44 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+              {statusTabs.map((tab) => {
+                const q = new URLSearchParams();
+                if (courseFilter) q.set('course', courseFilter);
+                if (tab.key) q.set('status', tab.key);
+                return (
+                  <a key={tab.key} href={`/api/coordinator/progress/export${q.toString() ? `?${q}` : ''}`} download
+                    className="block rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                    {tab.label}
+                  </a>
+                );
+              })}
+            </div>
+          </details>
           <Badge variant="outline" className="px-3.5 py-1.5 text-sm font-semibold bg-emerald-50 text-[#0A3824] border-emerald-200">
             {total} Total Trainees
           </Badge>
