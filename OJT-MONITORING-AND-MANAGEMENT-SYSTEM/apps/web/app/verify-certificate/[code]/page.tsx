@@ -1,6 +1,9 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
+import QRCode from 'qrcode';
+import CertificateSheet from './CertificateSheet';
 import { verifyCertificatePublic } from '@/src/services/certificates';
-import { Shield, Check, AlertCircle, Building, Clock, Award, FileText } from '@/src/components/ui/Icons';
+import { Shield, AlertCircle } from '@/src/components/ui/Icons';
 
 interface Props {
   params: Promise<{ code: string }>;
@@ -10,6 +13,35 @@ export default async function PublicCertificateVerificationPage({ params }: Prop
   const { code } = await params;
   const result = await verifyCertificatePublic(code);
   const cert = result.data;
+
+  if (cert?.status === 'active' && cert.valid) {
+    const h = await headers();
+    const host = h.get('x-forwarded-host') ?? h.get('host');
+    const proto = h.get('x-forwarded-proto') ?? (host?.startsWith('localhost') ? 'http' : 'https');
+    const verifyUrl = `${proto}://${host}/verify-certificate/${encodeURIComponent(cert.verification_code)}`;
+    const qrSvg = await QRCode.toString(verifyUrl, { type: 'svg', margin: 0, color: { dark: '#1B4332', light: '#FFFFFF' } });
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 page-fade-in font-sans" style={{ background: '#EFEBDD' }}>
+        <CertificateSheet
+          cert={{
+            student_name: cert.student_name ?? '',
+            student_number: cert.student_number ?? '',
+            course: cert.course ?? '',
+            host_company_name: cert.host_company_name ?? '',
+            hours: cert.hours_rendered?.toFixed(1) ?? '0.0',
+            academic_year: cert.academic_year ?? '',
+            issued: cert.issued_at ? new Date(cert.issued_at).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }) : 'N/A',
+            serial: cert.verification_code,
+          }}
+          qrSvg={qrSvg}
+          verifyUrl={verifyUrl}
+        />
+        <Link href="/auth/sign-in" className="no-print mt-6 text-xs font-semibold text-[#1B4332] hover:underline">
+          ← Return to Colegio de Montalban OJT Portal
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4 sm:p-6 page-fade-in font-sans">
@@ -29,71 +61,7 @@ export default async function PublicCertificateVerificationPage({ params }: Prop
         </div>
 
         {/* Verification Result Card */}
-        {cert?.status === 'active' && cert.valid ? (
-          <div className="bg-white rounded-2xl border-2 border-emerald-500/80 shadow-xl overflow-hidden">
-            {/* Success Top Banner */}
-            <div className="bg-emerald-600 px-6 py-4 text-white flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                <Check className="w-6 h-6 text-white stroke-[3]" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold">Authentic Practicum Credential Verified</h2>
-                <p className="text-xs text-emerald-100">
-                  This Certificate of Completion is authentic, tamper-proof, and officially registered with Colegio de Montalban.
-                </p>
-              </div>
-            </div>
-
-            {/* Credential Details */}
-            <div className="p-6 space-y-5">
-              <div className="border-b border-slate-100 pb-4">
-                <p className="text-xs font-semibold text-slate-400">Trainee Graduate</p>
-                <h3 className="text-xl font-bold text-slate-900 mt-0.5">{cert.student_name}</h3>
-                <p className="text-xs text-slate-500 font-mono mt-0.5">{cert.student_number} • {cert.course}</p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
-                  <div className="flex items-center gap-1.5 text-slate-400 font-semibold ">
-                    <Building className="w-3.5 h-3.5" /> Host Training Establishment
-                  </div>
-                  <p className="font-bold text-slate-800 text-sm">{cert.host_company_name}</p>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
-                  <div className="flex items-center gap-1.5 text-slate-400 font-semibold ">
-                    <Clock className="w-3.5 h-3.5" /> Rendered Practicum Hours
-                  </div>
-                  <p className="font-bold text-emerald-700 text-sm">{cert.hours_rendered?.toFixed(1)} Hours Verified</p>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
-                  <div className="flex items-center gap-1.5 text-slate-400 font-semibold ">
-                    <Award className="w-3.5 h-3.5" /> Academic Term
-                  </div>
-                  <p className="font-bold text-slate-800 text-sm">A.Y. {cert.academic_year}</p>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
-                  <div className="flex items-center gap-1.5 text-slate-400 font-semibold ">
-                    <FileText className="w-3.5 h-3.5" /> Date of Official Issuance
-                  </div>
-                  <p className="font-bold text-slate-800 text-sm">
-                    {cert.issued_at ? new Date(cert.issued_at).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }) : 'N/A'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Security Verification Footer */}
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                <span>Verification Serial:</span>
-                <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
-                  {cert.verification_code}
-                </span>
-              </div>
-            </div>
-          </div>
-        ) : cert?.status === 'revoked' ? (
+        {cert?.status === 'revoked' ? (
           <div className="bg-white rounded-2xl border-2 border-rose-500 shadow-xl overflow-hidden">
             <div className="bg-rose-600 px-6 py-4 text-white flex items-center gap-3">
               <AlertCircle className="w-8 h-8 flex-shrink-0" />
