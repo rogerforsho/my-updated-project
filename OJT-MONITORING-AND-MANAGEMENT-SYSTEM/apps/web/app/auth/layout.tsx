@@ -17,7 +17,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen flex flex-col justify-between bg-[var(--background)]">
       <div className="flex-1 flex flex-col lg:flex-row w-full">
         {/* LEFT SIDE: Institutional Identity & Atmosphere */}
-        <div className="lg:w-[54%] xl:w-[58%] relative flex flex-col justify-between p-8 sm:p-12 lg:p-16 bg-[#092E1D] text-white min-h-[340px] lg:min-h-screen overflow-hidden select-none border-r border-emerald-950/40">
+        <div className="lg:w-[54%] xl:w-[58%] relative flex flex-col justify-between p-8 sm:p-12 lg:p-16 bg-[#092E1D] text-white lg:min-h-screen overflow-hidden select-none border-r border-emerald-950/40">
           {/* Subtle radial ambient glow */}
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-700/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -48,7 +48,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </div>
 
           {/* Center: Inspiring Academic Statement */}
-          <div className="relative z-10 my-10 lg:my-auto max-w-lg space-y-3">
+          <div className="relative z-10 hidden lg:block lg:my-auto max-w-lg space-y-3">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white leading-tight font-serif tracking-tight">
               Empowering the Next Generation of Industry Leaders
             </h2>
@@ -58,7 +58,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </div>
 
           {/* Bottom Left: Legal & Campus Compliance Footnote */}
-          <div className="relative z-10 pt-4 border-t border-white/10 text-xs text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="relative z-10 pt-4 border-t border-white/10 text-xs text-slate-400 hidden lg:flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <span>Rodriguez, Rizal</span>
               <span className="mx-2 text-slate-600">&bull;</span>

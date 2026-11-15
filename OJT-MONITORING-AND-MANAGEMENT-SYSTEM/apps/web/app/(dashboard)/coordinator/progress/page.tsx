@@ -49,7 +49,7 @@ export default async function CoordinatorProgressPage({ searchParams }: Props) {
         </div>
         <div className="flex items-center gap-2">
           <details className="relative">
-            <summary className="list-none cursor-pointer rounded-lg border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            <summary className="list-none cursor-pointer whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
               Download CSV
             </summary>
             <div className="absolute right-0 z-10 mt-1 w-44 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">

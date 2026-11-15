@@ -33,7 +33,7 @@ export default function CoordinatorSectionNav({ section }: { section: Section })
             key={item.href}
             href={item.href}
             aria-current={current ? 'page' : undefined}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${current ? 'bg-[var(--cdm-green)] text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
+            className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${current ? 'bg-[var(--cdm-green)] text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
           >
             {item.label}
           </Link>

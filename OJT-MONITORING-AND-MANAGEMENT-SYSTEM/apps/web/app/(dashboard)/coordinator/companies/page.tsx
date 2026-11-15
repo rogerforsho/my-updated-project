@@ -197,7 +197,7 @@ export default function CoordinatorCompaniesPage() {
             <RotateCcw className="w-3.5 h-3.5" />
             Refresh
           </Button>
-          <Button size="sm" onClick={openCreate}>+ Add Company</Button>
+          <Button size="sm" onClick={openCreate} className="whitespace-nowrap">+ Add Company</Button>
         </div>
       </div>
 
@@ -304,7 +304,7 @@ export default function CoordinatorCompaniesPage() {
                   <th className="text-center px-3 py-3.5 font-semibold text-slate-700 text-xs">
                     Status
                   </th>
-                  <th className="text-right pr-5 pl-3 py-3.5 font-semibold text-slate-700 text-xs whitespace-nowrap min-w-[220px]">
+                  <th className="text-right pr-5 pl-3 py-3.5 font-semibold text-slate-700 text-xs whitespace-nowrap">
                     Actions
                   </th>
                 </tr>

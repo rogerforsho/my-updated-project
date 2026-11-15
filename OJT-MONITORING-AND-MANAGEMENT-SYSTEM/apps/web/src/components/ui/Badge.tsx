@@ -43,7 +43,7 @@ export function Badge({ status, variant, className = '', children, ...props }: B
     };
     const label = labels[activeKey] ?? activeKey.replace(/_/g, ' ');
     return (
-      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border capitalize ${item.pill} ${className}`} {...props}>
+      <span className={`inline-flex items-center gap-1.5 whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-semibold border capitalize ${item.pill} ${className}`} {...props}>
         <span className={`w-1.5 h-1.5 rounded-full ${item.dot} shrink-0`} />
         <span>{children || label}</span>
       </span>
@@ -51,7 +51,7 @@ export function Badge({ status, variant, className = '', children, ...props }: B
   }
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 ${className}`} {...props}>
+    <span className={`inline-flex items-center whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 ${className}`} {...props}>
       {children}
     </span>
   );
