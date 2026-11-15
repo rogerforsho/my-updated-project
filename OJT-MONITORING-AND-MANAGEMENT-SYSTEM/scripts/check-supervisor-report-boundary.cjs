@@ -19,6 +19,7 @@ async function main() {
   const activeAccountPolicy = toPrivate(boundaries.match(/'(CREATE POLICY active_account_boundary[^']*)'/)[1])
     .replace('%I', 'reports');
   assert.equal(fs.readFileSync(mirror, 'utf8'), sql, 'Supabase and database migration copies must match');
+  const weeklySql = read('20261116000200_supervisor_reviews_weekly_progress.sql');
 
   await db.exec(`
     CREATE ROLE anon NOLOGIN;
@@ -74,11 +75,13 @@ async function main() {
   await db.exec(activeAccountPolicy);
   await db.exec(sql);
   await db.exec(sql); // Migration should be safe to retry.
+  await db.exec(weeklySql);
+  await db.exec(weeklySql);
   await db.exec('CREATE TRIGGER guard_ojt_client_write BEFORE UPDATE ON public.reports FOR EACH ROW EXECUTE FUNCTION public.guard_ojt_client_write()');
 
   await db.exec("SET ROLE authenticated; SET request.jwt.claim.sub = '00000000-0000-4000-8000-000000000001'");
   const supervisorRows = (await db.query('SELECT report_type FROM public.reports ORDER BY report_type')).rows;
-  assert.deepEqual(supervisorRows.map(row => row.report_type), ['Accomplishment Report', 'Daily Journal'],
+  assert.deepEqual(supervisorRows.map(row => row.report_type), ['Accomplishment Report', 'Daily Journal', 'Weekly Progress'],
     'Reports of a student whose assignment ended are hidden');
   const endedUpdate = await db.query(`UPDATE public.reports SET supervisor_decision='approved', supervisor_decided_by=auth.uid(),
     supervisor_decided_at=now(), supervisor_feedback='Late' WHERE report_id='10000000-0000-4000-8000-000000000005' RETURNING report_id`);
@@ -95,7 +98,7 @@ async function main() {
     supervisor_decided_at=now(), supervisor_feedback='Changed' WHERE report_type='Daily Journal'`));
   const weeklyUpdate = await db.query(`UPDATE public.reports SET supervisor_decision='approved', supervisor_decided_by=auth.uid(),
     supervisor_decided_at=now(), supervisor_feedback='Reviewed' WHERE report_type='Weekly Progress' RETURNING report_id`);
-  assert.equal(weeklyUpdate.rows.length, 0, 'Supervisors cannot decide weekly progress items');
+  assert.equal(weeklyUpdate.rows.length, 1, 'Supervisors decide weekly progress items');
   const gatewayUpdate = await db.query(`UPDATE public.reports SET supervisor_decision='approved', supervisor_decided_by=auth.uid(),
     supervisor_decided_at=now() WHERE report_type='Endorsement Letter' RETURNING report_id`);
   assert.equal(gatewayUpdate.rows.length, 0, 'Supervisors cannot decide gateway documents');
@@ -117,7 +120,7 @@ async function main() {
   assert.deepEqual(coordinatorRows.map(row => row.report_type),
     ['Accomplishment Report', 'Daily Journal', 'Daily Journal', 'Endorsement Letter', 'Incident Report', 'Weekly Progress']);
   await db.close();
-  console.log('PASS: Only the active Supervisor of an active assignment sees and approves/returns (with comment) daily reports; weekly progress, incidents, and gateway decisions stay with Coordinators.');
+  console.log('PASS: Only the active Supervisor of an active assignment sees and approves/returns (with comment) daily and weekly reports; incidents and gateway decisions stay with Coordinators.');
 }
 
 main().catch(error => { console.error(error); process.exitCode = 1; });

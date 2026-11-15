@@ -51,6 +51,7 @@ export function isCoordinatorReviewType(type: string): boolean {
 
 export const SUPERVISOR_REVIEW_REPORT_TYPES = [
   'Daily Journal',
+  'Weekly Progress',
   'Accomplishment Report',
 ];
 

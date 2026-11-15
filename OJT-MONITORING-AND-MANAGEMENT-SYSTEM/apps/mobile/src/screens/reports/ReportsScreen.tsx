@@ -248,7 +248,7 @@ export default function ReportsScreen() {
                   s.statusBadgeText,
                   item.status === 'reviewed' || item.status === 'approved' || item.supervisor_decision === 'approved' ? s.textGreen : s.textAmber
                 ]}>
-                  {item.supervisor_decision === 'approved' ? 'Supervisor approved' : item.supervisor_decision === 'returned' ? 'Returned for correction' : item.status === 'approved' || item.status === 'reviewed' ? 'Coordinator approved' : item.status === 'rejected' ? 'Coordinator returned' : item.report_type === 'Weekly Progress' ? 'Submitted' : 'Pending review'}
+                  {item.supervisor_decision === 'approved' ? 'Supervisor approved' : item.supervisor_decision === 'returned' ? 'Returned for correction' : item.status === 'approved' || item.status === 'reviewed' ? 'Coordinator approved' : item.status === 'rejected' ? 'Coordinator returned' : 'Pending review'}
                 </Text>
               </View>
             </View>
