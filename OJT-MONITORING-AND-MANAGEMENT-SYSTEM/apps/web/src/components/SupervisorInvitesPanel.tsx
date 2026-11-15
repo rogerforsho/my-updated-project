@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CompanyPicker } from '@/src/components/ui/CompanyPicker';
 import {
-  createSupervisorInvite, listSupervisorInvites, revokeSupervisorInvite, type SupervisorInviteRow,
+  checkInviteRecipient, createSupervisorInvite, listSupervisorInvites, revokeSupervisorInvite, type SupervisorInviteRow,
 } from '@/src/services/supervisorInvites';
 
 const STATUS: Record<SupervisorInviteRow['status'], string> = {
@@ -55,6 +55,7 @@ export function SupervisorInvitesPanel() {
   const [companyId, setCompanyId] = useState('');
   const [link, setLink] = useState('');
   const [sendTo, setSendTo] = useState('');
+  const [recipientNote, setRecipientNote] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -69,7 +70,7 @@ export function SupervisorInvitesPanel() {
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true); setMsg(''); setLink(''); setSendTo('');
+    setBusy(true); setMsg(''); setLink(''); setSendTo(''); setRecipientNote('');
     const res = await createSupervisorInvite({ company_id: companyId, department });
     setBusy(false);
     if (res.error || !res.data) { setMsg(res.error?.message ?? 'Could not create the link.'); return; }
@@ -78,6 +79,11 @@ export function SupervisorInvitesPanel() {
   }
   async function copy() {
     try { await navigator.clipboard.writeText(link); setMsg('Link copied.'); } catch { setMsg('Copy the link manually.'); }
+  }
+  async function checkRecipient() {
+    if (!validSendTo) return;
+    const res = await checkInviteRecipient(sendTo);
+    if (res.data?.exists) setRecipientNote(`This email already has an account${res.data.role ? ` (${res.data.role})` : ''}. They can sign in instead; the link only creates new accounts.`);
   }
   async function revoke(id: string) {
     const res = await revokeSupervisorInvite(id);
@@ -114,13 +120,14 @@ export function SupervisorInvitesPanel() {
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <button type="button" onClick={copy} className="rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-bold text-amber-900">Copy link</button>
             <label className="flex flex-col gap-1 text-xs font-semibold text-amber-900">Send to
-              <input type="email" value={sendTo} onChange={(e) => setSendTo(e.target.value)} placeholder="supervisor@company.com"
+              <input type="email" value={sendTo} onChange={(e) => { setSendTo(e.target.value); setRecipientNote(''); }} onBlur={checkRecipient} placeholder="supervisor@company.com"
                 className="w-64 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-normal text-slate-900" />
             </label>
             {/* mailto: opens the Coordinator's own mail app; the link never goes through our server again. */}
             <a {...(validSendTo ? { href: mailto } : { 'aria-disabled': true })}
               className={`rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-bold text-white ${validSendTo ? '' : 'pointer-events-none opacity-50'}`}>Email link</a>
           </div>
+          {recipientNote && <p role="status" className="mt-2 text-xs font-semibold text-amber-900">{recipientNote}</p>}
         </div>
       )}
       {msg && <p role="status" className="text-sm text-slate-700">{msg}</p>}

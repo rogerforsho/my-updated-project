@@ -126,5 +126,31 @@ export async function acceptSupervisorInvite(token: string, input: { full_name: 
     return { data: null, error: { code: 'SERVER_FAILURE', message: 'Your account could not be set up. Please try again or ask your OJT Coordinator.' } };
   }
   await recordAuditEvent({ action: 'SUPERVISOR_INVITE_USED', entity_type: 'supervisor_invite', entity_id: invite.invite_id, details: { department: invite.department, company_id: invite.company_id } });
+
+  // Tell the Coordinator who made the link. The account already exists, so a failure here must not fail the sign-up.
+  try {
+    const { data: made } = await db.from('supervisor_invites').select('created_by, companies(company_name)').eq('invite_id', invite.invite_id).maybeSingle();
+    if (made?.created_by) {
+      const company = Array.isArray(made.companies) ? made.companies[0] : made.companies;
+      const { error } = await db.from('notifications').insert({
+        receiver_user_id: made.created_by,
+        message: `${full_name} (${email}) signed up as a Supervisor for ${company?.company_name ?? 'your company'} using your invitation link.`,
+        status: 'unread', notification_date: new Date().toISOString(),
+      });
+      if (error) console.error('supervisor invite notification failed', error.message);
+    }
+  } catch (e) { console.error('supervisor invite notification failed', e); }
   return { data: null, error: null };
+}
+
+/** Coordinator-only: does this email already have an account? Lets the panel warn before a link is sent to it. */
+export async function checkInviteRecipient(rawEmail: string): Promise<AppResult<{ exists: boolean; role?: string }>> {
+  const actor = await grantedCoordinator();
+  if (!actor) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
+  const email = rawEmail?.trim().toLowerCase();
+  if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Enter a valid email.' } };
+  const { data, error } = await getServiceClient().from('users').select('role').eq('email', email).maybeSingle();
+  if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not check that email.' } };
+  return { data: { exists: !!data, role: data?.role }, error: null };
 }
