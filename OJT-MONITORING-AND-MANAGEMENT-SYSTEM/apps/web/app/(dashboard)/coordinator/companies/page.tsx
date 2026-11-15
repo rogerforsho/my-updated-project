@@ -52,6 +52,15 @@ export default function CoordinatorCompaniesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [copiedId, setCopiedId] = useState('');
+
+  async function copyEmail(id: string, email: string) {
+    try {
+      await navigator.clipboard.writeText(email);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((cur) => (cur === id ? '' : cur)), 1500);
+    } catch { setError('Could not copy. Select the email and copy it manually.'); }
+  }
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<CompanyWithSupervisors | null>(null);
@@ -325,9 +334,19 @@ export default function CoordinatorCompaniesPage() {
                           <span className="text-slate-400 italic">Not Assigned</span>
                         )}
                       </p>
-                      <p className="text-xs text-slate-500 mt-0.5 truncate" title={c.contact_email}>
+                      <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
                         {c.contact_email?.trim() ? (
-                          c.contact_email
+                          <>
+                            <span className="truncate" title={c.contact_email}>{c.contact_email}</span>
+                            <button
+                              type="button"
+                              onClick={() => copyEmail(c.company_id, c.contact_email.trim())}
+                              aria-label={`Copy email for ${c.company_name}`}
+                              className="shrink-0 rounded border border-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50"
+                            >
+                              {copiedId === c.company_id ? 'Copied' : 'Copy'}
+                            </button>
+                          </>
                         ) : (
                           <span className="text-slate-400 font-medium" title="No email provided">—</span>
                         )}

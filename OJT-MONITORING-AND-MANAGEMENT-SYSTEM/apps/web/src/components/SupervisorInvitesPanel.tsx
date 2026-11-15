@@ -54,6 +54,7 @@ export function SupervisorInvitesPanel() {
   const [department, setDepartment] = useState<'ICS' | 'IBE'>('ICS');
   const [companyId, setCompanyId] = useState('');
   const [link, setLink] = useState('');
+  const [sendTo, setSendTo] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -68,7 +69,7 @@ export function SupervisorInvitesPanel() {
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true); setMsg(''); setLink('');
+    setBusy(true); setMsg(''); setLink(''); setSendTo('');
     const res = await createSupervisorInvite({ company_id: companyId, department });
     setBusy(false);
     if (res.error || !res.data) { setMsg(res.error?.message ?? 'Could not create the link.'); return; }
@@ -82,6 +83,10 @@ export function SupervisorInvitesPanel() {
     const res = await revokeSupervisorInvite(id);
     if (res.error) setMsg(res.error.message); else await load();
   }
+
+  const validSendTo = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sendTo.trim());
+  const mailto = `mailto:${encodeURIComponent(sendTo.trim())}?subject=${encodeURIComponent('Supervisor sign-up link – Colegio de Montalban OJT')}`
+    + `&body=${encodeURIComponent(`Use this link to sign up as a Supervisor:\n${link}\n\nIt works for two sign-ups and expires 7 days after it was created.`)}`;
 
   if (!departments.length && !msg) return null;
   const field = 'rounded-lg border border-slate-300 px-3 py-2 text-sm';
@@ -106,7 +111,16 @@ export function SupervisorInvitesPanel() {
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
           <p className="font-semibold text-amber-900">Copy this link now. It cannot be shown again.</p>
           <p className="mt-1 break-all font-mono text-xs text-slate-800">{link}</p>
-          <button type="button" onClick={copy} className="mt-2 rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-bold text-amber-900">Copy link</button>
+          <div className="mt-2 flex flex-wrap items-end gap-2">
+            <button type="button" onClick={copy} className="rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-bold text-amber-900">Copy link</button>
+            <label className="flex flex-col gap-1 text-xs font-semibold text-amber-900">Send to
+              <input type="email" value={sendTo} onChange={(e) => setSendTo(e.target.value)} placeholder="supervisor@company.com"
+                className="w-64 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-normal text-slate-900" />
+            </label>
+            {/* mailto: opens the Coordinator's own mail app; the link never goes through our server again. */}
+            <a {...(validSendTo ? { href: mailto } : { 'aria-disabled': true })}
+              className={`rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-bold text-white ${validSendTo ? '' : 'pointer-events-none opacity-50'}`}>Email link</a>
+          </div>
         </div>
       )}
       {msg && <p role="status" className="text-sm text-slate-700">{msg}</p>}
