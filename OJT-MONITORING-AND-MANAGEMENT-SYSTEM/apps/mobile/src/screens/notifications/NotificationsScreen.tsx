@@ -227,9 +227,22 @@ export default function NotificationsScreen() {
                   </Text>
                   {isUnread && <View style={s.unreadDot} />}
                 </View>
-                <Text style={s.dateText}>
-                  {new Date(item.date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={s.dateText}>
+                    {new Date(item.date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
+                  </Text>
+                  {item.personal && (
+                    <TouchableOpacity
+                      onPress={() => handleArchive(item)}
+                      hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Archive"
+                      style={s.archiveBtn}
+                    >
+                      <Ionicons name="archive-outline" size={18} color="#526257" />
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
 
               <Text style={s.feedTitle}>{item.title}</Text>
@@ -261,7 +274,8 @@ const s = StyleSheet.create({
   alertErrorText: { color: '#7f1d1d', fontSize: 13, fontWeight: '600', flex: 1 },
   listContent: { paddingHorizontal: 20, paddingBottom: 32, gap: 12 },
   feedCard: { backgroundColor: '#ffffff', borderRadius: 18, borderWidth: 1, borderColor: '#DCE5DB', padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
-  feedCardUnread: { backgroundColor: 'rgba(10,56,36,0.04)', borderColor: '#0A3824' },
+  feedCardUnread: { backgroundColor: '#F5F7F6', borderColor: '#0A3824' }, // opaque: SwipeToArchive's action layer sits behind the card
+  archiveBtn: { marginLeft: 10 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   tagRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tagText: { fontSize: 11, fontWeight: '800', color: '#0A3824', letterSpacing: 0.5 },

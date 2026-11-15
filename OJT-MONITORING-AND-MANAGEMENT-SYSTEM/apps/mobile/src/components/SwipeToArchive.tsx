@@ -2,7 +2,7 @@ import { useRef, type ReactNode } from 'react';
 import { Animated, Dimensions, PanResponder, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const THRESHOLD = -96;
+const THRESHOLD = -80;
 
 /** Swipe the child left past the threshold to archive it; releases short of it spring back. */
 export default function SwipeToArchive({ onArchive, children }: { onArchive: () => void; children: ReactNode }) {
@@ -12,7 +12,7 @@ export default function SwipeToArchive({ onArchive, children }: { onArchive: () 
 
   const pan = useRef(PanResponder.create({
     // Only claim clearly horizontal drags so the list keeps scrolling vertically.
-    onMoveShouldSetPanResponder: (_, g) => g.dx < -10 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+    onMoveShouldSetPanResponder: (_, g) => g.dx < -8 && Math.abs(g.dx) > Math.abs(g.dy),
     onPanResponderTerminationRequest: () => false,
     onPanResponderMove: (_, g) => x.setValue(Math.min(0, g.dx)),
     onPanResponderRelease: (_, g) => {
@@ -28,10 +28,10 @@ export default function SwipeToArchive({ onArchive, children }: { onArchive: () 
 
   return (
     <View>
-      <View style={s.action} pointerEvents="none">
+      <Animated.View style={[s.action, { opacity: x.interpolate({ inputRange: [THRESHOLD, 0], outputRange: [1, 0], extrapolate: 'clamp' }) }]} pointerEvents="none">
         <Ionicons name="archive-outline" size={18} color="#ffffff" />
         <Text style={s.actionText}>Archive</Text>
-      </View>
+      </Animated.View>
       <Animated.View style={{ transform: [{ translateX: x }] }} {...pan.panHandlers}>{children}</Animated.View>
     </View>
   );
