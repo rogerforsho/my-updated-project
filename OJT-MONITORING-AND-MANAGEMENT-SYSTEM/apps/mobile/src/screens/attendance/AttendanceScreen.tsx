@@ -25,7 +25,7 @@ import { getCurrentCoordinates } from '../../services/location';
 import { syncPendingOfflineAttendance, isNetworkAvailable } from '../../lib/syncEngine';
 import { getOfflineQueue } from '../../lib/offlineQueue';
 import { optimizeSelfie } from '../../lib/imageOptimizer';
-import { GATEWAY_DOCUMENT_SPECS, getGatewayStatus, isWithinGeofence, matchesDoc } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, getGatewayStatus, isBundleType, isWithinGeofence, matchesDoc } from '@ojt/shared';
 import NetworkToast from '../../components/NetworkToast';
 import ScheduleProposalModal from '../../components/ScheduleProposalModal';
 import { fetchStudentScheduleProposal } from '../../services/schedule';
@@ -183,9 +183,13 @@ export default function AttendanceScreen() {
       const repRes = await listStudentReports(1, 50);
       const reports = repRes.data?.reports || [];
       // Students already placed are exempt from newly added documents.
+      // One combined requirements file stands in for all four documents (approved one wins, else latest).
+      const bundles = reports.filter(r => isBundleType(r.report_type));
+      const bundle = bundles.find(r => r.status === 'approved') ?? bundles[0];
       const progress = GATEWAY_DOCUMENT_SPECS.map(spec => {
         // An approved submission wins: the same document type can be submitted more than once.
-        const found = reports.find(r => matchesDoc(r.report_type, spec.name) && r.status === 'approved')
+        const found = bundle
+          ?? reports.find(r => matchesDoc(r.report_type, spec.name) && r.status === 'approved')
           ?? reports.find(r => matchesDoc(r.report_type, spec.name));
         return {
           id: spec.id,
@@ -736,7 +740,7 @@ export default function AttendanceScreen() {
 
               <Text style={s.gatewayDesc}>
                 {!isGatewayCleared
-                  ? 'Under Colegio de Montalban practicum rules, daily check-in is unlocked only after your mandatory gateway documents (consent waiver, medical certificate, orientation certificate and endorsement letter) are submitted and verified by your OJT Coordinator.'
+                  ? 'Under Colegio de Montalban practicum rules, daily check-in is unlocked only after your Pre-deployment Requirements are verified by your OJT Coordinator. Submit ONE PDF or DOCX file that contains all four: consent waiver, medical certificate, orientation certificate and endorsement letter.'
                   : 'All mandatory credentials have been verified! Please submit your proposed Practicum Work Schedule so your OJT Coordinator can deploy you.'}
               </Text>
 
@@ -765,7 +769,7 @@ export default function AttendanceScreen() {
                       doc.submitted ? (doc.status === 'approved' ? s.badgeGreen : s.badgeAmber) : s.badgeGray
                     ]}>
                       <Text style={s.gatewayStatusBadgeText}>
-                        {doc.submitted ? (doc.status === 'approved' ? 'Approved' : 'Submitted') : 'Required'}
+                        {doc.submitted ? (doc.status === 'approved' ? 'Approved' : doc.status === 'rejected' ? 'Returned' : 'Submitted') : 'Required'}
                       </Text>
                     </View>
                   </View>

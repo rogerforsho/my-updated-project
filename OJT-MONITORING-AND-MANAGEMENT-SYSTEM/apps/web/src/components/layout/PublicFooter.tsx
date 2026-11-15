@@ -293,7 +293,7 @@ export default function PublicFooter() {
                 <h4 className="text-xs font-bold text-slate-900 mb-1">4. CHED CMO 104 Practicum Rules Enforced by This System</h4>
                 <ul className="list-disc list-inside mt-1 space-y-1 text-slate-600">
                   <li>Required hours by program: BSIT 486, BS-CPE 240, BSBA-HRM 300, BSENTREP 300.</li>
-                  <li>Before deployment: Parent/Guardian Consent Waiver (notarized), Medical Certificate, Pre-OJT Orientation Certificate, and Endorsement Letter, each reviewed by the OJT Coordinator.</li>
+                  <li>Before deployment: one PDF or DOCX file containing the Parent/Guardian Consent Waiver (notarized), Medical Certificate, Pre-OJT Orientation Certificate, and Endorsement Letter, reviewed by the OJT Coordinator.</li>
                   <li>A practicum schedule may span at most 5 months, at most 8 hours a day and 40 hours a week, with shifts between 6:00 AM and 9:00 PM.</li>
                 </ul>
               </div>

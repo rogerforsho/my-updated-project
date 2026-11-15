@@ -57,7 +57,7 @@ A review of a student's registration that determines whether their system accoun
 _Avoid_: OJT requirements review
 
 **Pre-deployment Requirements**:
-The four documents an active student needs approved before proposing a schedule or being placed: Parent/Guardian Consent Waiver (notarized; photo or PDF), Medical Certificate, Pre-OJT Orientation Certificate and Endorsement Letter. Students already placed with an active assignment are exempt from documents added later.
+The four documents an active student needs approved before proposing a schedule or being placed: Parent/Guardian Consent Waiver (notarized), Medical Certificate, Pre-OJT Orientation Certificate and Endorsement Letter. The student submits them as ONE PDF or DOCX file (max 25 MB) and the OJT Coordinator makes one decision on it; a student with the four separate documents already approved stays cleared. Students already placed with an active assignment are exempt from documents added later.
 _Avoid_: Student account registration (when referring to pre-deployment submissions); Gateway credentials; MOA (out of scope)
 
 **Required Hours**:

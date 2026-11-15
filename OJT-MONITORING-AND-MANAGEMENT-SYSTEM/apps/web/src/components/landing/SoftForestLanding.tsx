@@ -15,7 +15,7 @@ const capabilities = [
   ['04', 'Digital reports and evaluations', 'Supervisors use standardized 5-point rubrics to assess competencies, punctuality, and work ethics.'],
 ];
 
-const requirements = ['Parent/Guardian Consent Waiver (photo or PDF, notarized)', 'Medical Certificate', 'Pre-OJT Orientation Certificate', 'Endorsement Letter'];
+const requirements = ['Parent/Guardian Consent Waiver (notarized)', 'Medical Certificate', 'Pre-OJT Orientation Certificate', 'Endorsement Letter'];
 const contact = [['OJT Office', '[TBD]'], ['Office hours', '[TBD]'], ['School email', '[TBD]'], ['Coordinator', '[TBD]']];
 
 const resources = [

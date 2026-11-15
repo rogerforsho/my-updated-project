@@ -60,6 +60,8 @@ function scoreOf(criteria) {
   return { points, score: Object.values(points).reduce((sum, v) => sum + v, 0) };
 }
 
+// The app now takes ONE combined PDF/DOCX; students who finished before that keep the four separate documents.
+const BUNDLE = 'Pre-deployment Requirements';
 const GATEWAY = ['Parent/Guardian Consent Waiver', 'Medical Certificate', 'Pre-OJT Orientation Certificate', 'Endorsement Letter'];
 
 // All nine are ICS courses (BSIT/BS-CPE) so the one staging Coordinator, who is scoped to ICS,
@@ -69,15 +71,15 @@ const COHORT = [
   { slug: 'doc-none', name: 'Mariel A. Santos', number: '23-90001', course: 'BSIT', stage: 'documents',
     docs: [], note: 'Just approved at registration. No gateway document uploaded yet.' },
   { slug: 'doc-partial', name: 'Jerome P. Dela Cruz', number: '23-90002', course: 'BS-CPE', stage: 'documents',
-    docs: [['Parent/Guardian Consent Waiver', 'approved'], ['Medical Certificate', 'approved'], ['Pre-OJT Orientation Certificate', 'submitted']],
-    note: 'Two approved, orientation certificate waiting in the Coordinator queue, endorsement letter not uploaded.' },
+    docs: [[BUNDLE, 'submitted']],
+    note: 'Combined requirements file uploaded and waiting in the Coordinator queue (one file to review).' },
   { slug: 'doc-returned', name: 'Aira Nicole Mendoza', number: '23-90003', course: 'BSIT', stage: 'documents',
-    docs: [['Parent/Guardian Consent Waiver', 'approved'], ['Medical Certificate', 'approved'], ['Pre-OJT Orientation Certificate', 'approved'], ['Endorsement Letter', 'rejected']],
-    note: 'Endorsement letter rejected with remarks; student must re-upload before a schedule can be proposed.' },
+    docs: [[BUNDLE, 'rejected']],
+    note: 'Combined file rejected: Endorsement Letter missing. Student must re-upload before a schedule can be proposed.' },
 
   // Stage 2 - ongoing. Gateway cleared, schedule approved, assignment active, hours building up.
   { slug: 'ojt-early', name: 'Kevin B. Ramos', number: '23-90004', course: 'BS-CPE', stage: 'ongoing',
-    days: 8, pendingDay: true, journals: 2, undecidedJournal: true,
+    days: 8, legacyDocs: true, pendingDay: true, journals: 2, undecidedJournal: true,
     note: 'First weeks on site. One attendance day still pending Supervisor verification and one daily journal undecided.' },
   { slug: 'ojt-mid', name: 'Nicole V. Bautista', number: '23-90005', course: 'BSIT', stage: 'ongoing',
     days: 17, journals: 3, midterm: rubric(4, 5, 5, 4, 4),
@@ -88,13 +90,13 @@ const COHORT = [
 
   // Stage 3 - finished. Cleared by the database's own clearance rule, then certificated.
   { slug: 'done-cpe', name: 'Hannah Grace Reyes', number: '23-90007', course: 'BS-CPE', stage: 'finished',
-    days: 30, journals: 4, midterm: rubric(5, 5, 4, 5, 4), final: rubric(5, 5, 5, 4, 5), grade: 1.25,
+    days: 30, legacyDocs: true, journals: 4, midterm: rubric(5, 5, 4, 5, 4), final: rubric(5, 5, 5, 4, 5), grade: 1.25,
     note: 'Completed 240 hours, both evaluations passed, certificate issued.' },
   { slug: 'done-bsit', name: 'Mark Anthony L. Cruz', number: '23-90008', course: 'BSIT', stage: 'finished',
-    days: 61, journals: 5, midterm: rubric(5, 4, 4, 4, 4), final: rubric(5, 4, 5, 4, 4), grade: 1.50,
+    days: 61, legacyDocs: true, journals: 5, midterm: rubric(5, 4, 4, 4, 4), final: rubric(5, 4, 5, 4, 4), grade: 1.50,
     note: 'Completed 486 hours over roughly three months, certificate issued.' },
   { slug: 'done-bsit2', name: 'Jasmine T. Lopez', number: '23-90009', course: 'BSIT', stage: 'finished',
-    days: 62, journals: 5, midterm: rubric(4, 5, 5, 5, 5), final: rubric(5, 5, 5, 4, 5), grade: 1.25,
+    days: 62, legacyDocs: true, journals: 5, midterm: rubric(4, 5, 5, 5, 5), final: rubric(5, 5, 5, 4, 5), grade: 1.25,
     note: 'Completed 486 hours with the strongest evaluations in the cohort, certificate issued.' },
 ].map((s) => ({ ...s, email: `${COHORT_TAG}-${s.slug}@${EMAIL_DOMAIN}` }));
 
@@ -268,7 +270,7 @@ if (!apply) {
     for (const s of plan.filter((p) => p.stage === stage)) {
       const bits = [s.number, s.course];
       if (s.hours) bits.push(`${s.hours}h over ${s.days} days`);
-      if (s.docs) bits.push(`${s.docs.filter(([, st]) => st === 'approved').length}/4 gateway docs approved`);
+      if (s.docs) bits.push(`requirements file: ${s.docs.map(([, st]) => st).join(', ')}`);
       if (s.grade) bits.push(`final grade ${s.grade.toFixed(2)}`);
       console.log(`    ${s.name.padEnd(24)} ${bits.join(' | ')}`);
       console.log(`      ${s.note}`);
@@ -387,13 +389,14 @@ try {
     const header = [`${label(s.course)} - ${s.name}`, `Student number: ${s.number}`, 'Synthetic document for IT validation.'];
 
     // -------- gateway documents
-    const gatewayDocs = s.stage === 'documents' ? s.docs : GATEWAY.map((name) => [name, 'approved']);
+    const gatewayDocs = s.stage === 'documents' ? s.docs
+      : s.legacyDocs ? GATEWAY.map((name) => [name, 'approved']) : [[BUNDLE, 'approved']];
     for (const [name, status] of gatewayDocs) {
       const file_path = await uploadReport(s, name, [name, ...header]);
       ok(`Insert ${name} for ${s.slug}`, await db.from('reports').insert({
         student_id: s.studentId, report_type: name, file_path, status,
         submission_date: at(s.start, '08:30:00'),
-        remarks: status === 'rejected' ? 'Scanned copy is unreadable and the HTE signature is missing. Please upload a clear, signed copy.' : null,
+        remarks: status === 'rejected' ? 'Missing or incorrect: Endorsement Letter. The HTE signature is missing; please upload one file with a clear, signed copy.' : null,
       }));
     }
     if (s.stage === 'documents') continue;

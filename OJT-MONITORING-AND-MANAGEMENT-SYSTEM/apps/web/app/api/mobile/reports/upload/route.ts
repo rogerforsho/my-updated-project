@@ -1,9 +1,10 @@
 import crypto from 'node:crypto';
 import { mobileBffFailure, mobileBffPreamble } from '@/src/lib/mobile-bff';
 import { getServiceClient } from '@/src/lib/supabase/service';
+import { BUNDLE_MAX_BYTES } from '@ojt/shared';
 
 export const runtime = 'nodejs';
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_FILE_SIZE = BUNDLE_MAX_BYTES;
 const ALLOWED_EXTENSIONS = new Set(['.pdf', '.docx', '.doc', '.jpg', '.jpeg', '.png']);
 
 export async function POST(request: Request) {
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
   if (!fileName || fileName.length > 255 || fileName.includes('/') || fileName.includes('\\') ||
       !extension || !ALLOWED_EXTENSIONS.has(extension) || !Number.isSafeInteger(fileSize) ||
       (fileSize as number) < 1 || (fileSize as number) > MAX_FILE_SIZE)
-    return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Choose a supported document up to 10 MB.' });
+    return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Choose a supported document up to 25 MB.' });
 
   const filePath = `${actor.user.id}/reports/${crypto.randomUUID()}${extension}`;
   const { data, error } = await getServiceClient().storage.from('private-documents')

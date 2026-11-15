@@ -2,7 +2,7 @@ import { mobileBffFailure, mobileBffPreamble } from '@/src/lib/mobile-bff';
 import { getServiceClient } from '@/src/lib/supabase/service';
 import { validateUploadedBytes } from '@/src/lib/uploadValidation';
 import { recordAuditEvent } from '@/src/lib/audit';
-import { STUDENT_REPORT_TYPES } from '@ojt/shared';
+import { BUNDLE_EXTENSIONS, BUNDLE_MAX_BYTES, STUDENT_REPORT_TYPES, isBundleType } from '@ojt/shared';
 
 export const runtime = 'nodejs';
 
@@ -43,18 +43,25 @@ export async function POST(request: Request) {
   if (!isLink && !isOwnedStoragePath)
     return mobileBffFailure({ status: 403, code: 'FORBIDDEN', message: 'The document path is not available to this account.' });
 
+  // The combined requirements file must be an uploaded PDF/DOCX, never a link or a photo.
+  const bundle = isBundleType(reportType);
+  if (bundle && (isLink || !BUNDLE_EXTENSIONS.some(ext => filePath.toLowerCase().endsWith(ext)))) {
+    if (!isLink) await getServiceClient().storage.from('private-documents').remove([filePath]);
+    return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Upload one PDF or DOCX file that contains all your requirements.' });
+  }
+
   if (!isLink) {
     const { data: file, error: downloadError } = await actor.supabase.storage.from('private-documents').download(filePath);
     if (downloadError || !file)
       return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Upload the document again before submitting it.' });
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > BUNDLE_MAX_BYTES) {
       await getServiceClient().storage.from('private-documents').remove([filePath]);
-      return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Document exceeds the 10 MB limit.' });
+      return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Document exceeds the 25 MB limit.' });
     }
     const fileName = filePath.split('/').at(-1) || '';
     const checked = validateUploadedBytes(
       new Uint8Array(await file.arrayBuffer()), fileName, file.type,
-      ['.pdf', '.docx', '.doc', '.jpg', '.jpeg', '.png'], 10 * 1024 * 1024
+      bundle ? BUNDLE_EXTENSIONS : ['.pdf', '.docx', '.doc', '.jpg', '.jpeg', '.png'], BUNDLE_MAX_BYTES
     );
     if (checked.error || !checked.data) {
       await getServiceClient().storage.from('private-documents').remove([filePath]);

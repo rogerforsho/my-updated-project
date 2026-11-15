@@ -18,8 +18,22 @@ import {
 import { CollapsibleGroup, useGroupFold } from '@/src/components/ui/CollapsibleGroup';
 import { getSignedDocumentUrl } from '@/src/services/storage';
 import { PagerBar, usePageSize, usePagedList } from '@/src/components/ui/ListControls';
-import { GATEWAY_DOCUMENT_SPECS, isCoordinatorReviewType, SUPERVISOR_REVIEW_REPORT_TYPES } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, isBundleType, isCoordinatorReviewType, SUPERVISOR_REVIEW_REPORT_TYPES } from '@ojt/shared';
 import { AlertTriangle, Building2, CheckCircle2, FileText, GraduationCap, Hourglass, Search } from '@/src/components/ui/Icons';
+
+/** One row for a student's single combined file, otherwise the four legacy documents. */
+function gatewayRows(student: StudentGatewayStatus): StudentGatewayStatus['documents'] {
+  if (!student.bundle) return student.documents;
+  return [{
+    spec_id: 'bundle',
+    spec_name: 'Combined requirements file (all 4 documents)',
+    status: student.bundle.status,
+    report_id: student.bundle.report_id,
+    file_path: student.bundle.file_path,
+    submission_date: student.bundle.submission_date,
+    remarks: student.bundle.remarks,
+  }];
+}
 
 
 function ReportGroupRows({ status, refreshKey, openingDocId, onOpen, onReview }: {
@@ -147,6 +161,7 @@ export default function CoordinatorSubmissionsPage() {
   const fold = useGroupFold('coordinator-submissions-fold');
   const [reviewingReport, setReviewingReport] = useState<ReportWithStudent | null>(null);
   const [reviewRemarks, setReviewRemarks] = useState('');
+  const [missingItems, setMissingItems] = useState<string[]>([]);
   const [submittingAction, setSubmittingAction] = useState(false);
   const [openingDocId, setOpeningDocId] = useState<string | null>(null);
 
@@ -203,8 +218,18 @@ export default function CoordinatorSubmissionsPage() {
   // ─── Document Review Decision ──────────────────────────────────────────────
   async function submitDecision(status: 'approved' | 'rejected') {
     if (!reviewingReport) return;
+    // Rejecting the combined file: say which of the four documents to fix.
+    let remarks = reviewRemarks;
+    if (status === 'rejected' && isBundleType(reviewingReport.report_type)) {
+      if (missingItems.length === 0 && !reviewRemarks.trim()) {
+        setError('Tick the missing or incorrect documents, or add a remark, so the student knows what to fix.');
+        return;
+      }
+      const ticked = missingItems.length ? `Missing or incorrect: ${missingItems.join(', ')}.` : '';
+      remarks = [ticked, reviewRemarks.trim()].filter(Boolean).join(' ');
+    }
     setSubmittingAction(true);
-    const result = await reviewReport(reviewingReport.report_id, status, reviewRemarks);
+    const result = await reviewReport(reviewingReport.report_id, status, remarks);
     setSubmittingAction(false);
     if (result.error) {
       setError(result.error.message);
@@ -212,6 +237,7 @@ export default function CoordinatorSubmissionsPage() {
     }
     setReviewingReport(null);
     setReviewRemarks('');
+    setMissingItems([]);
     setSuccessToast(`Submission successfully marked as ${status}.`);
     setTimeout(() => setSuccessToast(null), 4000);
     // Refresh both views
@@ -562,7 +588,7 @@ export default function CoordinatorSubmissionsPage() {
                           {/* Required gateway documents */}
                           <td className="px-5 py-4">
                             <div className="flex flex-wrap gap-1.5 max-w-md">
-                              {student.documents.map(doc => {
+                              {gatewayRows(student).map(doc => {
                                 let badgeClass = 'bg-slate-100 text-slate-500 border-slate-200';
                                 let icon = '✕';
                                 if (doc.status === 'approved') {
@@ -583,12 +609,12 @@ export default function CoordinatorSubmissionsPage() {
                                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs border ${badgeClass}`}
                                   >
                                     <span>{icon}</span>
-                                    <span>{doc.spec_name.split(' ')[0]}</span>
+                                    <span>{doc.spec_id === 'bundle' ? 'Combined file' : doc.spec_name.split(' ')[0]}</span>
                                   </span>
                                 );
                               })}
                             </div>
-                            {student.missing_documents.length > 0 && (
+                            {!student.bundle && student.missing_documents.length > 0 && (
                               <p className="text-xs text-rose-600 mt-1 font-medium">
                                 Missing: {student.missing_documents.join(', ')}
                               </p>
@@ -707,7 +733,7 @@ export default function CoordinatorSubmissionsPage() {
                     refreshKey={refreshKey}
                     openingDocId={openingDocId}
                     onOpen={handleOpenDocument}
-                    onReview={(r) => { setReviewingReport(r); setReviewRemarks(r.remarks || ''); }}
+                    onReview={(r) => { setReviewingReport(r); setReviewRemarks(r.remarks || ''); setMissingItems([]); }}
                   />
                 </CollapsibleGroup>
               ))}
@@ -774,10 +800,10 @@ export default function CoordinatorSubmissionsPage() {
             {/* Required gateway documents */}
             <div className="space-y-2.5">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Required Pre-Deployment Documents ({GATEWAY_DOCUMENT_SPECS.length})
+                {inspectingStudent.bundle ? 'Pre-deployment Requirements file' : `Required Pre-Deployment Documents (${GATEWAY_DOCUMENT_SPECS.length})`}
               </h4>
               <div className="space-y-2">
-                {inspectingStudent.documents.map((doc, idx) => (
+                {gatewayRows(inspectingStudent).map((doc, idx) => (
                   <div
                     key={doc.spec_id}
                     className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
@@ -886,6 +912,24 @@ export default function CoordinatorSubmissionsPage() {
               </p>
             )}
           </div>
+
+          {reviewingReport && isBundleType(reviewingReport.report_type) && (
+            <fieldset className="space-y-1.5">
+              <legend className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                If rejecting: tick what is missing or incorrect
+              </legend>
+              {GATEWAY_DOCUMENT_SPECS.map(spec => (
+                <label key={spec.id} className="flex items-center gap-2 text-sm text-slate-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={missingItems.includes(spec.name)}
+                    onChange={e => setMissingItems(prev => e.target.checked ? [...prev, spec.name] : prev.filter(n => n !== spec.name))}
+                  />
+                  {spec.name}
+                </label>
+              ))}
+            </fieldset>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">

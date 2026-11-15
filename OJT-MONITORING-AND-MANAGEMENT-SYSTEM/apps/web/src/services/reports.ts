@@ -8,7 +8,7 @@ import { getServiceClient } from '@/src/lib/supabase/service';
 import { recordAuditEvent } from '@/src/lib/audit';
 import { validateUploadedBytes } from '@/src/lib/uploadValidation';
 import { authActionLimit } from '@/src/services/auth/internal';
-import { GATEWAY_DOCUMENT_SPECS, getGatewayStatus, isCoordinatorReviewType, STUDENT_REPORT_TYPES, SUPERVISOR_REVIEW_REPORT_TYPES, matchesDoc } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, getGatewayStatus, isBundleType, isCoordinatorReviewType, STUDENT_REPORT_TYPES, SUPERVISOR_REVIEW_REPORT_TYPES, matchesDoc } from '@ojt/shared';
 import type { AppResult, DbReport } from '@ojt/shared';
 
 
@@ -303,6 +303,8 @@ export interface StudentGatewayStatus {
   approved_documents: string[];
   compliance_state: 'not_started' | 'in_progress' | 'ready_for_review' | 'ready_for_placement' | 'deployed';
   assigned_company: string | null;
+  /** The student's single combined requirements file, if they submitted one. */
+  bundle: { report_id: string; status: 'submitted' | 'approved' | 'rejected'; file_path: string; submission_date: string; remarks: string | null } | null;
   documents: {
     spec_id: string;
     spec_name: string;
@@ -397,8 +399,12 @@ export async function getGatewayComplianceSummary(): Promise<AppResult<GatewayCo
     const pendingDocs: string[] = [];
     const approvedDocs: string[] = [];
 
+    // A combined file stands in for all four documents: prefer an approved one, else the latest.
+    const bundleRows = userReports.filter(r => isBundleType(r.report_type));
+    const bundle = bundleRows.find(r => r.status === 'approved') ?? bundleRows[0];
+
     const documents = GATEWAY_DOCUMENT_SPECS.map(spec => {
-      const match = userReports.find(r => matchesDoc(r.report_type, spec.name));
+      const match = bundle ?? userReports.find(r => matchesDoc(r.report_type, spec.name));
       if (!match) {
         missingDocs.push(spec.name);
         return {
@@ -457,6 +463,13 @@ export async function getGatewayComplianceSummary(): Promise<AppResult<GatewayCo
       compliance_state: complianceState,
       assigned_company: assignedCompany,
       documents,
+      bundle: bundle ? {
+        report_id: bundle.report_id,
+        status: bundle.status as 'submitted' | 'approved' | 'rejected',
+        file_path: bundle.file_path,
+        submission_date: bundle.submission_date,
+        remarks: bundle.remarks,
+      } : null,
     };
   });
 
@@ -483,7 +496,7 @@ export async function sendRequirementReminder(studentUserId: string, missingDocs
 
   const service = getServiceClient();
   const docsText = missingDocs.join(', ');
-  const message = `Coordinator Notice: You have pending pre-deployment requirements (${docsText}). Please upload these via your mobile app to unlock company assignment and daily attendance.`;
+  const message = `Coordinator Notice: Please upload ONE PDF or DOCX file that contains all your pre-deployment requirements (${docsText}) via your mobile app, under "Pre-deployment Requirements", to unlock company assignment and daily attendance.`;
 
   const { error } = await service.from('notifications').insert({
     receiver_user_id: studentUserId,

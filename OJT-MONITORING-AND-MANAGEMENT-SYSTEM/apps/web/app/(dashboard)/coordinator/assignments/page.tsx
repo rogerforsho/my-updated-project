@@ -764,7 +764,7 @@ export default function AssignmentsPage() {
               <option value="">Select trainee</option>
               {students.map(s => (
                 <option key={s.student_id} value={s.student_id} disabled={s.has_active_assignment}>
-                  {s.is_gateway_cleared ? '✓' : '!'} {s.full_name} ({s.student_number} - {s.course}) {s.is_gateway_cleared ? '[CLEARED 2/2]' : `[INCOMPLETE: ${s.gateway_approved_count}/2]`}{s.has_active_assignment ? ' (Already Deployed)' : ''}
+                  {s.is_gateway_cleared ? '✓' : '!'} {s.full_name} ({s.student_number} - {s.course}) {s.is_gateway_cleared ? '[CLEARED]' : `[INCOMPLETE: ${s.gateway_approved_count}/${GATEWAY_DOCUMENT_SPECS.length}]`}{s.has_active_assignment ? ' (Already Deployed)' : ''}
                 </option>
               ))}
             </select>
@@ -787,7 +787,7 @@ export default function AssignmentsPage() {
               return (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
                   <p className="font-bold flex items-center gap-1.5 text-amber-800">
-                    <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" /> Pre-Deployment Gateway Incomplete ({selectedStudent.gateway_approved_count}/2)
+                    <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" /> Pre-Deployment Gateway Incomplete ({selectedStudent.gateway_approved_count}/{GATEWAY_DOCUMENT_SPECS.length})
                   </p>
                   <p className="text-amber-800">
                     This trainee cannot be deployed yet. Missing/unapproved credentials:

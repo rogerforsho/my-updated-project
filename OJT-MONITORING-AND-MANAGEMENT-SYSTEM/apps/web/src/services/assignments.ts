@@ -4,7 +4,7 @@ import { getCoordinator } from '@/src/lib/actor';
 import { canManageDepartmentStudent, canManageDepartmentRecord } from '@/src/lib/department-scope';
 import { recordAuditEvent } from '@/src/lib/audit';
 import { checkStudentGatewayStatus } from './reports';
-import { GATEWAY_DOCUMENT_SPECS, matchesDoc, practicumWindowError } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, isBundleType, matchesDoc, practicumWindowError } from '@ojt/shared';
 import type { AppResult, DbStudentAssignment, AssignmentStatus, StudentStatus } from '@ojt/shared';
 
 export interface AssignmentInput {
@@ -340,7 +340,7 @@ export async function listStudentsForAssignment(): Promise<AppResult<StudentAssi
   (approvedReports ?? []).forEach(r => {
     const set = studentApprovedSpecsMap.get(r.student_id) || new Set<string>();
     for (const spec of GATEWAY_DOCUMENT_SPECS) {
-      if (matchesDoc(r.report_type, spec.name)) {
+      if (isBundleType(r.report_type) || matchesDoc(r.report_type, spec.name)) {
         set.add(spec.id);
       }
     }
