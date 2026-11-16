@@ -16,7 +16,7 @@ export default async function CoordinatorNonWorkingDaysPage() {
     <div className="p-4 sm:p-6 lg:p-8 space-y-4 max-w-4xl mx-auto page-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Holidays and days off</h1>
-        <p className="text-sm text-slate-500 mt-1">National holidays come from the Super Admin. Add suspensions for your department or a single company.</p>
+        <p className="text-sm text-slate-500 mt-1">National holidays are imported automatically and managed by the Super Admin. Add suspensions for your department or a single company.</p>
       </div>
       {departments.length === 0
         ? <p className="rounded-xl bg-slate-50 p-6 text-sm text-slate-600">You have no department grant, so you cannot add dates.</p>
