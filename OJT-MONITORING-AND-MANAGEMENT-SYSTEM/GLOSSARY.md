@@ -16,6 +16,10 @@ _Avoid_: Timesheet (unless referring to an external document)
 An attendance record that needs human review to resolve a flagged issue or correction. The Supervisor reviews assigned students' records; an OJT Coordinator may adjudicate an exception when the Supervisor cannot.
 _Avoid_: Pending attendance (a pending record may not need staff intervention)
 
+**Overdue Attendance Review**:
+A pending attendance record with a Time Out that the server received 3 or more days ago and that no Supervisor has decided. It earns no Credited Hours until decided, so an OJT Coordinator may adjudicate it as an Attendance Exception, with a recorded reason.
+_Avoid_: Stale attendance, unverified attendance
+
 **Credited Hours**:
 Verified attendance time counted toward a student's required practicum hours, excluding only the portion that overlaps the approved schedule's lunch interval.
 _Avoid_: Raw hours, elapsed hours (when referring to the amount counted toward completion)

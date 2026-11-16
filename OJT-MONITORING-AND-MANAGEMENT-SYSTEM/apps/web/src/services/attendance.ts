@@ -6,6 +6,7 @@ import { resolveSupervisor, supervisorOwnsStudent } from '@/src/lib/supervisor-a
 import { getServiceClient } from '@/src/lib/supabase/service';
 import { toPublicSupabaseUrl } from '@/src/lib/supabase/public-url';
 import { recordAuditEvent } from '@/src/lib/audit';
+import { OVERDUE_REVIEW_DAYS } from '@ojt/shared';
 import type { AppResult, DbAttendance, VerificationStatus } from '@ojt/shared';
 
 
@@ -222,7 +223,7 @@ export async function getSelfieUrl(selfie_path: string): Promise<AppResult<{ url
 export async function listAttendanceForCoordinator(
   page = 1,
   pageSize = 20,
-  verificationFilter?: VerificationStatus
+  verificationFilter?: VerificationStatus | 'overdue'
 ): Promise<AppResult<{ records: AttendanceWithStudent[]; total: number }>> {
   const { supabase, profile } = await getTrustedActor();
   if (profile?.role !== 'Coordinator' || profile.account_status !== 'active')
@@ -230,10 +231,16 @@ export async function listAttendanceForCoordinator(
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
+  const overdue = verificationFilter === 'overdue';
   let query = supabase.from('attendance')
     .select('*, students ( student_number, course, users ( full_name ) )', { count: 'exact' })
-    .order('attendance_date', { ascending: false }).range(from, to);
-  if (verificationFilter) query = query.eq('verification_status', verificationFilter);
+    .order('attendance_date', { ascending: overdue }).range(from, to);
+  if (overdue) {
+    // Same rule as isOverdueReview in shared: pending, closed, server received the Time Out 3+ days ago (updated_at when no receipt time).
+    const cutoff = new Date(Date.now() - OVERDUE_REVIEW_DAYS * 86_400_000).toISOString();
+    query = query.eq('verification_status', 'pending').not('time_out', 'is', null)
+      .or(`time_out_received_at.lte.${cutoff},and(time_out_received_at.is.null,updated_at.lte.${cutoff})`);
+  } else if (verificationFilter) query = query.eq('verification_status', verificationFilter);
   const { data, error, count } = await query;
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load attendance records.' } };
   return { data: { records: (data ?? []) as AttendanceWithStudent[], total: count ?? 0 }, error: null };
