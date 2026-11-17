@@ -1,4 +1,4 @@
-// Seeds nine synthetic students across the three real OJT stages, so an IT validation
+// Seeds four synthetic students across the three real OJT stages, so an IT validation
 // can be walked role by role: Supervisor, Coordinator (ICS), Admin.
 //
 //   Stage 1  Awaiting documents  - registered, gateway not cleared, no placement yet
@@ -19,7 +19,7 @@ import { deflateSync } from 'node:zlib';
 import { createClient } from '@supabase/supabase-js';
 
 const STAGING_HOST = 'xlkvjuwzcviicerpzdjz.supabase.co';
-const COHORT_TAG = 'val20261113';
+const COHORT_TAG = 'val20261116';
 const EMAIL_DOMAIN = 'example.com';
 
 const apply = process.argv.includes('--apply');
@@ -69,35 +69,20 @@ const GATEWAY = ['Parent/Guardian Consent Waiver', 'Medical Certificate', 'Pre-O
 const COHORT = [
   // Stage 1 - awaiting documents. No placement, so the Supervisor correctly sees none of these.
   { slug: 'doc-none', name: 'Mariel A. Santos', number: '23-90001', course: 'BSIT', stage: 'documents',
-    docs: [], note: 'Just approved at registration. No gateway document uploaded yet.' },
-  { slug: 'doc-partial', name: 'Jerome P. Dela Cruz', number: '23-90002', course: 'BS-CPE', stage: 'documents',
+    docs: [], note: 'Just approved at registration. No Pre-deployment Requirements file uploaded yet.' },
+  { slug: 'doc-submitted', name: 'Jerome P. Dela Cruz', number: '23-90002', course: 'BS-CPE', stage: 'documents',
     docs: [[BUNDLE, 'submitted']],
     note: 'Combined requirements file uploaded and waiting in the Coordinator queue (one file to review).' },
-  { slug: 'doc-returned', name: 'Aira Nicole Mendoza', number: '23-90003', course: 'BSIT', stage: 'documents',
-    docs: [[BUNDLE, 'rejected']],
-    note: 'Combined file rejected: Endorsement Letter missing. Student must re-upload before a schedule can be proposed.' },
 
-  // Stage 2 - ongoing. Gateway cleared, schedule approved, assignment active, hours building up.
-  { slug: 'ojt-early', name: 'Kevin B. Ramos', number: '23-90004', course: 'BS-CPE', stage: 'ongoing',
-    days: 8, legacyDocs: true, pendingDay: true, journals: 2, undecidedJournal: true,
-    note: 'First weeks on site. One attendance day still pending Supervisor verification and one daily journal undecided.' },
-  { slug: 'ojt-mid', name: 'Nicole V. Bautista', number: '23-90005', course: 'BSIT', stage: 'ongoing',
-    days: 17, journals: 3, midterm: rubric(4, 5, 5, 4, 4),
-    note: 'Roughly a third of the way through 486 hours, midterm evaluation already submitted.' },
-  { slug: 'ojt-near', name: 'Paulo S. Villanueva', number: '23-90006', course: 'BS-CPE', stage: 'ongoing',
-    days: 30, journals: 3, midterm: rubric(5, 4, 4, 4, 4), finalReport: 'submitted',
-    note: 'All 240 hours rendered and the final report is submitted, but no final evaluation yet, so the database still refuses clearance.' },
+  // Stage 2 - ongoing. Combined file approved, schedule approved, assignment active.
+  { slug: 'ojt-mid', name: 'Nicole V. Bautista', number: '23-90003', course: 'BSIT', stage: 'ongoing',
+    days: 17, journals: 3, pendingDay: true, undecidedJournal: true, midterm: rubric(4, 5, 5, 4, 4),
+    note: 'About a third through 486 hours, midterm submitted, one attendance day and one journal awaiting the Supervisor.' },
 
   // Stage 3 - finished. Cleared by the database's own clearance rule, then certificated.
-  { slug: 'done-cpe', name: 'Hannah Grace Reyes', number: '23-90007', course: 'BS-CPE', stage: 'finished',
-    days: 30, legacyDocs: true, journals: 4, midterm: rubric(5, 5, 4, 5, 4), final: rubric(5, 5, 5, 4, 5), grade: 1.25,
-    note: 'Completed 240 hours, both evaluations passed, certificate issued.' },
-  { slug: 'done-bsit', name: 'Mark Anthony L. Cruz', number: '23-90008', course: 'BSIT', stage: 'finished',
-    days: 61, legacyDocs: true, journals: 5, midterm: rubric(5, 4, 4, 4, 4), final: rubric(5, 4, 5, 4, 4), grade: 1.50,
-    note: 'Completed 486 hours over roughly three months, certificate issued.' },
-  { slug: 'done-bsit2', name: 'Jasmine T. Lopez', number: '23-90009', course: 'BSIT', stage: 'finished',
-    days: 62, legacyDocs: true, journals: 5, midterm: rubric(4, 5, 5, 5, 5), final: rubric(5, 5, 5, 4, 5), grade: 1.25,
-    note: 'Completed 486 hours with the strongest evaluations in the cohort, certificate issued.' },
+  { slug: 'done-bsit', name: 'Mark Anthony L. Cruz', number: '23-90004', course: 'BSIT', stage: 'finished',
+    days: 61, journals: 5, midterm: rubric(5, 4, 4, 4, 4), final: rubric(5, 4, 5, 4, 4), grade: 1.50,
+    note: 'Completed 486 hours, both evaluations passed, certificate issued.' },
 ].map((s) => ({ ...s, email: `${COHORT_TAG}-${s.slug}@${EMAIL_DOMAIN}` }));
 
 // ---------------------------------------------------------------- undo

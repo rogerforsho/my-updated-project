@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { CompanyPicker } from '@/src/components/ui/CompanyPicker';
+import Modal from '@/src/components/ui/Modal';
 import {
   checkInviteRecipient, createSupervisorInvite, listSupervisorInvites, revokeSupervisorInvite, type SupervisorInviteRow,
 } from '@/src/services/supervisorInvites';
@@ -15,7 +16,7 @@ const COLS = 'grid grid-cols-[1.5rem_minmax(0,1fr)_3rem_3.5rem_6rem_5.5rem_4rem]
 const fmt = (iso: string) => new Date(iso).toLocaleString();
 
 /** One table row; the chevron or the row opens a drawer with the details that would not fit the columns. */
-function InviteRow({ invite: i, onRevoke }: { invite: SupervisorInviteRow; onRevoke: (id: string) => void }) {
+function InviteRow({ invite: i, onRevoke }: { invite: SupervisorInviteRow; onRevoke: (invite: SupervisorInviteRow) => void }) {
   const [open, setOpen] = useState(false);
   const drawer = `invite-${i.invite_id}`;
   return (
@@ -31,7 +32,7 @@ function InviteRow({ invite: i, onRevoke }: { invite: SupervisorInviteRow; onRev
         <span className="text-xs tabular-nums text-slate-600">{new Date(i.expires_at).toLocaleDateString()}</span>
         <span><span className={`rounded-full px-2 py-0.5 text-xs font-bold ${STATUS[i.status]}`}>{i.status.replace('_', ' ')}</span></span>
         <span className="text-right">
-          {i.status === 'active' && <button type="button" onClick={(e) => { e.stopPropagation(); onRevoke(i.invite_id); }} className="text-xs font-bold text-red-700 underline">Revoke</button>}
+          {i.status === 'active' && <button type="button" onClick={(e) => { e.stopPropagation(); onRevoke(i); }} className="text-xs font-bold text-red-700 underline">Revoke</button>}
         </span>
       </div>
       {open && (
@@ -58,6 +59,7 @@ export function SupervisorInvitesPanel() {
   const [recipientNote, setRecipientNote] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  const [pendingRevoke, setPendingRevoke] = useState<SupervisorInviteRow | null>(null);
 
   const load = useCallback(async () => {
     const res = await listSupervisorInvites();
@@ -86,7 +88,9 @@ export function SupervisorInvitesPanel() {
     if (res.data?.exists) setRecipientNote(`This email already has an account${res.data.role ? ` (${res.data.role})` : ''}. They can sign in instead; the link only creates new accounts.`);
   }
   async function revoke(id: string) {
+    setBusy(true);
     const res = await revokeSupervisorInvite(id);
+    setBusy(false); setPendingRevoke(null);
     if (res.error) setMsg(res.error.message); else await load();
   }
 
@@ -137,10 +141,22 @@ export function SupervisorInvitesPanel() {
           <span>Company</span><span>Dept</span><span>Used</span><span>Expires</span><span>Status</span><span className="text-right">Action</span>
         </div>
         <div className="divide-y divide-slate-100">
-          {invites.map((i) => <InviteRow key={i.invite_id} invite={i} onRevoke={revoke} />)}
+          {invites.map((i) => <InviteRow key={i.invite_id} invite={i} onRevoke={setPendingRevoke} />)}
         </div>
         {!invites.length && <p className="p-6 text-sm text-slate-500">No invitation links yet.</p>}
       </div>
+      <Modal title="Revoke invitation link?" open={!!pendingRevoke} onClose={() => { if (!busy) setPendingRevoke(null); }}
+        footer={
+          <div className="flex justify-end gap-2">
+            <button type="button" disabled={busy} onClick={() => setPendingRevoke(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50">Cancel</button>
+            <button type="button" disabled={busy} onClick={() => pendingRevoke && void revoke(pendingRevoke.invite_id)} className="rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Revoke link</button>
+          </div>
+        }>
+        <p className="text-sm">
+          The link for <strong>{pendingRevoke?.company_name} ({pendingRevoke?.department})</strong> will stop working right away.
+          Anyone who has not signed up yet will not be able to use it. This cannot be undone; you can create a new link instead.
+        </p>
+      </Modal>
     </section>
   );
 }
