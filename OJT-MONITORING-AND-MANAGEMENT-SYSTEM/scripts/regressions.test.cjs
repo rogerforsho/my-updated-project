@@ -738,3 +738,11 @@ test('Vercel traces from the Git root so the builder finds apps/web (MODULE_NOT_
   const config = fs.readFileSync(path.join(root, 'apps/web/next.config.ts'), 'utf8');
   assert.match(config, /outputFileTracingRoot: path\.resolve\(__dirname, process\.env\.VERCEL \? '\.\.\/\.\.\/\.\.' : '\.\.\/\.\.'\)/);
 });
+
+test('student email confirmation lands on the public email-confirmed page, not sign-in', () => {
+  const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
+  assert.match(read('apps/web/src/services/auth/registration.ts'), /emailRedirectTo: new URL\('\/auth\/email-confirmed'/);
+  const middleware = read('apps/web/middleware.ts');
+  assert.equal(middleware.split("'/auth/email-confirmed'").length - 1, 2, 'listed in PUBLIC_PATHS and KNOWN_PATHS');
+  assert.ok(fs.existsSync(path.join(root, 'apps/web/app/auth/email-confirmed/page.tsx')));
+});
