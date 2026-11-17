@@ -23,6 +23,16 @@ begin
   select count(*) - before_c into got from notifications where receiver_user_id = coord;
   insert into _r values ('daily journal -> coordinator NOT notified', got, 0);
 
+  -- 1c. a weekly journal is the Supervisor's too; the compiled PDF is the Coordinator's
+  select count(*) into before_c from notifications where receiver_user_id = coord;
+  insert into reports(student_id, report_type, file_path, status) values (s.student_id, 'Weekly Journal', 'x/w.pdf', 'submitted');
+  select count(*) - before_c into got from notifications where receiver_user_id = coord;
+  insert into _r values ('weekly journal -> coordinator NOT notified', got, 0);
+  select count(*) into before_c from notifications where receiver_user_id = coord;
+  insert into reports(student_id, report_type, file_path, status) values (s.student_id, 'Compiled Weekly Journals', 'x/c.pdf', 'submitted');
+  select count(*) - before_c into got from notifications where receiver_user_id = coord;
+  insert into _r values ('compiled journals -> coordinator notified', got, 1);
+
   -- 2a. a submitted schedule proposal notifies the department's coordinators
   select count(*) into before_c from notifications where receiver_user_id = coord;
   insert into practicum_schedules(student_id, start_date, status, time_out, lunch_break_minutes) values (s.student_id, current_date, 'pending', '16:00', 0) returning schedule_id into sid;

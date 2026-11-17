@@ -6,8 +6,8 @@ import type { AppResult, DbReport } from '@ojt/shared';
 
 export interface SubmitReportInput {
   report_type: string;
-  file_path?: string;
-  file_attachment?: {
+  /** PDF only. Links and other formats are rejected by the server. */
+  file_attachment: {
     uri: string;
     name: string;
     mimeType?: string;
@@ -51,38 +51,29 @@ export async function submitStudentReport(
   if (!input.report_type?.trim()) {
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Report type is required.' } };
   }
-  if (!input.file_path?.trim() && !input.file_attachment) {
-    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Please attach a document file or enter a link.' } };
+  if (!input.file_attachment?.name.toLowerCase().endsWith('.pdf')) {
+    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Please attach a PDF file.' } };
   }
 
   const me = await requireUser();
   if (!me.data) return { data: null, error: me.error };
-  const user = { id: me.data.user_id };
 
-  let finalFilePath = input.file_path?.trim() || '';
-
-  // If a document was attached from device, upload through unified storage
-  if (input.file_attachment) {
-    const uploadRes = await uploadReportToStorage(
-      input.file_attachment.uri,
-      input.file_attachment.name,
-      user.id,
-      input.file_attachment.mimeType || 'application/pdf'
-    );
-
-    if (uploadRes.error || !uploadRes.data?.path) {
-      return {
-        data: null,
-        error: { code: 'SERVER_FAILURE', message: uploadRes.error?.message || 'Failed to upload report document.' },
-      };
-    }
-
-    finalFilePath = uploadRes.data.path;
+  const uploadRes = await uploadReportToStorage(
+    input.file_attachment.uri,
+    input.file_attachment.name,
+    me.data.user_id,
+    'application/pdf'
+  );
+  if (uploadRes.error || !uploadRes.data?.path) {
+    return {
+      data: null,
+      error: { code: 'SERVER_FAILURE', message: uploadRes.error?.message || 'Failed to upload report document.' },
+    };
   }
 
   return postWebBff<null>('/api/mobile/reports', {
     report_type: input.report_type,
-    file_path: finalFilePath,
+    file_path: uploadRes.data.path,
     remarks: input.remarks?.trim() || null,
   });
 }

@@ -1467,6 +1467,30 @@ test('Supervisors decide daily reports once and Coordinators cannot double-revie
   assert.equal(coordinator.tables.reports[0].status, 'submitted');
 });
 
+// Regression: the service once allowed only Daily Journal and Accomplishment Report, so a Weekly
+// Journal showed in the Supervisor's list but approving it failed with FORBIDDEN.
+test('Supervisors can decide a Weekly Journal but not a Coordinator-reviewed type', async () => {
+  const supervisor = workflowFixture('Supervisor', { tables: {
+    reports: [
+      { report_id: 'weekly-1', student_id: 'student-1', report_type: 'Weekly Journal', status: 'submitted', supervisor_decision: null },
+      { report_id: 'final-1', student_id: 'student-1', report_type: 'final_report', status: 'submitted', supervisor_decision: null },
+    ],
+    supervisors: [{ user_id: 'actor', supervisor_id: 'supervisor-1' }],
+    student_assignments: [{ student_id: 'student-1', supervisor_id: 'supervisor-1', assignment_status: 'active' }],
+  } });
+  assert.equal((await supervisor.module('reports').endorseReportBySupervisor('weekly-1', 'approved', 'Good week.')).error, null);
+  assert.equal(supervisor.tables.reports[0].supervisor_decision, 'approved');
+  assert.equal((await supervisor.module('reports').endorseReportBySupervisor('final-1', 'approved', 'Nope.')).error.code, 'FORBIDDEN');
+});
+
+test('students can no longer submit a Daily Journal, and only PDF paths are accepted', async () => {
+  const student = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }] } });
+  const reports = student.module('reports');
+  assert.equal((await reports.submitReport({ report_type: 'Daily Journal', file_path: 'actor/reports/00000000-0000-4000-8000-000000000001.pdf' })).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await reports.submitReport({ report_type: 'Weekly Journal', file_path: 'actor/reports/00000000-0000-4000-8000-000000000001.docx' })).error.code, 'FORBIDDEN');
+  assert.equal(student.tables.reports?.length ?? 0, 0);
+});
+
 test('students can submit a final report and the OJT Coordinator can approve it', async () => {
   const student = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }] } });
   assert.equal((await student.module('reports').submitReport({ report_type: 'final_report', file_path: 'actor/reports/00000000-0000-4000-8000-000000000001.pdf' })).error, null);
@@ -1482,7 +1506,7 @@ test('students can submit a final report and the OJT Coordinator can approve it'
 
 test('core student, OJT Coordinator, and supervisor service paths return useful results', async () => {
   const student = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }] } });
-  assert.equal((await student.module('reports').submitReport({ report_type: 'Weekly Progress', file_path: 'actor/reports/00000000-0000-4000-8000-000000000001.pdf' })).error, null);
+  assert.equal((await student.module('reports').submitReport({ report_type: 'Weekly Journal', file_path: 'actor/reports/00000000-0000-4000-8000-000000000001.pdf' })).error, null);
   assert.equal(student.tables.reports[0].student_id, 'student');
 
   const coordinator = workflowFixture('Coordinator', { tables: {

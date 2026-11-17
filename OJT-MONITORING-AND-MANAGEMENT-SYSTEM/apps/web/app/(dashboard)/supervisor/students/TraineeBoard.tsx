@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useSearchPaging, SearchBox, PagerBar } from '@/src/components/ui/ListControls';
 import { getDepartmentFullName } from '@/src/lib/departments';
 import { getSignedDocumentUrl } from '@/src/services/storage';
+import { describeReportType } from '@ojt/shared';
 import {
   exportTraineeAttendanceCsv, listTraineeReports, setMyCompanyIntake,
   type CompanyIntake, type SupervisedTrainee,
@@ -122,7 +123,7 @@ function TraineeDetails({ t, onPack, busy }: { t: SupervisedTrainee; onPack: () 
         <ul className="space-y-1">
           {reports.map((r) => (
             <li key={r.report_id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2">
-              <span>{r.report_type} · {new Date(r.submission_date).toLocaleDateString()} · {r.status}</span>
+              <span>{describeReportType(r.report_type).label} ·{new Date(r.submission_date).toLocaleDateString()} · {r.status}</span>
               <button type="button" onClick={() => openReport(r.file_path)} className="font-bold text-teal-700 underline">Download</button>
             </li>
           ))}

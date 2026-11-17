@@ -2,17 +2,9 @@ import { mobileBffFailure, mobileBffPreamble } from '@/src/lib/mobile-bff';
 import { getServiceClient } from '@/src/lib/supabase/service';
 import { validateUploadedBytes } from '@/src/lib/uploadValidation';
 import { recordAuditEvent } from '@/src/lib/audit';
-import { BUNDLE_EXTENSIONS, BUNDLE_MAX_BYTES, STUDENT_REPORT_TYPES, isBundleType } from '@ojt/shared';
+import { BUNDLE_EXTENSIONS, BUNDLE_MAX_BYTES, STUDENT_REPORT_TYPES, WEEKLY_JOURNAL_MAX_BYTES, WEEKLY_JOURNAL_TYPE } from '@ojt/shared';
 
 export const runtime = 'nodejs';
-
-function isHttpsUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === 'https:' && !url.username && !url.password;
-  }
-  catch { return false; }
-}
 
 export async function POST(request: Request) {
   const pre = await mobileBffPreamble(request, {
@@ -37,36 +29,25 @@ export async function POST(request: Request) {
       (input.remarks != null && typeof input.remarks !== 'string') || (remarks && remarks.length > 2000))
     return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Report type and document are required.' });
 
-  const isLink = isHttpsUrl(filePath);
+  // PDF only: links and other formats cannot be checked or merged into the compiled journals.
   const escapedUserId = actor.user.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const isOwnedStoragePath = new RegExp(`^${escapedUserId}/reports/[0-9a-f-]{36}\\.(pdf|docx|doc|jpg|jpeg|png)$`, 'i').test(filePath);
-  if (!isLink && !isOwnedStoragePath)
-    return mobileBffFailure({ status: 403, code: 'FORBIDDEN', message: 'The document path is not available to this account.' });
+  const isOwnedStoragePath = new RegExp(`^${escapedUserId}/reports/[0-9a-f-]{36}\\.pdf$`, 'i').test(filePath);
+  if (!isOwnedStoragePath)
+    return mobileBffFailure({ status: 403, code: 'FORBIDDEN', message: 'Upload a PDF file before submitting.' });
 
-  // The combined requirements file must be an uploaded PDF/DOCX, never a link or a photo.
-  const bundle = isBundleType(reportType);
-  if (bundle && (isLink || !BUNDLE_EXTENSIONS.some(ext => filePath.toLowerCase().endsWith(ext)))) {
-    if (!isLink) await getServiceClient().storage.from('private-documents').remove([filePath]);
-    return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Upload one PDF or DOCX file that contains all your requirements.' });
+  const maxBytes = reportType === WEEKLY_JOURNAL_TYPE ? WEEKLY_JOURNAL_MAX_BYTES : BUNDLE_MAX_BYTES;
+  const { data: file, error: downloadError } = await actor.supabase.storage.from('private-documents').download(filePath);
+  if (downloadError || !file)
+    return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Upload the document again before submitting it.' });
+  if (file.size > maxBytes) {
+    await getServiceClient().storage.from('private-documents').remove([filePath]);
+    return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: `PDF exceeds the ${maxBytes / (1024 * 1024)} MB limit for this document.` });
   }
-
-  if (!isLink) {
-    const { data: file, error: downloadError } = await actor.supabase.storage.from('private-documents').download(filePath);
-    if (downloadError || !file)
-      return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Upload the document again before submitting it.' });
-    if (file.size > BUNDLE_MAX_BYTES) {
-      await getServiceClient().storage.from('private-documents').remove([filePath]);
-      return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Document exceeds the 25 MB limit.' });
-    }
-    const fileName = filePath.split('/').at(-1) || '';
-    const checked = validateUploadedBytes(
-      new Uint8Array(await file.arrayBuffer()), fileName, file.type,
-      bundle ? BUNDLE_EXTENSIONS : ['.pdf', '.docx', '.doc', '.jpg', '.jpeg', '.png'], BUNDLE_MAX_BYTES
-    );
-    if (checked.error || !checked.data) {
-      await getServiceClient().storage.from('private-documents').remove([filePath]);
-      return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: checked.error?.message || 'Document format is invalid.' });
-    }
+  const fileName = filePath.split('/').at(-1) || '';
+  const checked = validateUploadedBytes(new Uint8Array(await file.arrayBuffer()), fileName, file.type, BUNDLE_EXTENSIONS, maxBytes);
+  if (checked.error || !checked.data) {
+    await getServiceClient().storage.from('private-documents').remove([filePath]);
+    return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: checked.error?.message || 'Document format is invalid.' });
   }
 
   const { data: report, error } = await getServiceClient().from('reports').insert({
@@ -77,7 +58,7 @@ export async function POST(request: Request) {
     remarks: remarks || null,
   }).select('report_id').single();
   if (error || !report) {
-    if (!isLink) await getServiceClient().storage.from('private-documents').remove([filePath]);
+    await getServiceClient().storage.from('private-documents').remove([filePath]);
     return mobileBffFailure({ status: 503, code: 'SERVER_FAILURE', message: 'Failed to submit report document.' });
   }
 

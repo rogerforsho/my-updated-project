@@ -10,7 +10,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { listStudentReports, submitStudentReport } from '../../services/reports';
 import { isNetworkAvailable } from '../../lib/syncEngine';
 import NetworkToast from '../../components/NetworkToast';
-import { GATEWAY_DOCUMENT_SPECS, STUDENT_REPORT_TYPES, isBundleType, isCoordinatorReviewType, type DbReport } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, STUDENT_REPORT_TYPES, WEEKLY_JOURNAL_TYPE, describeReportType, isBundleType, reviewerHint, type DbReport } from '@ojt/shared';
 import CompanyRequestModal from '../../components/CompanyRequestModal';
 import IncidentReportModal from '../../components/IncidentReportModal';
 
@@ -29,8 +29,7 @@ export default function ReportsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState('Daily Journal');
-  const [filePath, setFilePath] = useState('');
+  const [selectedType, setSelectedType] = useState(WEEKLY_JOURNAL_TYPE);
   const [attachedFile, setAttachedFile] = useState<{
     uri: string;
     name: string;
@@ -73,8 +72,7 @@ export default function ReportsScreen() {
 
   const handleOpenModal = () => {
     setModalError('');
-    setSelectedType('Daily Journal');
-    setFilePath('');
+    setSelectedType(WEEKLY_JOURNAL_TYPE);
     setAttachedFile(null);
     setRemarks('');
     setModalOpen(true);
@@ -83,17 +81,16 @@ export default function ReportsScreen() {
   const handlePickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: [
-          'application/pdf',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          ...(isBundleType(selectedType) ? [] : ['image/*']),
-        ],
+        type: 'application/pdf',
         copyToCacheDirectory: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
+        if (!asset.name.toLowerCase().endsWith('.pdf') || (asset.mimeType && asset.mimeType !== 'application/pdf')) {
+          setModalError('Only PDF files are accepted. Save or export your document as a PDF first.');
+          return;
+        }
         setAttachedFile({
           uri: asset.uri,
           name: asset.name,
@@ -113,13 +110,8 @@ export default function ReportsScreen() {
 
   const handleSubmit = async () => {
     setModalError('');
-    if (!filePath.trim() && !attachedFile) {
-      setModalError('Please attach a document file or enter a valid file link / URL.');
-      return;
-    }
-
-    if (isBundleType(selectedType) && (!attachedFile || attachedFile.mimeType?.startsWith('image/'))) {
-      setModalError('Attach one PDF or DOCX file that contains all your requirements.');
+    if (!attachedFile) {
+      setModalError('Please attach a PDF file.');
       return;
     }
 
@@ -128,8 +120,7 @@ export default function ReportsScreen() {
     try {
       result = await submitStudentReport({
         report_type: selectedType,
-        file_path: filePath.trim() || undefined,
-        file_attachment: attachedFile || undefined,
+        file_attachment: attachedFile,
         remarks: remarks.trim() || undefined,
       });
     } catch {
@@ -144,10 +135,8 @@ export default function ReportsScreen() {
     }
 
     setModalOpen(false);
-    const routedTo = (isCoordinatorReviewType(selectedType) || selectedType === 'Incident Report')
-      ? 'OJT Coordinator follow-up'
-      : 'Supervisor review';
-    setSuccess(`Report submitted successfully for ${routedTo}.`);
+    const routedTo = describeReportType(selectedType).reviewer === 'Supervisor' ? 'your HTE Supervisor' : 'your OJT Coordinator';
+    setSuccess(`${describeReportType(selectedType).label} submitted. It was sent to ${routedTo} for review.`);
     load();
   };
 
@@ -166,7 +155,7 @@ export default function ReportsScreen() {
         <View>
           <Text style={s.headerKicker}>Colegio de Montalban OJT</Text>
           <Text style={s.title}>Practicum Reports</Text>
-          <Text style={s.subtitle}>Gateway documents, journals & incident reports</Text>
+          <Text style={s.subtitle}>Requirements, weekly journals & final report (PDF only)</Text>
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         <TouchableOpacity onPress={() => setIncidentOpen(true)} style={s.btnSubmitHeader} activeOpacity={0.85}
@@ -226,7 +215,7 @@ export default function ReportsScreen() {
             <Ionicons name="document-text-outline" size={44} color="#879687" style={{ marginBottom: 8 }} />
             <Text style={s.emptyTitle}>No reports submitted yet</Text>
             <Text style={s.emptySub}>
-              {isCompleted ? 'Your completed OJT records are read-only.' : 'Tap the Submit button at the top to upload your daily or weekly practicum journal.'}
+              {isCompleted ? 'Your completed OJT records are read-only.' : 'Tap the Submit button at the top to upload your weekly journal as a PDF.'}
             </Text>
           </View>
         }
@@ -235,9 +224,10 @@ export default function ReportsScreen() {
             <View style={s.cardTopRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
                 <Ionicons name="document-attach-outline" size={18} color="#0A3824" />
-                <Text style={s.reportType}>
-                  {item.report_type}
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.reportType}>{describeReportType(item.report_type).label}</Text>
+                  <Text style={s.dateText}>{describeReportType(item.report_type).reviewer === 'Supervisor' ? 'HTE Supervisor review' : 'OJT Coordinator review'}</Text>
+                </View>
               </View>
 
               <View style={[
@@ -289,7 +279,7 @@ export default function ReportsScreen() {
             <View style={s.modalHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={s.modalTitle}>Submit Practicum Report</Text>
-                <Text style={s.modalSubtitle}>Upload requirements, journals & submissions</Text>
+                <Text style={s.modalSubtitle}>PDF files only. Each type shows who reviews it.</Text>
               </View>
               <TouchableOpacity
                 onPress={() => setModalOpen(false)}
@@ -321,21 +311,25 @@ export default function ReportsScreen() {
                 {REPORT_TYPES.map((type) => (
                   <TouchableOpacity
                     key={type}
-                    onPress={() => { setSelectedType(type); if (isBundleType(type)) setFilePath(''); }}
+                    onPress={() => setSelectedType(type)}
                     style={[s.typePill, selectedType === type && s.typePillActive]}
                     activeOpacity={0.8}
                   >
                     <Text style={[s.typePillText, selectedType === type && s.typePillTextActive]}>
-                      {type}
+                      {describeReportType(type).label}
                     </Text>
                   </TouchableOpacity>
                 ))}
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <Ionicons name="paper-plane-outline" size={14} color="#0A3824" />
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#0A3824', flex: 1 }}>{reviewerHint(selectedType)}</Text>
               </View>
 
               {isBundleType(selectedType) ? (
                 <View style={{ marginBottom: 12, padding: 12, borderRadius: 10, backgroundColor: '#F3F0E4' }}>
                   <Text style={{ fontSize: 13, fontWeight: '700', color: '#0A3824', marginBottom: 6 }}>
-                    Upload ONE PDF or DOCX that contains all of these (max 25 MB):
+                    Upload ONE PDF that contains all of these (max 25 MB):
                   </Text>
                   {GATEWAY_DOCUMENT_SPECS.map((spec, i) => (
                     <View key={spec.id} style={{ marginBottom: 4 }}>
@@ -344,7 +338,7 @@ export default function ReportsScreen() {
                     </View>
                   ))}
                   <Text style={{ fontSize: 11, color: '#526257', marginTop: 6 }}>
-                    Put each document on its own page, in this order. Photos and links are not accepted for this submission.
+                    Put each document on its own page, in this order. Combine scanned pages into a single PDF before uploading.
                   </Text>
                 </View>
               ) : null}
@@ -353,11 +347,7 @@ export default function ReportsScreen() {
               {attachedFile ? (
                 <View style={s.attachedCard}>
                   <View style={s.attachedIconWrap}>
-                    <Ionicons
-                      name={attachedFile.mimeType?.includes('image') ? 'image' : 'document-text'}
-                      size={22}
-                      color="#0A3824"
-                    />
+                    <Ionicons name="document-text" size={22} color="#0A3824" />
                   </View>
                   <View style={{ flex: 1, marginRight: 8 }}>
                     <Text style={s.attachedFileName} numberOfLines={1}>
@@ -382,33 +372,15 @@ export default function ReportsScreen() {
                   activeOpacity={0.8}
                 >
                   <Ionicons name="cloud-upload-outline" size={20} color="#0A3824" />
-                  <Text style={s.btnAttachFileText}>{isBundleType(selectedType) ? 'Choose PDF or DOCX' : 'Choose PDF, DOCX, or Image'}</Text>
+                  <Text style={s.btnAttachFileText}>Choose PDF</Text>
                 </TouchableOpacity>
               )}
-
-              {!isBundleType(selectedType) && (<>
-              <View style={s.orDivider}>
-                <View style={s.orLine} />
-                <Text style={s.orText}>OR PASTE LINK / URL</Text>
-                <View style={s.orLine} />
-              </View>
-
-              <Text style={s.fieldLabel}>File Link / Google Drive URL (Alternative)</Text>
-              <TextInput
-                value={filePath}
-                onChangeText={setFilePath}
-                placeholder="drive.google.com/... (optional if file attached)"
-                placeholderTextColor="#879687"
-                style={s.input}
-                autoCapitalize="none"
-              />
-              </>)}
 
               <Text style={s.fieldLabel}>Student Remarks (Optional)</Text>
               <TextInput
                 value={remarks}
                 onChangeText={setRemarks}
-                placeholder="Add any notes for your coordinator..."
+                placeholder="Add any notes for your reviewer..."
                 placeholderTextColor="#879687"
                 style={[s.input, { height: 68, textAlignVertical: 'top' }]}
                 multiline

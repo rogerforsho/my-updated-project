@@ -18,7 +18,7 @@ import {
 import { CollapsibleGroup, useGroupFold } from '@/src/components/ui/CollapsibleGroup';
 import { getSignedDocumentUrl } from '@/src/services/storage';
 import { PagerBar, usePageSize, usePagedList } from '@/src/components/ui/ListControls';
-import { GATEWAY_DOCUMENT_SPECS, isBundleType, isCoordinatorReviewType, SUPERVISOR_REVIEW_REPORT_TYPES } from '@ojt/shared';
+import { describeReportType, GATEWAY_DOCUMENT_SPECS, isBundleType, isCoordinatorReviewType } from '@ojt/shared';
 import { AlertTriangle, Building2, CheckCircle2, FileText, GraduationCap, Hourglass, Search } from '@/src/components/ui/Icons';
 
 /** One row for a student's single combined file, otherwise the four legacy documents. */
@@ -75,7 +75,7 @@ function ReportGroupRows({ status, refreshKey, openingDocId, onOpen, onReview }:
                 </td>
                 <td className="px-5 py-4">
                   <span className="font-semibold text-slate-800 capitalize">
-                    {r.report_type.replace(/_/g, ' ')}
+                    {describeReportType(r.report_type).label}
                   </span>
                   <p className="text-xs text-slate-400 mt-0.5">
                     Submitted {new Date(r.submission_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -124,7 +124,7 @@ function ReportGroupRows({ status, refreshKey, openingDocId, onOpen, onReview }:
                     className="text-xs font-bold text-[#0A3824] hover:bg-emerald-50 cursor-pointer"
                   >
                     Review gateway document
-                  </Button> : <span className="text-xs text-slate-500">{r.report_type.toLowerCase().includes('incident') ? 'Coordinator follow-up' : SUPERVISOR_REVIEW_REPORT_TYPES.some(type => type.toLowerCase() === r.report_type.trim().toLowerCase()) ? 'Supervisor review' : 'Progress tracking'}</span>}
+                  </Button> : <span className="text-xs text-slate-500">{r.report_type.toLowerCase().includes('incident') ? 'Coordinator follow-up' : describeReportType(r.report_type).reviewer === 'Supervisor' ? 'Reviewed by HTE Supervisor' : 'Progress tracking'}</span>}
                 </td>
               </tr>
             ))}
@@ -901,7 +901,7 @@ export default function CoordinatorSubmissionsPage() {
         <div className="space-y-4">
           <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
             <p className="font-bold text-slate-800">
-              Requirement: <span className="capitalize">{reviewingReport?.report_type.replace(/_/g, ' ')}</span>
+              Requirement: <span>{reviewingReport ? describeReportType(reviewingReport.report_type).label : ''}</span>
             </p>
             <p className="text-slate-500">
               Student Number: <span className="font-mono">{reviewingReport?.students?.student_number}</span> ({reviewingReport?.students?.course})

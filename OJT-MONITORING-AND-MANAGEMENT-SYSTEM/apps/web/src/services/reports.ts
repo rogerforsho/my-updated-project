@@ -8,7 +8,7 @@ import { getServiceClient } from '@/src/lib/supabase/service';
 import { recordAuditEvent } from '@/src/lib/audit';
 import { validateUploadedBytes } from '@/src/lib/uploadValidation';
 import { authActionLimit } from '@/src/services/auth/internal';
-import { GATEWAY_DOCUMENT_SPECS, getGatewayStatus, isBundleType, isCoordinatorReviewType, STUDENT_REPORT_TYPES, SUPERVISOR_REVIEW_REPORT_TYPES, matchesDoc } from '@ojt/shared';
+import { BUNDLE_EXTENSIONS, BUNDLE_MAX_BYTES, WEEKLY_JOURNAL_MAX_BYTES, WEEKLY_JOURNAL_TYPE, GATEWAY_DOCUMENT_SPECS, getGatewayStatus, isBundleType, isCoordinatorReviewType, STUDENT_REPORT_TYPES, SUPERVISOR_REVIEW_REPORT_TYPES, matchesDoc } from '@ojt/shared';
 import type { AppResult, DbReport } from '@ojt/shared';
 
 
@@ -62,7 +62,7 @@ export async function submitReport(input: ReportInput): Promise<AppResult<null>>
   if (limitError) return { data: null, error: limitError };
 
   const filePath = input.file_path.trim();
-  const ownedUploadPath = new RegExp(`^${user.id}/reports/[0-9a-f-]{36}\\.(pdf|docx|doc|jpg|jpeg|png)$`, 'i');
+  const ownedUploadPath = new RegExp(`^${user.id}/reports/[0-9a-f-]{36}\\.pdf$`, 'i');
   if (!ownedUploadPath.test(filePath))
     return { data: null, error: { code: 'FORBIDDEN', message: 'Uploaded document path is invalid.' } };
 
@@ -71,16 +71,17 @@ export async function submitReport(input: ReportInput): Promise<AppResult<null>>
   const { data: uploadedFile, error: downloadError } = await storage.download(filePath);
   if (downloadError || !uploadedFile)
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Upload the document again before submitting it.' } };
-  if (uploadedFile.size > 10 * 1024 * 1024) {
+  const maxBytes = input.report_type.trim() === WEEKLY_JOURNAL_TYPE ? WEEKLY_JOURNAL_MAX_BYTES : BUNDLE_MAX_BYTES;
+  if (uploadedFile.size > maxBytes) {
     await removeUpload();
-    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Document exceeds the 10 MB limit.' } };
+    return { data: null, error: { code: 'VALIDATION_FAILURE', message: `PDF exceeds the ${maxBytes / (1024 * 1024)} MB limit for this document.` } };
   }
   const checked = validateUploadedBytes(
     new Uint8Array(await uploadedFile.arrayBuffer()),
     filePath.split('/').at(-1) || '',
     uploadedFile.type,
-    ['.pdf', '.docx', '.doc', '.jpg', '.jpeg', '.png'],
-    10 * 1024 * 1024
+    BUNDLE_EXTENSIONS,
+    maxBytes
   );
   if (checked.error || !checked.data) {
     await removeUpload();
@@ -257,8 +258,8 @@ export async function endorseReportBySupervisor(
     .select('student_id, report_type').eq('report_id', report_id).maybeSingle();
   if (lookupError) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load report.' } };
   if (!report) return { data: null, error: { code: 'NOT_FOUND', message: 'Report not found or access denied.' } };
-  if (!['daily journal', 'accomplishment report'].includes(report.report_type.trim().toLowerCase()))
-    return { data: null, error: { code: 'FORBIDDEN', message: 'Supervisors can decide daily accomplishment reports only.' } };
+  if (!SUPERVISOR_REVIEW_REPORT_TYPES.some(type => type.toLowerCase() === report.report_type.trim().toLowerCase()))
+    return { data: null, error: { code: 'FORBIDDEN', message: 'Supervisors can decide weekly journals only.' } };
 
   const decidedAt = new Date().toISOString();
   const { data: updated, error } = await supabase.from('reports').update({

@@ -12,6 +12,7 @@ import {
   type ReportWithStudent
 } from '@/src/services/reports';
 import { getSignedDocumentUrl } from '@/src/services/storage';
+import { describeReportType } from '@ojt/shared';
 
 // Anything not approved or returned (including unexpected stored values) stays in Needs review so no report vanishes.
 const isDecided = (r: ReportWithStudent) => r.supervisor_decision === 'approved' || r.supervisor_decision === 'returned';
@@ -95,9 +96,9 @@ export default function SupervisorReportsPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto page-fade-in">
       <header>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Trainee Accomplishment Reports</h1>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Trainee Weekly Journals</h1>
         <p className="text-sm text-slate-500 mt-0.5">
-          Approve or return daily accomplishment reports for your assigned interns. Each submission receives one recorded decision.
+          Approve or return the weekly journals (PDF) of your assigned interns. Each submission receives one recorded decision. Approved journals are later merged into one PDF for the OJT Coordinator.
           {!loading && reports.length > 0 && (
             <span className="font-semibold text-slate-700"> {waiting === 0 ? 'You are all caught up.' : `${waiting} on this page ${waiting === 1 ? 'is' : 'are'} waiting for your review.`}</span>
           )}
@@ -116,7 +117,7 @@ export default function SupervisorReportsPage() {
           <FileText className="w-8 h-8 text-slate-300 mb-3" />
           <p className="text-sm font-semibold text-slate-700">No reports submitted yet</p>
           <p className="text-xs text-slate-500 mt-1">
-            Your assigned trainees will submit their weekly accomplishment journals here.
+            Your assigned trainees will submit their weekly journals here.
           </p>
         </div>
       ) : (
@@ -145,7 +146,8 @@ export default function SupervisorReportsPage() {
                           </div>
 
                           <p className="text-sm font-semibold text-slate-800 capitalize">
-                            {r.report_type.replace(/_/g, ' ')}
+                            {describeReportType(r.report_type).label}
+                            {describeReportType(r.report_type).legacy && <span className="text-xs text-amber-700 font-normal normal-case"> (retired type)</span>}
                             <span className="text-xs text-slate-500 font-normal normal-case"> · {shortDate(r.submission_date)}</span>
                           </p>
 
@@ -215,7 +217,7 @@ export default function SupervisorReportsPage() {
 
       {/* Supervisor report decision modal */}
       <Modal
-        title={`Supervisor Feedback: ${endorsingReport?.students?.users?.full_name || 'Accomplishment Log'}`}
+        title={`Supervisor Feedback: ${endorsingReport?.students?.users?.full_name || 'Weekly Journal'}`}
         open={!!endorsingReport}
         onClose={() => setEndorsingReport(null)}
         footer={
@@ -231,7 +233,7 @@ export default function SupervisorReportsPage() {
         <div className="space-y-4">
           <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
             <p className="font-bold text-slate-800">
-              Log Type: <span className="capitalize">{endorsingReport?.report_type.replace(/_/g, ' ')}</span>
+              Log Type: <span>{endorsingReport ? describeReportType(endorsingReport.report_type).label : ''}</span>
             </p>
             <p className="text-slate-500">
               Intern: {endorsingReport?.students?.users?.full_name} ({endorsingReport?.students?.student_number})
@@ -250,7 +252,7 @@ export default function SupervisorReportsPage() {
             <textarea
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
-              placeholder="Confirm intern's accomplishments, verify weekly tasks performed, or note areas for improvement..."
+              placeholder="Confirm the intern's tasks for the week, or note what to correct before the journal is approved..."
               rows={4}
               className="w-full rounded-xl border border-slate-200 p-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#0A3824]"
               required
