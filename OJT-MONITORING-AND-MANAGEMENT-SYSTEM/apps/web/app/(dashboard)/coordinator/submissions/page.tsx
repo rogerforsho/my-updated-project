@@ -9,15 +9,132 @@ import {
   getGatewayComplianceSummary,
   sendRequirementReminder,
   listReportsForCoordinator,
+  listReportGroups,
   reviewReport,
   type ReportWithStudent,
   type StudentGatewayStatus,
   type GatewayComplianceSummary,
 } from '@/src/services/reports';
+import { CollapsibleGroup, useGroupFold } from '@/src/components/ui/CollapsibleGroup';
 import { getSignedDocumentUrl } from '@/src/services/storage';
-import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
-import { isCoordinatorReviewType, SUPERVISOR_REVIEW_REPORT_TYPES } from '@ojt/shared';
+import { PagerBar, usePageSize, usePagedList } from '@/src/components/ui/ListControls';
+import { GATEWAY_DOCUMENT_SPECS, isBundleType, isCoordinatorReviewType, SUPERVISOR_REVIEW_REPORT_TYPES } from '@ojt/shared';
+import { AlertTriangle, Building2, CheckCircle2, FileText, GraduationCap, Hourglass, Search } from '@/src/components/ui/Icons';
 
+/** One row for a student's single combined file, otherwise the four legacy documents. */
+function gatewayRows(student: StudentGatewayStatus): StudentGatewayStatus['documents'] {
+  if (!student.bundle) return student.documents;
+  return [{
+    spec_id: 'bundle',
+    spec_name: 'Combined requirements file (all 4 documents)',
+    status: student.bundle.status,
+    report_id: student.bundle.report_id,
+    file_path: student.bundle.file_path,
+    submission_date: student.bundle.submission_date,
+    remarks: student.bundle.remarks,
+  }];
+}
+
+
+function ReportGroupRows({ status, refreshKey, openingDocId, onOpen, onReview }: {
+  status: string; refreshKey: number; openingDocId: string | null;
+  onOpen: (filePath: string, reportId: string) => void;
+  onReview: (report: ReportWithStudent) => void;
+}) {
+  const { items: reports, page, setPage, pageSize, loading, error, totalPages, total, setPageSize } = usePagedList<ReportWithStudent>(
+    (p, size) => listReportsForCoordinator(p, size, status).then((r) => ({ error: r.error, data: r.data && { items: r.data.reports, total: r.data.total } })),
+    [status, refreshKey],
+    null,
+    'Failed to load submissions.',
+  );
+
+  if (loading && reports.length === 0) return <div className="flex items-center justify-center py-10 text-slate-400 text-sm">Loading submissions...</div>;
+  if (error) return <div className="p-4"><Alert type="error" message={error} /></div>;
+  return (
+    <>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="border-b border-slate-200/80 bg-slate-50/80 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <tr>
+              <th className="text-left px-5 py-3.5">Student Trainee</th>
+              <th className="text-left px-5 py-3.5">Document Requirement</th>
+              <th className="text-left px-5 py-3.5">Document File</th>
+              <th className="text-left px-5 py-3.5">Supervisor Decision / Notes</th>
+              <th className="text-left px-5 py-3.5">Workflow Status</th>
+              <th className="text-right px-5 py-3.5">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {reports.map(r => (
+              <tr key={r.report_id} className="hover:bg-slate-50/60 transition-colors">
+                <td className="px-5 py-4">
+                  <p className="font-bold text-slate-900">{r.students?.users?.full_name}</p>
+                  <p className="text-xs text-slate-500 font-mono tabular-nums mt-0.5">
+                    {r.students?.student_number} • {r.students?.course}
+                  </p>
+                </td>
+                <td className="px-5 py-4">
+                  <span className="font-semibold text-slate-800 capitalize">
+                    {r.report_type.replace(/_/g, ' ')}
+                  </span>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Submitted {new Date(r.submission_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </p>
+                  {r.remarks && (
+                    <p className="text-xs text-slate-600 bg-slate-50 p-1.5 rounded mt-1 border border-slate-100">
+                      <span className="font-bold text-slate-500">Student Note:</span> {r.remarks}
+                    </p>
+                  )}
+                </td>
+                <td className="px-5 py-4">
+                  <button
+                    onClick={() => onOpen(r.file_path, r.report_id)}
+                    disabled={openingDocId === r.report_id}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-[#0A3824] border border-emerald-200 hover:bg-emerald-100 text-xs font-bold transition-all cursor-pointer"
+                  >
+                    {openingDocId === r.report_id ? 'Opening...' : 'View Document'}
+                  </button>
+                </td>
+                <td className="px-5 py-4 text-xs">
+                  {r.supervisor_feedback || r.supervisor_decision ? (
+                    <div className="bg-emerald-50/70 border border-emerald-200 p-2 rounded-lg max-w-xs">
+                      {r.supervisor_decision && <p className="font-bold uppercase text-emerald-900">{r.supervisor_decision}</p>}
+                      <p className="text-emerald-900 font-semibold">{r.supervisor_feedback}</p>
+                      <span className="text-xs text-emerald-700 block mt-1">
+                        Decision recorded {r.supervisor_decided_at ? new Date(r.supervisor_decided_at).toLocaleDateString() : ''}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-slate-400 italic">No supervisor remarks</span>
+                  )}
+                </td>
+                <td className="px-5 py-4">
+                  <Badge className={`text-xs font-bold ${
+                    (r.supervisor_decision || r.status) === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                    (r.supervisor_decision || r.status) === 'rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                    'bg-amber-50 text-amber-700 border-amber-200'
+                  }`}>
+                    {(r.supervisor_decision || r.status).replace(/_/g, ' ').toUpperCase()}
+                  </Badge>
+                </td>
+                <td className="px-5 py-4 text-right">
+                  {isCoordinatorReviewType(r.report_type) ? <Button
+                    variant="ghost"
+                    onClick={() => onReview(r)}
+                    className="text-xs font-bold text-[#0A3824] hover:bg-emerald-50 cursor-pointer"
+                  >
+                    Review gateway document
+                  </Button> : <span className="text-xs text-slate-500">{r.report_type.toLowerCase().includes('incident') ? 'Coordinator follow-up' : SUPERVISOR_REVIEW_REPORT_TYPES.some(type => type.toLowerCase() === r.report_type.trim().toLowerCase()) ? 'Supervisor review' : 'Progress tracking'}</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="p-3"><PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize} /></div>
+    </>
+  );
+}
 
 export default function CoordinatorSubmissionsPage() {
   // Top-level tab: 'compliance' (Who needs requirements) vs 'feed' (Document review stream)
@@ -31,20 +148,20 @@ export default function CoordinatorSubmissionsPage() {
   const [courseFilter, setCourseFilter] = useState<string>('all');
   const [rosterPage, setRosterPage] = useState(1);
   const [pageSize, changePageSize] = usePageSize();
-  const setPageSize = (n: number) => { changePageSize(n); setRosterPage(1); setReportPage(1); };
+  const setPageSize = (n: number) => { changePageSize(n); setRosterPage(1); };
   useEffect(() => { setRosterPage(1); }, [complianceSearch, courseFilter, complianceFilter]);
   const [inspectingStudent, setInspectingStudent] = useState<StudentGatewayStatus | null>(null);
   const [remindingStudentId, setRemindingStudentId] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   // Document Feed State
-  const [reports, setReports] = useState<ReportWithStudent[]>([]);
-  const [totalReports, setTotalReports] = useState(0);
-  const [reportPage, setReportPage] = useState(1);
+  const [reportGroups, setReportGroups] = useState<Array<{ status: string; count: number }>>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [loadingReports, setLoadingReports] = useState(true);
-  const [feedStatusFilter, setFeedStatusFilter] = useState<'all' | 'submitted' | 'approved' | 'rejected'>('all');
+  const fold = useGroupFold('coordinator-submissions-fold');
   const [reviewingReport, setReviewingReport] = useState<ReportWithStudent | null>(null);
   const [reviewRemarks, setReviewRemarks] = useState('');
+  const [missingItems, setMissingItems] = useState<string[]>([]);
   const [submittingAction, setSubmittingAction] = useState(false);
   const [openingDocId, setOpeningDocId] = useState<string | null>(null);
 
@@ -63,17 +180,18 @@ export default function CoordinatorSubmissionsPage() {
   }, []);
 
   // ─── Load Document Feed Data ───────────────────────────────────────────────
-  const loadReports = useCallback(async (p: number) => {
+  // Reloads the status headers (true counts) and tells any open group to refetch its rows.
+  const loadReports = useCallback(async () => {
     setLoadingReports(true);
-    const res = await listReportsForCoordinator(p, pageSize, feedStatusFilter);
+    const res = await listReportGroups();
     setLoadingReports(false);
     if (res.error) {
       setError(res.error.message);
       return;
     }
-    setReports(res.data!.reports);
-    setTotalReports(res.data!.total);
-  }, [feedStatusFilter, pageSize]);
+    setReportGroups(res.data!.groups);
+    setRefreshKey((k) => k + 1);
+  }, []);
 
   useEffect(() => {
     loadCompliance();
@@ -81,9 +199,9 @@ export default function CoordinatorSubmissionsPage() {
 
   useEffect(() => {
     if (activeTab === 'feed') {
-      loadReports(reportPage);
+      loadReports();
     }
-  }, [activeTab, reportPage, loadReports]);
+  }, [activeTab, loadReports]);
 
   // ─── Document Preview Handler ──────────────────────────────────────────────
   async function handleOpenDocument(filePath: string, reportId: string) {
@@ -100,8 +218,18 @@ export default function CoordinatorSubmissionsPage() {
   // ─── Document Review Decision ──────────────────────────────────────────────
   async function submitDecision(status: 'approved' | 'rejected') {
     if (!reviewingReport) return;
+    // Rejecting the combined file: say which of the four documents to fix.
+    let remarks = reviewRemarks;
+    if (status === 'rejected' && isBundleType(reviewingReport.report_type)) {
+      if (missingItems.length === 0 && !reviewRemarks.trim()) {
+        setError('Tick the missing or incorrect documents, or add a remark, so the student knows what to fix.');
+        return;
+      }
+      const ticked = missingItems.length ? `Missing or incorrect: ${missingItems.join(', ')}.` : '';
+      remarks = [ticked, reviewRemarks.trim()].filter(Boolean).join(' ');
+    }
     setSubmittingAction(true);
-    const result = await reviewReport(reviewingReport.report_id, status, reviewRemarks);
+    const result = await reviewReport(reviewingReport.report_id, status, remarks);
     setSubmittingAction(false);
     if (result.error) {
       setError(result.error.message);
@@ -109,10 +237,11 @@ export default function CoordinatorSubmissionsPage() {
     }
     setReviewingReport(null);
     setReviewRemarks('');
+    setMissingItems([]);
     setSuccessToast(`Submission successfully marked as ${status}.`);
     setTimeout(() => setSuccessToast(null), 4000);
     // Refresh both views
-    loadReports(reportPage);
+    loadReports();
     loadCompliance();
   }
 
@@ -170,9 +299,8 @@ export default function CoordinatorSubmissionsPage() {
   }, [complianceData, complianceSearch, courseFilter, complianceFilter]);
 
   // ─── Filtered Document Feed ────────────────────────────────────────────────
-  const filteredReports = reports;
-
-  const totalPages = Math.max(1, Math.ceil(totalReports / pageSize));
+  const totalReports = reportGroups.reduce((n, g) => n + g.count, 0);
+  const reportStatuses = reportGroups.map((g) => g.status);
   // shortcut: roster is paged client-side over the full compliance summary, move server-side past a few thousand trainees
 
 
@@ -183,7 +311,7 @@ export default function CoordinatorSubmissionsPage() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Requirement & Document Submissions</h1>
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-[#0A3824]">
+            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-[#0A3824]">
               CdM Practicum
             </span>
           </div>
@@ -202,9 +330,9 @@ export default function CoordinatorSubmissionsPage() {
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <span>📋 Pre-Deployment Tracker</span>
+            <span>Pre-Deployment Tracker</span>
             {complianceData && complianceData.needs_requirements > 0 && (
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+              <span className={`px-1.5 py-0.5 rounded-full text-xs font-black ${
                 activeTab === 'compliance' ? 'bg-[var(--cdm-sand)] text-[#0A3824]' : 'bg-rose-500 text-white'
               }`}>
                 {complianceData.needs_requirements}
@@ -219,9 +347,9 @@ export default function CoordinatorSubmissionsPage() {
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <span>📑 Document Review Feed</span>
+            <span>Document Review Feed</span>
             {totalReports > 0 && (
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+              <span className={`px-1.5 py-0.5 rounded-full text-xs font-black ${
                 activeTab === 'feed' ? 'bg-[var(--cdm-sand)] text-[#0A3824]' : 'bg-slate-300 text-slate-700'
               }`}>
                 {totalReports}
@@ -253,7 +381,7 @@ export default function CoordinatorSubmissionsPage() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Needs Requirements</span>
-                <span className="text-lg">⚠️</span>
+                <AlertTriangle className="w-5 h-5" aria-hidden="true" />
               </div>
               <p className="text-3xl font-black text-amber-900 mt-2">
                 {complianceData?.needs_requirements ?? 0}
@@ -274,13 +402,13 @@ export default function CoordinatorSubmissionsPage() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-blue-800 uppercase tracking-wider">Ready for Review</span>
-                <span className="text-lg">⏳</span>
+                <Hourglass className="w-5 h-5 text-blue-700" aria-hidden="true" />
               </div>
               <p className="text-3xl font-black text-blue-900 mt-2">
                 {complianceData?.ready_for_review ?? 0}
               </p>
               <p className="text-xs text-blue-700 mt-1 font-medium">
-                Both required documents uploaded; awaiting Coordinator review
+                All required documents uploaded; awaiting Coordinator review
               </p>
             </div>
 
@@ -295,13 +423,13 @@ export default function CoordinatorSubmissionsPage() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Ready for Placement</span>
-                <span className="text-lg">🎯</span>
+                <CheckCircle2 className="w-5 h-5" aria-hidden="true" />
               </div>
               <p className="text-3xl font-black text-emerald-900 mt-2">
                 {complianceData?.ready_for_placement ?? 0}
               </p>
               <p className="text-xs text-emerald-700 mt-1 font-medium">
-                Both required documents approved; eligible for company assignment
+                All required documents approved; eligible for company assignment
               </p>
             </div>
 
@@ -316,7 +444,7 @@ export default function CoordinatorSubmissionsPage() {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-[#0A3824] uppercase tracking-wider">Active Deployed</span>
-                <span className="text-lg">🏢</span>
+                <Building2 className="w-5 h-5" aria-hidden="true" />
               </div>
               <p className="text-3xl font-black text-[#0A3824] mt-2">
                 {complianceData?.deployed ?? 0}
@@ -338,7 +466,7 @@ export default function CoordinatorSubmissionsPage() {
                 placeholder="Search trainee name or student number..."
                 className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0A3824]"
               />
-              <span className="absolute left-3 top-2.5 text-slate-400 text-sm">🔍</span>
+              <Search className="absolute left-3 top-2.5 text-slate-400 w-4 h-4 shrink-0" aria-hidden="true" />
               {complianceSearch && (
                 <button
                   onClick={() => setComplianceSearch('')}
@@ -367,10 +495,10 @@ export default function CoordinatorSubmissionsPage() {
                 {(
                   [
                     { key: 'all', label: 'All Trainees' },
-                    { key: 'needs_requirements', label: '⚠️ Incomplete' },
-                    { key: 'ready_for_review', label: '⏳ Needs Review' },
-                    { key: 'ready_for_placement', label: '🎯 Cleared' },
-                    { key: 'deployed', label: '🏢 Deployed' },
+                    { key: 'needs_requirements', label: 'Incomplete' },
+                    { key: 'ready_for_review', label: 'Needs Review' },
+                    { key: 'ready_for_placement', label: 'Cleared' },
+                    { key: 'deployed', label: 'Deployed' },
                   ] as const
                 ).map(tab => (
                   <button
@@ -399,7 +527,7 @@ export default function CoordinatorSubmissionsPage() {
               </div>
             ) : filteredStudents.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                <span className="text-4xl mb-3">🎓</span>
+                <GraduationCap className="mb-3 w-9 h-9 text-slate-300" aria-hidden="true" />
                 <p className="text-sm font-semibold text-slate-700">No students match this filter</p>
                 <p className="text-xs text-slate-400 mt-1">Try clearing your search query or selecting &quot;All Trainees&quot;.</p>
               </div>
@@ -410,7 +538,7 @@ export default function CoordinatorSubmissionsPage() {
                     <tr>
                       <th className="text-left px-5 py-3.5">Student Trainee</th>
                       <th className="text-left px-5 py-3.5">Progress</th>
-                      <th className="text-left px-5 py-3.5">5 Pre-Deployment Gateway Documents</th>
+                      <th className="text-left px-5 py-3.5">{GATEWAY_DOCUMENT_SPECS.length} Pre-Deployment Documents</th>
                       <th className="text-left px-5 py-3.5">Compliance Status</th>
                       <th className="text-right px-5 py-3.5">Action</th>
                     </tr>
@@ -425,10 +553,10 @@ export default function CoordinatorSubmissionsPage() {
                           {/* Student Trainee Info */}
                           <td className="px-5 py-4">
                             <p className="font-bold text-slate-900">{student.full_name}</p>
-                            <p className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">
+                            <p className="text-xs text-slate-500 font-mono tabular-nums mt-0.5">
                               {student.student_number} • {student.course} (Yr {student.year_level})
                             </p>
-                            <p className="text-[11px] text-slate-400 mt-0.5">{student.email}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">{student.email}</p>
                           </td>
 
                           {/* Progress Bar */}
@@ -437,7 +565,7 @@ export default function CoordinatorSubmissionsPage() {
                               <span className={isComplete ? 'text-emerald-700' : 'text-slate-700'}>
                                 {student.submitted_count} / {student.total_required} Submitted
                               </span>
-                              <span className="text-[11px] text-slate-400">
+                              <span className="text-xs text-slate-400">
                                 ({student.approved_count} Approved)
                               </span>
                             </div>
@@ -457,10 +585,10 @@ export default function CoordinatorSubmissionsPage() {
                             </div>
                           </td>
 
-                          {/* Two required gateway documents */}
+                          {/* Required gateway documents */}
                           <td className="px-5 py-4">
                             <div className="flex flex-wrap gap-1.5 max-w-md">
-                              {student.documents.map(doc => {
+                              {gatewayRows(student).map(doc => {
                                 let badgeClass = 'bg-slate-100 text-slate-500 border-slate-200';
                                 let icon = '✕';
                                 if (doc.status === 'approved') {
@@ -468,7 +596,7 @@ export default function CoordinatorSubmissionsPage() {
                                   icon = '✓';
                                 } else if (doc.status === 'submitted') {
                                   badgeClass = 'bg-amber-50 text-amber-700 border-amber-200 font-semibold';
-                                  icon = '⏳';
+                                  icon = '…';
                                 } else if (doc.status === 'rejected') {
                                   badgeClass = 'bg-rose-50 text-rose-700 border-rose-200 line-through';
                                   icon = '✕';
@@ -478,16 +606,16 @@ export default function CoordinatorSubmissionsPage() {
                                   <span
                                     key={doc.spec_id}
                                     title={`${doc.spec_name}: ${doc.status.toUpperCase()}`}
-                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] border ${badgeClass}`}
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs border ${badgeClass}`}
                                   >
                                     <span>{icon}</span>
-                                    <span>{doc.spec_name.split(' ')[0]}</span>
+                                    <span>{doc.spec_id === 'bundle' ? 'Combined file' : doc.spec_name.split(' ')[0]}</span>
                                   </span>
                                 );
                               })}
                             </div>
-                            {student.missing_documents.length > 0 && (
-                              <p className="text-[11px] text-rose-600 mt-1 font-medium">
+                            {!student.bundle && student.missing_documents.length > 0 && (
+                              <p className="text-xs text-rose-600 mt-1 font-medium">
                                 Missing: {student.missing_documents.join(', ')}
                               </p>
                             )}
@@ -498,26 +626,26 @@ export default function CoordinatorSubmissionsPage() {
                             {student.compliance_state === 'deployed' && (
                               <div>
                                 <Badge className="bg-[var(--cdm-green)]/10 text-[#0A3824] border-[#0A3824]/20 text-xs font-bold">
-                                  🏢 DEPLOYED
+                                  DEPLOYED
                                 </Badge>
-                                <p className="text-[11px] text-slate-500 font-medium mt-0.5 truncate max-w-[150px]">
+                                <p className="text-xs text-slate-500 font-medium mt-0.5 truncate max-w-[150px]">
                                   {student.assigned_company}
                                 </p>
                               </div>
                             )}
                             {student.compliance_state === 'ready_for_placement' && (
                               <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-xs font-bold">
-                                🎯 READY FOR PLACEMENT
+                                READY FOR PLACEMENT
                               </Badge>
                             )}
                             {student.compliance_state === 'ready_for_review' && (
                               <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-xs font-bold">
-                                ⏳ READY FOR REVIEW
+                                READY FOR REVIEW
                               </Badge>
                             )}
                             {student.compliance_state === 'in_progress' && (
                               <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-xs font-bold">
-                                ⚠️ INCOMPLETE ({student.missing_documents.length} MISSING)
+                                INCOMPLETE ({student.missing_documents.length} MISSING)
                               </Badge>
                             )}
                             {student.compliance_state === 'not_started' && (
@@ -537,7 +665,7 @@ export default function CoordinatorSubmissionsPage() {
                                   title="Send in-app reminder notification to this student"
                                   className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-all cursor-pointer disabled:opacity-50"
                                 >
-                                  {remindingStudentId === student.student_id ? 'Sending...' : '🔔 Remind'}
+                                  {remindingStudentId === student.student_id ? 'Sending...' : 'Remind'}
                                 </button>
                               )}
                               <Button
@@ -566,126 +694,51 @@ export default function CoordinatorSubmissionsPage() {
       {/* ═══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'feed' && (
         <div className="space-y-6">
-          {/* Status Filter Buttons */}
           <div className="flex items-center justify-between gap-4">
             <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">
-              Submitted Documents ({filteredReports.length} Shown)
+              Submitted Documents ({totalReports})
             </p>
-            <div className="flex items-center gap-2">
-              {(['all', 'submitted', 'approved', 'rejected'] as const).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => { setFeedStatusFilter(tab); setReportPage(1); }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer ${
-                    feedStatusFilter === tab
-                      ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] shadow-sm'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  {tab === 'all' ? 'All Submissions' : tab}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-            {loadingReports ? (
-              <div className="flex items-center justify-center py-20 text-slate-400 text-sm">
-                Loading submissions...
-              </div>
-            ) : filteredReports.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                <span className="text-4xl mb-3">📁</span>
-                <p className="text-sm font-semibold text-slate-700">No submissions found</p>
-                <p className="text-xs text-slate-400 mt-1">No documents match the current filter.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="border-b border-slate-200/80 bg-slate-50/80 text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                    <tr>
-                      <th className="text-left px-5 py-3.5">Student Trainee</th>
-                      <th className="text-left px-5 py-3.5">Document Requirement</th>
-                      <th className="text-left px-5 py-3.5">Document File</th>
-                      <th className="text-left px-5 py-3.5">Supervisor Decision / Notes</th>
-                      <th className="text-left px-5 py-3.5">Workflow Status</th>
-                      <th className="text-right px-5 py-3.5">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredReports.map(r => (
-                      <tr key={r.report_id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="px-5 py-4">
-                          <p className="font-bold text-slate-900">{r.students?.users?.full_name}</p>
-                          <p className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">
-                            {r.students?.student_number} • {r.students?.course}
-                          </p>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className="font-semibold text-slate-800 capitalize">
-                            {r.report_type.replace(/_/g, ' ')}
-                          </span>
-                          <p className="text-[11px] text-slate-400 mt-0.5">
-                            Submitted {new Date(r.submission_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </p>
-                          {r.remarks && (
-                            <p className="text-xs text-slate-600 bg-slate-50 p-1.5 rounded mt-1 border border-slate-100">
-                              <span className="font-bold text-slate-500">Student Note:</span> {r.remarks}
-                            </p>
-                          )}
-                        </td>
-                        <td className="px-5 py-4">
-                          <button
-                            onClick={() => handleOpenDocument(r.file_path, r.report_id)}
-                            disabled={openingDocId === r.report_id}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-[#0A3824] border border-emerald-200 hover:bg-emerald-100 text-xs font-bold transition-all cursor-pointer"
-                          >
-                            {openingDocId === r.report_id ? 'Opening...' : '📄 View Document'}
-                          </button>
-                        </td>
-                        <td className="px-5 py-4 text-xs">
-                          {r.supervisor_feedback || r.supervisor_decision ? (
-                            <div className="bg-emerald-50/70 border border-emerald-200 p-2 rounded-lg max-w-xs">
-                              {r.supervisor_decision && <p className="font-bold uppercase text-emerald-900">{r.supervisor_decision}</p>}
-                              <p className="text-emerald-900 font-semibold">{r.supervisor_feedback}</p>
-                              <span className="text-[10px] text-emerald-700 block mt-1">
-                                Decision recorded {r.supervisor_decided_at ? new Date(r.supervisor_decided_at).toLocaleDateString() : ''}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-slate-400 italic">No supervisor remarks</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-4">
-                          <Badge className={`text-xs font-bold ${
-                            (r.supervisor_decision || r.status) === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                            (r.supervisor_decision || r.status) === 'rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                            'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}>
-                            {(r.supervisor_decision || r.status).replace(/_/g, ' ').toUpperCase()}
-                          </Badge>
-                        </td>
-                        <td className="px-5 py-4 text-right">
-                          {isCoordinatorReviewType(r.report_type) ? <Button
-                            variant="ghost"
-                            onClick={() => {
-                              setReviewingReport(r);
-                              setReviewRemarks(r.remarks || '');
-                            }}
-                            className="text-xs font-bold text-[#0A3824] hover:bg-emerald-50 cursor-pointer"
-                          >
-                            Review gateway document
-                          </Button> : <span className="text-xs text-slate-500">{r.report_type.toLowerCase().includes('incident') ? 'Coordinator follow-up' : SUPERVISOR_REVIEW_REPORT_TYPES.some(type => type.toLowerCase() === r.report_type.trim().toLowerCase()) ? 'Supervisor review' : 'Progress tracking'}</span>}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {reportGroups.length > 1 && (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => fold.setAll(reportStatuses, true)}>Expand all</Button>
+                <Button variant="outline" onClick={() => fold.setAll(reportStatuses, false)}>Collapse all</Button>
               </div>
             )}
           </div>
 
-          <div className="mt-4"><PagerBar page={reportPage} totalPages={totalPages} total={totalReports} setPage={setReportPage} pageSize={pageSize} setPageSize={setPageSize} /></div>
+          {loadingReports && reportGroups.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-center py-20 text-slate-400 text-sm">
+              Loading submissions...
+            </div>
+          ) : reportGroups.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm flex flex-col items-center justify-center py-20 text-slate-400">
+              <FileText className="mb-3 w-9 h-9 text-slate-300" aria-hidden="true" />
+              <p className="text-sm font-semibold text-slate-700">No submissions found</p>
+              <p className="text-xs text-slate-400 mt-1">No documents have been submitted yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {reportGroups.map((g) => (
+                <CollapsibleGroup
+                  key={g.status}
+                  title={g.status.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())}
+                  summary={`${g.count} ${g.count === 1 ? 'document' : 'documents'}`}
+                  badge={g.status === 'submitted' ? <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200">{g.count} to review</span> : undefined}
+                  // Only documents waiting for review start open; the rest stay folded until opened.
+                  open={fold.isOpen(g.status, g.status === 'submitted')}
+                  onToggle={() => fold.toggle(g.status, g.status === 'submitted')}
+                >
+                  <ReportGroupRows
+                    status={g.status}
+                    refreshKey={refreshKey}
+                    openingDocId={openingDocId}
+                    onOpen={handleOpenDocument}
+                    onReview={(r) => { setReviewingReport(r); setReviewRemarks(r.remarks || ''); setMissingItems([]); }}
+                  />
+                </CollapsibleGroup>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -706,11 +759,11 @@ export default function CoordinatorSubmissionsPage() {
                 disabled={remindingStudentId === inspectingStudent?.student_id}
                 className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 cursor-pointer"
               >
-                {remindingStudentId === inspectingStudent?.student_id ? 'Sending...' : '🔔 Dispatch Requirement Reminder'}
+                {remindingStudentId === inspectingStudent?.student_id ? 'Sending...' : 'Dispatch Requirement Reminder'}
               </button>
             ) : (
               <span className="text-xs text-emerald-700 font-semibold">
-                ✓ Both required gateway documents are accounted for
+                ✓ All required documents are accounted for
               </span>
             )}
             <Button variant="ghost" onClick={() => setInspectingStudent(null)}>
@@ -747,10 +800,10 @@ export default function CoordinatorSubmissionsPage() {
             {/* Required gateway documents */}
             <div className="space-y-2.5">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Required Pre-Deployment Credentials (5 Specifications)
+                {inspectingStudent.bundle ? 'Pre-deployment Requirements file' : `Required Pre-Deployment Documents (${GATEWAY_DOCUMENT_SPECS.length})`}
               </h4>
               <div className="space-y-2">
-                {inspectingStudent.documents.map((doc, idx) => (
+                {gatewayRows(inspectingStudent).map((doc, idx) => (
                   <div
                     key={doc.spec_id}
                     className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
@@ -765,25 +818,25 @@ export default function CoordinatorSubmissionsPage() {
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-white border border-slate-300">
+                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-white border border-slate-300">
                           {idx + 1}
                         </span>
                         <p className="font-bold text-slate-900 text-xs">{doc.spec_name}</p>
                       </div>
                       {doc.submission_date && (
-                        <p className="text-[11px] text-slate-500 mt-1 pl-7">
+                        <p className="text-xs text-slate-500 mt-1 pl-7">
                           Uploaded on {new Date(doc.submission_date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </p>
                       )}
                       {doc.remarks && (
-                        <p className="text-[11px] text-slate-600 mt-0.5 pl-7 italic">
+                        <p className="text-xs text-slate-600 mt-0.5 pl-7 italic">
                           Note: &ldquo;{doc.remarks}&rdquo;
                         </p>
                       )}
                     </div>
 
                     <div className="flex items-center gap-2 self-end sm:self-auto pl-7 sm:pl-0">
-                      <Badge className={`text-[11px] font-bold ${
+                      <Badge className={`text-xs font-bold ${
                         doc.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
                         doc.status === 'submitted' ? 'bg-amber-100 text-amber-800 border-amber-300' :
                         doc.status === 'rejected' ? 'bg-rose-100 text-rose-800 border-rose-300' :
@@ -859,6 +912,24 @@ export default function CoordinatorSubmissionsPage() {
               </p>
             )}
           </div>
+
+          {reviewingReport && isBundleType(reviewingReport.report_type) && (
+            <fieldset className="space-y-1.5">
+              <legend className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                If rejecting: tick what is missing or incorrect
+              </legend>
+              {GATEWAY_DOCUMENT_SPECS.map(spec => (
+                <label key={spec.id} className="flex items-center gap-2 text-sm text-slate-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={missingItems.includes(spec.name)}
+                    onChange={e => setMissingItems(prev => e.target.checked ? [...prev, spec.name] : prev.filter(n => n !== spec.name))}
+                  />
+                  {spec.name}
+                </label>
+              ))}
+            </fieldset>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">

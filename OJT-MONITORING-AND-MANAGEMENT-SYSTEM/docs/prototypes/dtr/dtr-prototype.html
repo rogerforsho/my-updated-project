@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PROTOTYPE - DTR download (throwaway)</title>
+<!--
+PROTOTYPE, delete me. Question: what should the downloaded "DTR" look like?
+Standalone file, sample data only, no app code touched. Double-click to open.
+Variants: A = faithful Civil Service Form 48 | B = simple OJT DTR | C = Form 48 layout + credited hours/status.
+"Download" = window.print() -> Save as PDF (same approach as CertificateSheet.tsx). Keys 1/2/3 or arrows switch.
+-->
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#e5e7eb;font-family:Georgia,'Times New Roman',serif;color:#111}
+.app{max-width:1000px;margin:0 auto;padding:16px}
+.bar{font:600 14px system-ui;display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.bar select,.bar button,.bar input{font:inherit;padding:8px 12px;border-radius:8px;border:1px solid #94a3b8;background:#fff}
+.bar .dl{background:#1f5c3a;color:#fff;border-color:#1f5c3a;cursor:pointer}
+.note{font:13px system-ui;color:#475569;margin:0 0 12px}
+.sheet{background:#fff;width:210mm;min-height:297mm;margin:0 auto;padding:12mm 14mm;box-shadow:0 2px 12px #0003}
+table{border-collapse:collapse;width:100%}
+td,th{border:1px solid #000;padding:2px 4px;font-size:11px;text-align:center}
+.nb td,.nb th{border:0}
+.name{border-bottom:1px solid #000;text-align:center;font-weight:bold;font-size:15px;padding:2px;margin:10px 30px 0;letter-spacing:.5px}
+.cap{text-align:center;font-size:10px;margin-bottom:6px}
+.c{text-align:center}.sm{font-size:11px}
+.wk{background:#f3f4f6;color:#6b7280}
+.sig{margin-top:18px;text-align:center;font-size:11px}
+.sig .line{border-top:1px solid #000;margin:26px 40px 0;padding-top:2px;font-weight:bold}
+.pill{font:600 10px system-ui}
+.fl{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:#111;color:#fff;font:600 13px system-ui;padding:8px 14px;border-radius:99px;display:flex;gap:14px;box-shadow:0 4px 14px #0006}
+.fl button{background:none;border:0;color:#fff;font:inherit;cursor:pointer}
+@page{size:A4 portrait;margin:0}
+@media print{body{background:#fff}.app>.bar,.note,.fl{display:none}.sheet{box-shadow:none;margin:0}}
+</style></head><body>
+<div class="app">
+  <div class="bar">
+    <span>Student</span><select id="stu"><option value="0">Paulo S. Villanueva - 23-90006</option><option value="1">Nicole V. Bautista - 23-90005</option></select>
+    <span>Month</span><input id="mon" type="month" value="2026-11">
+    <button class="dl" onclick="window.print()">Download DTR (PDF)</button>
+  </div>
+  <p class="note">Prototype. In the real feature this button sits next to "Download timecard (CSV)" once a student is selected. The sheet below is what the PDF looks like. Switch variants with the bottom bar (or keys 1 / 2 / 3).</p>
+  <div id="out"></div>
+</div>
+<div class="fl"><button onclick="go(-1)">&larr;</button><span id="lab"></span><button onclick="go(1)">&rarr;</button></div>
+<script>
+const STU=[{name:'VILLANUEVA, PAULO S.',num:'23-90006',co:'QA Staging Company',sup:'Maria Santos',prog:'BS Information Technology'},
+{name:'BAUTISTA, NICOLE V.',num:'23-90005',co:'QA Staging Company',sup:'Maria Santos',prog:'BS Information Technology'}];
+const NAMES={A:'A (Civil Service Form 48, faithful)',B:'B (Simple OJT DTR)',C:'C (Form 48 layout + status/credited hours)'};
+let v=new URLSearchParams(location.search).get('variant')||'A';
+const pad=n=>String(n).padStart(2,'0');
+// fake month: Mon-Fri worked 9-6 with 12-1 lunch; some late/absent/holiday/half-day
+function days(ym,seed){const [y,m]=ym.split('-').map(Number);const n=new Date(y,m,0).getDate();const out=[];
+ for(let d=1;d<=n;d++){const dow=new Date(y,m-1,d).getDay();const o={d,dow,wk:dow==0||dow==6};
+  if(!o.wk){const r=(d*7+seed*3)%11;
+   if(r==0)o.st='absent';else if(d==2)o.st='holiday';
+   else{o.st=r==3?'late':'on_time';o.am=[r==3?'09:22':'08:58','12:00'];o.pm=['13:00',r==5?'17:00':'18:00'];
+    const mins=(a,b)=>(+b.slice(0,2)*60+ +b.slice(3))-(+a.slice(0,2)*60+ +a.slice(3));
+    o.h=(mins(o.am[0],o.am[1])+mins(o.pm[0],o.pm[1]))/60;o.ut=Math.max(0,480-o.h*60);}}
+  out.push(o);}return out}
+const t12=t=>{if(!t)return'';let[h,m]=t.split(':').map(Number);return(h%12||12)+':'+pad(m)};
+const MONTH=ym=>{const[y,m]=ym.split('-').map(Number);return new Date(y,m-1,1).toLocaleString('en',{month:'long'}).toUpperCase()+' '+y};
+const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function form48(s,ds,ym,extra){ // extra: C adds status + credited hours cols
+ let tot=0,utT=0;
+ const rows=ds.map(o=>{ if(o.am){tot+=o.h;utT+=o.ut}
+  const cls=o.wk?'wk':'';
+  const tail=extra?`<td class="pill">${o.wk?DOW[o.dow]:o.st=='absent'?'ABSENT':o.st=='holiday'?'HOLIDAY':o.st=='late'?'LATE':'ON TIME'}</td><td>${o.h!=null?o.h.toFixed(2):''}</td>`:'';
+  return `<tr class="${cls}"><td>${o.d}</td><td>${t12(o.am?.[0])}</td><td>${t12(o.am?.[1])}</td><td>${t12(o.pm?.[0])}</td><td>${t12(o.pm?.[1])}</td><td>${o.am?Math.floor(o.ut/60):''}</td><td>${o.am?Math.round(o.ut%60):''}</td>${tail}</tr>`}).join('');
+ const cols=extra?9:7;
+ return `<div class="sheet">
+ <div style="font-size:11px"><b>Civil Service Form No. 48</b></div>
+ <div class="c" style="font-size:22px;font-weight:bold;letter-spacing:2px;margin-top:4px">DAILY TIME RECORD</div>
+ <div class="c" style="font-size:11px">-----o0o-----</div>
+ <div class="name">${s.name}</div><div class="cap">(Name)</div>
+ <table class="nb sm" style="margin-bottom:6px"><tr><td style="text-align:left;width:40%">For the month of <b style="border-bottom:1px solid #000">${MONTH(ym)}</b></td>
+ <td style="text-align:left">Official hours for arrival and departure<br>Regular days <b>9:00-6:00</b> &nbsp; Saturdays <b>-</b></td></tr>
+ <tr><td style="text-align:left" colspan="2">Student No. ${s.num} &middot; ${s.prog} &middot; Company: ${s.co}</td></tr></table>
+ <table><thead><tr><th rowspan="2">Day</th><th colspan="2">A.M.</th><th colspan="2">P.M.</th><th colspan="2">Undertime</th>${extra?'<th rowspan="2">Status</th><th rowspan="2">Credited<br>hrs</th>':''}</tr>
+ <tr><th>Arrival</th><th>Departure</th><th>Arrival</th><th>Departure</th><th>Hours</th><th>Minutes</th></tr></thead><tbody>${rows}
+ <tr><td colspan="5" style="text-align:right"><b>TOTAL</b></td><td><b>${Math.floor(utT/60)}</b></td><td><b>${Math.round(utT%60)}</b></td>${extra?`<td></td><td><b>${tot.toFixed(2)}</b></td>`:''}</tr></tbody></table>
+ <p style="font-size:11px;text-indent:24px;margin:10px 0 0">I CERTIFY on my honor that the above is a true and correct report of the hours of work performed, record of which was made daily at the time of arrival at and departure from office.</p>
+ <div class="sig"><div class="line" style="margin-left:55%">${s.name.split(', ').reverse().join(' ')}</div>Signature of student</div>
+ <p style="font-size:11px;margin:12px 0 0">VERIFIED as to the prescribed office hours.</p>
+ <div class="sig"><div class="line" style="margin-left:55%">${s.sup}</div>Supervisor, ${s.co}</div>
+ <p class="cap" style="margin-top:14px;text-align:left">Generated by the OJT Monitoring and Management System, Colegio de Montalban. Times come from selfie and GPS verified attendance records.</p></div>`}
+
+function simple(s,ds,ym){let tot=0,late=0,abs=0;
+ const rows=ds.filter(o=>!o.wk).map(o=>{if(o.h)tot+=o.h;if(o.st=='late')late++;if(o.st=='absent')abs++;
+  return `<tr><td>${ym}-${pad(o.d)}</td><td>${DOW[o.dow]}</td><td>${o.am?t12(o.am[0])+' AM':'-'}</td><td>${o.pm?t12(o.pm[1])+' PM':'-'}</td><td>${o.h!=null?o.h.toFixed(2):'0'}</td><td>${o.st=='holiday'?'Holiday':o.st=='absent'?'Absent':o.st=='late'?'Late':'On time'}</td></tr>`}).join('');
+ return `<div class="sheet" style="font-family:system-ui">
+ <div style="display:flex;justify-content:space-between;border-bottom:3px solid #1f5c3a;padding-bottom:8px"><div><b style="font-size:16px">Colegio de Montalban</b><br><span style="font-size:11px">OJT Practicum Portal</span></div><div style="text-align:right"><b style="font-size:18px">DAILY TIME RECORD</b><br><span style="font-size:11px">${MONTH(ym)}</span></div></div>
+ <table class="nb" style="margin:10px 0;font-size:12px"><tr><td style="text-align:left">Student: <b>${s.name}</b></td><td style="text-align:left">Student No.: <b>${s.num}</b></td></tr><tr><td style="text-align:left">Company: <b>${s.co}</b></td><td style="text-align:left">Program: <b>${s.prog}</b></td></tr></table>
+ <table><thead><tr style="background:#1f5c3a;color:#fff"><th style="color:#fff">Date</th><th style="color:#fff">Day</th><th style="color:#fff">Time in</th><th style="color:#fff">Time out</th><th style="color:#fff">Credited hours</th><th style="color:#fff">Status</th></tr></thead><tbody>${rows}
+ <tr><td colspan="4" style="text-align:right"><b>TOTAL CREDITED HOURS</b></td><td colspan="2"><b>${tot.toFixed(2)}</b> &nbsp; (${late} late, ${abs} absent)</td></tr></tbody></table>
+ <div style="display:flex;gap:30px;margin-top:20px"><div class="sig" style="flex:1"><div class="line">${s.name.split(', ').reverse().join(' ')}</div>Student</div><div class="sig" style="flex:1"><div class="line">${s.sup}</div>Supervisor</div><div class="sig" style="flex:1"><div class="line">OJT Coordinator</div>Verified</div></div></div>`}
+
+function render(){const s=STU[+stu.value],ym=mon.value,ds=days(ym,+stu.value);
+ out.innerHTML=v=='A'?form48(s,ds,ym,false):v=='C'?form48(s,ds,ym,true):simple(s,ds,ym);
+ lab.textContent=NAMES[v];history.replaceState(0,'','?variant='+v)}
+function go(dir){const k=['A','B','C'];v=k[(k.indexOf(v)+dir+3)%3];render()}
+addEventListener('keydown',e=>{if(/INPUT|SELECT/.test(e.target.tagName))return;if(e.key=='ArrowLeft')go(-1);if(e.key=='ArrowRight')go(1);if('123'.includes(e.key)){v='ABC'[e.key-1];render()}});
+stu.onchange=mon.onchange=render;render();
+</script></body></html>

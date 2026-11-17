@@ -47,14 +47,14 @@ export default function ComplianceFramework() {
                 <div className="absolute inset-0 bg-gradient-to-t from-[#092E1D]/80 via-transparent to-transparent pointer-events-none" />
 
                 <div className="absolute bottom-4 left-4 right-4 text-white">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/90 text-amber-300 text-[10px] font-bold border border-emerald-700/50 mb-1">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/90 text-amber-300 text-xs font-bold border border-emerald-700/50 mb-1">
                     <MapPin className="w-3 h-3 text-emerald-400" />
                     <span>Rodriguez, Rizal &bull; Kasiglahan Village</span>
                   </div>
                   <p className="text-sm font-bold text-white font-serif">
                     Colegio de Montalban
                   </p>
-                  <p className="text-[11px] text-slate-200">
+                  <p className="text-xs text-slate-200">
                     Institute of Computing Studies &bull; Institute of Business &amp; Entrepreneurship
                   </p>
                 </div>
@@ -62,10 +62,10 @@ export default function ComplianceFramework() {
 
               {/* FLOATING BADGE */}
               <div className="absolute -bottom-4 -right-2 sm:-bottom-5 sm:-right-4 bg-[var(--cdm-sand)] text-slate-950 rounded-2xl p-4 shadow-xl border-2 border-white flex flex-col items-center justify-center text-center">
-                <span className="text-2xl sm:text-3xl font-black font-mono leading-none">
+                <span className="text-2xl sm:text-3xl font-black leading-none">
                   ISO
                 </span>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider mt-1">
+                <span className="text-xs font-extrabold mt-1">
                   25010:2023<br />Evaluated
                 </span>
               </div>
@@ -79,7 +79,7 @@ export default function ComplianceFramework() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-1 bg-[#0A3824] rounded-full" />
-                <span className="text-xs uppercase font-extrabold tracking-widest text-[#0A3824]">
+                <span className="text-xs font-extrabold st text-[#0A3824]">
                   PRACTICUM MONITORING
                 </span>
               </div>

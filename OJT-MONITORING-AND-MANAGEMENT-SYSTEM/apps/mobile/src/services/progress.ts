@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
-import type { AppResult } from '@ojt/shared';
+import { requireUser } from '../lib/studentIdentity';
+import { resolveRequiredHours, type AppResult } from '@ojt/shared';
 
 export interface StudentProgressDetail {
   student_id: string;
@@ -17,10 +18,9 @@ export interface StudentProgressDetail {
 }
 
 export async function getOwnStudentProgress(): Promise<AppResult<StudentProgressDetail>> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { data: null, error: { code: 'UNAUTHORIZED', message: 'Not authenticated.' } };
-  }
+  const me = await requireUser();
+  if (!me.data) return { data: null, error: me.error };
+  const user = { id: me.data.user_id };
 
   const { data: profile } = await supabase
     .from('users')
@@ -55,7 +55,7 @@ export async function getOwnStudentProgress(): Promise<AppResult<StudentProgress
     .eq('student_id', student.student_id)
     .eq('verification_status', 'verified');
 
-  const required = student.required_hours || 486;
+  const required = resolveRequiredHours(student.required_hours, student.course);
   const completed = progress?.completed_hours || 0;
   const remaining = Math.max(0, required - completed);
   const percentage = Math.min(100, Math.round((completed / required) * 100));

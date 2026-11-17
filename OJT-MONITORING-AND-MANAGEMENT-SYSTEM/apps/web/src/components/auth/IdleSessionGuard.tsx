@@ -112,12 +112,12 @@ export default function IdleSessionGuard({ user: _user }: Props) {
           <p className="text-3xl font-black font-mono text-amber-700 tracking-tight py-1">
             {Math.floor(secondsRemaining / 60)}:{(secondsRemaining % 60).toString().padStart(2, '0')}
           </p>
-          <p className="text-[11px] text-amber-800/80">
+          <p className="text-xs text-amber-800/80">
             Click <strong>Stay Signed In</strong> to reset your session timer.
           </p>
         </div>
 
-        <p className="text-[11px] text-slate-500 leading-relaxed mb-5">
+        <p className="text-xs text-slate-500 leading-relaxed mb-5">
           To protect institutional data and prevent unauthorized grade or record changes on unattended campus computers, sessions expire after 15 minutes of inactivity (ISO/IEC 25010:2023).
         </p>
 

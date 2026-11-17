@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { resolveRequiredHours } from '@ojt/shared';
 import {
   View,
   Text,
@@ -183,7 +184,7 @@ export default function ProfileScreen() {
           <View style={s.divider} />
           <View style={s.row}>
             <Text style={s.label}>Required Practicum</Text>
-            <Text style={s.valueBold}>486.0 Hours</Text>
+            <Text style={s.valueBold}>{resolveRequiredHours(profile?.student?.required_hours, profile?.student?.course)}.0 Hours</Text>
           </View>
         </View>
 

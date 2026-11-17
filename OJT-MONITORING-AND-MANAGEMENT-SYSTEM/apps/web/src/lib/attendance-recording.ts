@@ -1,4 +1,4 @@
-import { AUTO_TIME_OUT_REASON, getPhilippineClock, isWithinGeofence } from '@ojt/shared';
+import { getPhilippineClock, isReplaceableAutoTimeOut, isWithinGeofence } from '@ojt/shared';
 
 // Pure attendance-recording decisions for /api/mobile/attendance. No I/O, so node --test can load it.
 
@@ -63,8 +63,7 @@ export function timeOutDecision(
   record: { time_in: string; time_out?: string | null; verification_status?: string | null; time_out_flag_reason?: string | null },
   capturedAt: string,
 ): { failure: Failure } | { replacingAutoTimeOut: boolean } {
-  const replacingAutoTimeOut = Boolean(record.time_out && record.verification_status === 'pending' &&
-    record.time_out_flag_reason === AUTO_TIME_OUT_REASON);
+  const replacingAutoTimeOut = isReplaceableAutoTimeOut(record);
   if (record.time_out && !replacingAutoTimeOut)
     return { failure: { status: 409, code: 'DUPLICATE_REQUEST', message: 'Time Out has already been recorded for today.' } };
   if (new Date(capturedAt).getTime() < new Date(record.time_in).getTime())

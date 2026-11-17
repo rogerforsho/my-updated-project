@@ -1,10 +1,10 @@
 'use server';
 
-import { createClient } from '@/src/lib/supabase/server';
-import { departmentScope, canManageDepartmentStudent, canManageDepartmentRecord } from '@/src/lib/department-scope';
+import { getCoordinator } from '@/src/lib/actor';
+import { canManageDepartmentStudent, canManageDepartmentRecord } from '@/src/lib/department-scope';
 import { recordAuditEvent } from '@/src/lib/audit';
 import { checkStudentGatewayStatus } from './reports';
-import { GATEWAY_DOCUMENT_SPECS, matchesDoc } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, isBundleType, matchesDoc, practicumWindowError } from '@ojt/shared';
 import type { AppResult, DbStudentAssignment, AssignmentStatus, StudentStatus } from '@ojt/shared';
 
 export interface AssignmentInput {
@@ -23,31 +23,48 @@ export interface AssignmentDetail extends DbStudentAssignment {
   supervisors: { position: string; users: { full_name: string; email: string } };
 }
 
-async function assertCoordinator() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { supabase, user: null, role: '', authorized: false, scope: undefined };
-  const { data } = await supabase
-    .from('users')
-    .select('role, account_status')
-    .eq('user_id', user.id)
-    .single();
-  const scope = await departmentScope(supabase, user.id, data?.role ?? '');
-  return {
-    supabase,
-    user,
-    role: data?.role ?? '',
-    scope,
-    authorized: !scope.error && data?.role === 'Coordinator' && data?.account_status === 'active',
-  };
+function applyAssignmentSearch(query: any, q?: string) {
+  // one table per query: a student number has digits, otherwise match the name
+  if (!q) return query;
+  return /\d/.test(q)
+    ? query.ilike('students.student_number', `%${q}%`)
+    : query.ilike('students.users.full_name', `%${q}%`);
+}
+
+// One row per company with its true assignment count and how many are still active, so folded groups need no row load.
+// shortcut: counts in JS from a narrow select, fine for a department-sized list; move to a SQL group-by past ~1000 assignments.
+export async function listAssignmentGroups(
+  search?: string
+): Promise<AppResult<{ groups: Array<{ company_id: string; company_name: string; count: number; active: number }> }>> {
+  const { supabase, authorized } = await getCoordinator();
+  if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
+
+  const q = search?.trim().replace(/[%_,()]/g, '');
+  const { data, error } = await applyAssignmentSearch(
+    supabase
+      .from('student_assignments')
+      .select(`company_id, assignment_status, companies ( company_name ), students${q ? '!inner' : ''} ( student_number, users${q ? '!inner' : ''} ( full_name ) )`),
+    q
+  ).limit(5000);
+  if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load assignment groups.' } };
+
+  const byCompany = new Map<string, { company_id: string; company_name: string; count: number; active: number }>();
+  for (const row of (data ?? []) as any[]) {
+    const g = byCompany.get(row.company_id) ?? { company_id: row.company_id, company_name: row.companies?.company_name ?? 'Unknown company', count: 0, active: 0 };
+    g.count += 1;
+    if (row.assignment_status === 'active') g.active += 1;
+    byCompany.set(row.company_id, g);
+  }
+  return { data: { groups: [...byCompany.values()].sort((a, b) => a.company_name.localeCompare(b.company_name)) }, error: null };
 }
 
 export async function listAssignments(
   page = 1,
   pageSize = 20,
-  search?: string
+  search?: string,
+  companyId?: string
 ): Promise<AppResult<{ assignments: AssignmentDetail[]; total: number }>> {
-  const { supabase, authorized } = await assertCoordinator();
+  const { supabase, authorized } = await getCoordinator();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
   const from = (page - 1) * pageSize;
@@ -71,10 +88,8 @@ export async function listAssignments(
     `, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
-  // one table per query: a student number has digits, otherwise match the name
-  if (q) query = /\d/.test(q)
-    ? query.ilike('students.student_number', `%${q}%`)
-    : query.ilike('students.users.full_name', `%${q}%`);
+  query = applyAssignmentSearch(query, q);
+  if (companyId) query = query.eq('company_id', companyId);
 
   const { data, error, count } = await query;
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load assignments.' } };
@@ -86,8 +101,10 @@ export async function createAssignment(input: AssignmentInput): Promise<AppResul
   if (!input.company_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Company is required.' } };
   if (!input.supervisor_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Supervisor is required.' } };
   if (!input.start_date) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Start date is required.' } };
+  const windowError = practicumWindowError(input.start_date, input.end_date);
+  if (windowError) return { data: null, error: { code: 'VALIDATION_FAILURE', message: windowError } };
 
-  const { supabase, user, role, authorized, scope } = await assertCoordinator();
+  const { supabase, user, role, authorized, scope } = await getCoordinator();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   if (!await canManageDepartmentStudent(supabase, user.id, role, input.student_id, 'student_id', scope))
     return { data: null, error: { code: 'FORBIDDEN', message: 'Student is outside your department.' } };
@@ -146,6 +163,7 @@ export async function createAssignment(input: AssignmentInput): Promise<AppResul
 
   if (error?.message.includes('not accepting new students'))
     return { data: null, error: { code: 'FORBIDDEN', message: 'This company is not accepting new students.' } };
+  if (error?.code === '22023') return { data: null, error: { code: 'VALIDATION_FAILURE', message: error.message } };
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to create assignment.' } };
 
   // Log Audit Trail
@@ -166,7 +184,7 @@ export async function updateAssignmentStatus(
 ): Promise<AppResult<null>> {
   if (!assignment_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Assignment ID is required.' } };
 
-  const { supabase, user, role, authorized, scope } = await assertCoordinator();
+  const { supabase, user, role, authorized, scope } = await getCoordinator();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   if (!await canManageDepartmentRecord(supabase, user.id, role, 'student_assignments', 'assignment_id', assignment_id))
     return { data: null, error: { code: 'FORBIDDEN', message: 'Assignment is outside your department.' } };
@@ -198,7 +216,7 @@ export async function updateStudentStatus(
   if (!(['dropped', 'inc', 'terminated'] as StudentStatus[]).includes(status))
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Status must be DROPPED, INC, or TERMINATED.' } };
 
-  const { supabase, user, role, authorized, scope } = await assertCoordinator();
+  const { supabase, user, role, authorized, scope } = await getCoordinator();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   if (!await canManageDepartmentStudent(supabase, user.id, role, student_id, 'student_id', scope))
     return { data: null, error: { code: 'FORBIDDEN', message: 'Student is outside your department.' } };
@@ -233,7 +251,7 @@ export async function reassignStudent(
   new_supervisor_id: string,
   start_date: string
 ): Promise<AppResult<DbStudentAssignment>> {
-  const { supabase, user, role, authorized, scope } = await assertCoordinator();
+  const { supabase, user, role, authorized, scope } = await getCoordinator();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   if (!await canManageDepartmentStudent(supabase, user.id, role, student_id, 'student_id', scope))
     return { data: null, error: { code: 'FORBIDDEN', message: 'Student is outside your department.' } };
@@ -290,7 +308,7 @@ export interface StudentAssignmentOption {
 }
 
 export async function listStudentsForAssignment(): Promise<AppResult<StudentAssignmentOption[]>> {
-  const { supabase, authorized } = await assertCoordinator();
+  const { supabase, authorized } = await getCoordinator();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
   // 1. Fetch active students
@@ -322,7 +340,7 @@ export async function listStudentsForAssignment(): Promise<AppResult<StudentAssi
   (approvedReports ?? []).forEach(r => {
     const set = studentApprovedSpecsMap.get(r.student_id) || new Set<string>();
     for (const spec of GATEWAY_DOCUMENT_SPECS) {
-      if (matchesDoc(r.report_type, spec.name)) {
+      if (isBundleType(r.report_type) || matchesDoc(r.report_type, spec.name)) {
         set.add(spec.id);
       }
     }
@@ -364,7 +382,7 @@ export async function listSupervisorsForCompany(
 ): Promise<AppResult<{ supervisor_id: string; full_name: string; position: string }[]>> {
   if (!company_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Company ID is required.' } };
 
-  const { supabase, authorized } = await assertCoordinator();
+  const { supabase, authorized } = await getCoordinator();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
 
   const { data, error } = await supabase

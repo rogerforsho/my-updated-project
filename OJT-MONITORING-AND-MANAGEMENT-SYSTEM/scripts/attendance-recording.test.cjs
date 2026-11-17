@@ -203,3 +203,16 @@ test('a blocked time-out is skipped too, and a terminal time-out rejection block
   const r = await w2.run([queued({ id: 't2', type: 'time_out', blocked_reason: 'nope' })]);
   assert.deepEqual(plain(r.errors), ['nope']); assert.equal(w2.calls.uploads, 0);
 });
+
+test('mobile sync replaces only a pending auto time-out; any other existing time-out is a conflict', async () => {
+  const AUTO = loader({})('shared/attendanceDate.ts').AUTO_TIME_OUT_REASON;
+  const run = async existing => {
+    const w = workflow({ findTimeOut: async () => ({ data: existing }), updateTimeOut: async () => ({ updated: true }) });
+    const r = await w.run([queued({ id: 't', type: 'time_out', captured_at: '2026-10-05T18:00:00Z' })]);
+    return r.syncedCount;
+  };
+  const base = { attendance_id: 'srv', time_out: '2026-10-05T17:00:00Z' };
+  assert.equal(await run({ ...base, verification_status: 'pending', time_out_flag_reason: AUTO }), 1);
+  assert.equal(await run({ ...base, verification_status: 'approved', time_out_flag_reason: AUTO }), 0);
+  assert.equal(await run({ ...base, verification_status: 'pending', time_out_flag_reason: null }), 0);
+});

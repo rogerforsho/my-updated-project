@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OJT system · data flow diagram</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #bf4520;
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+    body { font-family: var(--font-sans); background: var(--color-paper); color: var(--color-ink); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 3rem 2rem; }
+    .frame { max-width: 1360px; width: 100%; min-width: 0; }
+    .diagram-container { width: 100%; overflow-x: auto; }
+    .eyebrow { font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-muted); margin-bottom: 0.5rem; }
+    h1 { font-family: var(--font-serif); font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem); font-weight: 400; letter-spacing: -0.02em; line-height: 1.15; color: var(--color-ink); margin-bottom: 1.5rem; }
+    svg { width: 100%; min-width: 1100px; display: block; }
+    table { border-collapse: collapse; width: 100%; margin-top: 2rem; font-size: 0.82rem; background: #fff; border: 1px solid rgba(45,49,66,0.12); border-radius: 6px; }
+    th, td { text-align: left; padding: 0.55rem 0.8rem; border-bottom: 1px solid rgba(45,49,66,0.08); vertical-align: top; }
+    th { font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-muted); font-weight: 500; }
+    td:first-child, td:nth-child(2) { white-space: nowrap; font-weight: 600; }
+    @media print { .diagram-container { overflow-x: visible; } svg { min-width: 0; } }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">DFD · OJT Monitoring and Management System</p>
+    <h1>OJT system · data flow diagram</h1>
+    <div class="diagram-container">
+<svg viewBox="0 0 1100 860" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="dfd-title dfd-desc">
+<title id="dfd-title">OJT system · data flow diagram</title>
+<desc id="dfd-desc">Data flow diagram of the whole system: four external roles, four processes and three data stores, with the main flows between them.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker><marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bf4520"/></marker><marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker></defs>
+<rect width="100%" height="100%" fill="#f5f5f5"/>
+<path d="M110,248 L110,340" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M230,112 L230,340" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M410,248 L410,340" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M680,248 L680,340" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M900,112 L900,340" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M1000,340 L1000,112" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M140,440 L140,530" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M410,440 L410,530" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M680,440 L680,530" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M950,440 L950,530" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M52,680 L52,440" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M328,680 L328,440" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M762,680 L762,440" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M740,558 L756,558 A6 6 0 0 1 768,558 L860,558 Q868,558 868,550 L868,440" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="118" y="288" width="89" height="12" rx="2" fill="#f5f5f5"/><text x="162.5" y="297" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">STAFF ACCOUNTS</text>
+<rect x="238" y="288" width="60" height="12" rx="2" fill="#f5f5f5"/><text x="268" y="297" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">APPROVALS</text>
+<rect x="418" y="288" width="78" height="12" rx="2" fill="#f5f5f5"/><text x="457" y="297" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">VERIFICATION</text>
+<rect x="688" y="288" width="60" height="12" rx="2" fill="#f5f5f5"/><text x="718" y="297" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">DECISIONS</text>
+<rect x="908" y="288" width="72" height="12" rx="2" fill="#f5f5f5"/><text x="944" y="297" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">FINAL GRADE</text>
+<rect x="1008" y="288" width="54" height="12" rx="2" fill="#f5f5f5"/><text x="1035" y="297" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">PROGRESS</text>
+<rect x="148" y="479" width="54" height="12" rx="2" fill="#f5f5f5"/><text x="175" y="488" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ACCOUNTS</text>
+<rect x="418" y="479" width="66" height="12" rx="2" fill="#f5f5f5"/><text x="451" y="488" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">ATTENDANCE</text>
+<rect x="688" y="479" width="49" height="12" rx="2" fill="#f5f5f5"/><text x="712.5" y="488" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">REPORTS</text>
+<rect x="958" y="479" width="66" height="12" rx="2" fill="#f5f5f5"/><text x="991" y="488" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">COMPLETION</text>
+<rect x="60" y="624" width="78" height="12" rx="2" fill="#f5f5f5"/><text x="99" y="633" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">REGISTRATION</text>
+<rect x="336" y="624" width="83" height="12" rx="2" fill="#f5f5f5"/><text x="377.5" y="633" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">IN/OUT·SELFIE</text>
+<rect x="770" y="624" width="49" height="12" rx="2" fill="#f5f5f5"/><text x="794.5" y="633" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">REPORTS</text>
+<rect x="775.5" y="540" width="83" height="12" rx="2" fill="#f5f5f5"/><text x="817" y="549" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">HOURS·REPORTS</text>
+<rect x="200" y="40" width="850" height="72" rx="6" fill="#f5f5f5"/><rect x="200" y="40" width="850" height="72" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/><rect x="208" y="48" width="50" height="12" rx="2" fill="transparent" stroke="#4f5d75" stroke-opacity="0.5" stroke-width="0.8"/><text x="233" y="57" fill="#4f5d75" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">EXTERNAL</text><text x="625" y="80" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">OJT Coordinator</text><text x="625" y="98" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">ICS / IBE department grants</text>
+<rect x="40" y="176" width="140" height="72" rx="6" fill="#f5f5f5"/><rect x="40" y="176" width="140" height="72" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/><rect x="48" y="184" width="50" height="12" rx="2" fill="transparent" stroke="#4f5d75" stroke-opacity="0.5" stroke-width="0.8"/><text x="73" y="193" fill="#4f5d75" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">EXTERNAL</text><text x="110" y="216" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Super Admin</text><text x="110" y="234" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">MFA required</text>
+<rect x="330" y="176" width="430" height="72" rx="6" fill="#f5f5f5"/><rect x="330" y="176" width="430" height="72" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/><rect x="338" y="184" width="50" height="12" rx="2" fill="transparent" stroke="#4f5d75" stroke-opacity="0.5" stroke-width="0.8"/><text x="363" y="193" fill="#4f5d75" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">EXTERNAL</text><text x="545" y="216" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Supervisor</text><text x="545" y="234" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">web portal and desktop</text>
+<rect x="40" y="340" width="200" height="100" rx="6" fill="#f5f5f5"/><rect x="40" y="340" width="200" height="100" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/><rect x="48" y="348" width="65" height="12" rx="2" fill="transparent" stroke="#4f5d75" stroke-opacity="0.5" stroke-width="0.8"/><text x="80.5" y="357" fill="#4f5d75" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">PROCESS 1.0</text><text x="140" y="376" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Manage Accounts</text><text x="140" y="392" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">and Placement</text>
+<rect x="310" y="340" width="200" height="100" rx="6" fill="#f5f5f5"/><rect x="310" y="340" width="200" height="100" rx="6" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1"/><rect x="318" y="348" width="65" height="12" rx="2" fill="transparent" stroke="#bf4520" stroke-opacity="0.5" stroke-width="0.8"/><text x="350.5" y="357" fill="#bf4520" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">PROCESS 2.0</text><text x="410" y="380" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Record Attendance</text><text x="410" y="398" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">selfie · GPS · hours</text>
+<rect x="580" y="340" width="200" height="100" rx="6" fill="#f5f5f5"/><rect x="580" y="340" width="200" height="100" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/><rect x="588" y="348" width="65" height="12" rx="2" fill="transparent" stroke="#4f5d75" stroke-opacity="0.5" stroke-width="0.8"/><text x="620.5" y="357" fill="#4f5d75" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">PROCESS 3.0</text><text x="680" y="376" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Review Reports</text><text x="680" y="392" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">and Evaluations</text>
+<rect x="850" y="340" width="200" height="100" rx="6" fill="#f5f5f5"/><rect x="850" y="340" width="200" height="100" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/><rect x="858" y="348" width="65" height="12" rx="2" fill="transparent" stroke="#4f5d75" stroke-opacity="0.5" stroke-width="0.8"/><text x="890.5" y="357" fill="#4f5d75" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">PROCESS 4.0</text><text x="950" y="376" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Monitor and Finalize</text><text x="950" y="392" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Completion</text>
+<rect x="76" y="530" width="164" height="56" rx="6" fill="#f5f5f5"/><rect x="76" y="530" width="164" height="56" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/><line x1="116" y1="530" x2="116" y2="586" stroke="#4f5d75" stroke-width="1"/><text x="96" y="562" fill="#4f5d75" font-size="10" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">D1</text><text x="128" y="556" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif">Accounts</text><text x="128" y="574" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">users · placements</text>
+<rect x="350" y="530" width="390" height="56" rx="6" fill="#f5f5f5"/><rect x="350" y="530" width="390" height="56" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/><line x1="390" y1="530" x2="390" y2="586" stroke="#4f5d75" stroke-width="1"/><text x="370" y="562" fill="#4f5d75" font-size="10" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">D2</text><text x="402" y="556" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif">Student Records</text><text x="402" y="574" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">attendance · hours · reports · evaluations</text>
+<rect x="880" y="530" width="180" height="56" rx="6" fill="#f5f5f5"/><rect x="880" y="530" width="180" height="56" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/><line x1="920" y1="530" x2="920" y2="586" stroke="#4f5d75" stroke-width="1"/><text x="900" y="562" fill="#4f5d75" font-size="10" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">D3</text><text x="932" y="556" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif">Completion</text><text x="932" y="574" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace">grade · certificate</text>
+<rect x="40" y="680" width="760" height="72" rx="6" fill="#f5f5f5"/><rect x="40" y="680" width="760" height="72" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/><rect x="48" y="688" width="50" height="12" rx="2" fill="transparent" stroke="#4f5d75" stroke-opacity="0.5" stroke-width="0.8"/><text x="73" y="697" fill="#4f5d75" font-size="7" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">EXTERNAL</text><text x="420" y="720" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">OJT Student</text><text x="420" y="738" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">mobile app only</text>
+<line x1="40" y1="800" x2="1060" y2="800" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+<text x="40" y="816" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.18em">LEGEND</text>
+<rect x="40" y="828" width="24" height="12" rx="2" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+<text x="72" y="838" fill="#4f5d75" font-size="9" font-family="'Geist', system-ui, sans-serif">External entity</text>
+<rect x="178" y="828" width="24" height="12" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="210" y="838" fill="#4f5d75" font-size="9" font-family="'Geist', system-ui, sans-serif">Process</text>
+<rect x="274" y="828" width="24" height="12" rx="2" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1"/>
+<text x="306" y="838" fill="#4f5d75" font-size="9" font-family="'Geist', system-ui, sans-serif">Core mobile process</text>
+<rect x="432" y="828" width="24" height="12" rx="2" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+<text x="464" y="838" fill="#4f5d75" font-size="9" font-family="'Geist', system-ui, sans-serif">Data store</text>
+<line x1="544" y1="834" x2="568" y2="834" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<text x="576" y="838" fill="#4f5d75" font-size="9" font-family="'Geist', system-ui, sans-serif">Data flow, detail in the table below</text>
+</svg>
+    </div>
+    <table><thead><tr><th>From</th><th>To</th><th>Data</th></tr></thead><tbody><tr><td>Super Admin</td><td>1.0 Manage Accounts and Placement</td><td>Staff accounts, coordinator invitations</td></tr><tr><td>OJT Coordinator</td><td>1.0</td><td>Registration approvals, companies and branches, placements</td></tr><tr><td>OJT Student</td><td>1.0</td><td>Registration, ID photos, company request, schedule proposal</td></tr><tr><td>1.0</td><td>D1 Accounts and Placements</td><td>Users, students, companies, branches, assignments</td></tr><tr><td>OJT Student</td><td>2.0 Record Attendance</td><td>Time in and out with selfie and GPS (can be queued offline)</td></tr><tr><td>Supervisor</td><td>2.0</td><td>Attendance verification</td></tr><tr><td>2.0 / 3.0</td><td>D2 Student Records</td><td>Attendance and rendered hours / daily reports and evaluations</td></tr><tr><td>OJT Student</td><td>3.0 Review Reports and Evaluations</td><td>Daily accomplishment reports</td></tr><tr><td>Supervisor</td><td>3.0</td><td>Report decisions with feedback, midterm and final ratings</td></tr><tr><td>D2</td><td>4.0 Monitor and Finalize Completion</td><td>Verified hours, report status, evaluations</td></tr><tr><td>OJT Coordinator</td><td>4.0</td><td>Final grade, clearance</td></tr><tr><td>4.0</td><td>OJT Coordinator</td><td>Student progress, completion records</td></tr><tr><td>4.0</td><td>D3 Completion Records</td><td>Final grade, certificate with verification code</td></tr></tbody></table>
+  </div>
+</body>
+</html>

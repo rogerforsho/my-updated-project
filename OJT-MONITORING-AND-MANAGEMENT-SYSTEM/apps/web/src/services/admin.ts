@@ -1,31 +1,15 @@
 'use server';
 
-import { createClient } from '@/src/lib/supabase/server';
+import { getSuperAdmin } from '@/src/lib/actor';
 import { getServiceClient } from '@/src/lib/supabase/service';
 import { recordAuditEvent } from '@/src/lib/audit';
 import { restrictDepartment } from '@/src/lib/department-scope';
 import { courseDepartment } from '@/src/lib/departments';
+import { provisionAccount, supabaseAuthAdapter } from '@/src/lib/account-provisioning';
 import crypto from 'crypto';
 import type { AppResult, UserRole, AccountStatus } from '@ojt/shared';
 
 const serviceClient = getServiceClient;
-
-async function assertSuperAdmin() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { authorized: false, user: null };
-  const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (assuranceError || assurance?.currentLevel !== 'aal2') return { authorized: false, user };
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, account_status')
-    .eq('user_id', user.id)
-    .single();
-  return {
-    authorized: profile?.role === 'Admin' && profile?.account_status === 'active',
-    user,
-  };
-}
 
 type Service = ReturnType<typeof serviceClient>;
 const COORDINATOR_CAPABILITIES = ['academic_workflows', 'department_reports'];
@@ -97,7 +81,7 @@ export async function listAllUsers(
   search?: string,
   departmentFilter?: string
 ): Promise<AppResult<{ users: UserManagementItem[]; total: number }>> {
-  const { authorized } = await assertSuperAdmin();
+  const { authorized } = await getSuperAdmin();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
 
   const service = serviceClient();
@@ -164,7 +148,7 @@ export async function listAllUsers(
 export async function createSystemUser(
   input: CreateSystemUserInput
 ): Promise<AppResult<{ user_id: string }>> {
-  const { authorized, user: adminUser } = await assertSuperAdmin();
+  const { authorized, user: adminUser } = await getSuperAdmin();
   if (!authorized || !adminUser) {
     return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
   }
@@ -183,74 +167,30 @@ export async function createSystemUser(
   if (!siteUrl) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Account invitation is not configured.' } };
   const service = serviceClient();
   const redirectTo = `${siteUrl.replace(/\/$/, '')}/auth/callback?next=${encodeURIComponent('/auth/set-password')}`;
-  // GoTrue inserts auth.users before app_metadata applies, so register the email for the student-check trigger (service_role only table).
-  const { error: pendingError } = await service.from('pending_staff_invites').upsert({ email, created_at: new Date().toISOString() });
-  if (pendingError) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Account invitation is not available right now.' } };
-  let created;
-  try {
-    created = await service.auth.admin.createUser({
-      email,
-      email_confirm: true, // unconfirmed accounts could be claimed by a public signup with this email
-      app_metadata: { role: 'Coordinator' },
-      user_metadata: { full_name: fullName },
-    });
-  } finally {
-    await service.from('pending_staff_invites').delete().eq('email', email);
-  }
-  const { data: authData, error: createError } = created;
-  let authError = createError;
-  if (!authError && authData.user) {
-    const { error } = await service.auth.resetPasswordForEmail(email, { redirectTo }); // sends the one-time setup link
-    if (error) {
-      await service.auth.admin.deleteUser(authData.user.id);
-      authError = error;
+  const result = await provisionAccount(supabaseAuthAdapter(service), {
+    email, role: 'Coordinator', full_name: fullName, redirectTo,
+    staff: { employee_number: input.employee_number?.trim() || `CO-${crypto.randomBytes(6).toString('hex').toUpperCase()}` },
+    setup: async newUserId => {
+      const { error } = await service.from('coordinators').insert({ user_id: newUserId, department: departments[0] });
+      if (error) return error;
+      const grants = departments.flatMap(department => [
+        { user_id: newUserId, capability: 'academic_workflows', department_scope: department, granted_by_user_id: adminUser.id },
+        { user_id: newUserId, capability: 'department_reports', department_scope: department, granted_by_user_id: adminUser.id },
+      ]);
+      return (await service.from('staff_capability_grants').insert(grants)).error;
+    },
+  });
+  if (!result.ok) {
+    const fail = (code: 'DUPLICATE_REQUEST' | 'SERVER_FAILURE', message: string) => ({ data: null, error: { code, message } });
+    switch (result.kind) {
+      case 'invite_unavailable': return fail('SERVER_FAILURE', 'Account invitation is not available right now.');
+      case 'duplicate': return fail('DUPLICATE_REQUEST', 'Email address is already registered. No existing account was changed.');
+      case 'cleanup_needed': return fail('SERVER_FAILURE', 'Coordinator setup did not finish; the new account needs administrator cleanup before retrying.');
+      case 'setup_failed': return fail('SERVER_FAILURE', 'Coordinator setup did not finish. The newly invited account was removed; please check the details and retry.');
+      default: return fail('SERVER_FAILURE', 'Failed to send the setup invitation.');
     }
   }
-
-  if (authError || !authData.user) {
-    const duplicate = /already|exists|unique/i.test(authError?.message ?? '');
-    return { data: null, error: { code: duplicate ? 'DUPLICATE_REQUEST' : 'SERVER_FAILURE', message: duplicate ? 'Email address is already registered. No existing account was changed.' : 'Failed to send the setup invitation.' } };
-  }
-
-  const newUserId = authData.user.id;
-  const { error: metadataError } = await service.auth.admin.updateUserById(newUserId, { app_metadata: { role: 'Coordinator' } });
-  let setupError: { message: string } | null = metadataError;
-  // The AFTER INSERT trigger defaults new accounts to Student; remove only this new account's placeholder row.
-  if (!setupError) {
-    const { error } = await service.from('students').delete().eq('user_id', newUserId).like('student_number', 'PENDING-%');
-    setupError = error;
-  }
-  if (!setupError) {
-    const { error } = await service.from('users').update({
-      full_name: fullName,
-      email,
-      role: 'Coordinator',
-      employee_number: input.employee_number?.trim() || `CO-${crypto.randomBytes(6).toString('hex').toUpperCase()}`,
-      account_status: 'active',
-      updated_at: new Date().toISOString(),
-    }).eq('user_id', newUserId);
-    setupError = error;
-  }
-  if (!setupError) {
-    const { error } = await service.from('coordinators').insert({ user_id: newUserId, department: departments[0] });
-    setupError = error;
-  }
-  if (!setupError) {
-    const grants = departments.flatMap(department => [
-      { user_id: newUserId, capability: 'academic_workflows', department_scope: department, granted_by_user_id: adminUser.id },
-      { user_id: newUserId, capability: 'department_reports', department_scope: department, granted_by_user_id: adminUser.id },
-    ]);
-    const { error } = await service.from('staff_capability_grants').insert(grants);
-    setupError = error;
-  }
-
-  if (setupError) {
-    const { error: rollbackError } = await service.auth.admin.deleteUser(newUserId);
-    if (rollbackError) console.error('[createSystemUser] Incomplete invited account requires cleanup:', newUserId);
-    return { data: null, error: { code: 'SERVER_FAILURE', message: rollbackError
-      ? 'Coordinator setup did not finish; the new account needs administrator cleanup before retrying.'
-      : 'Coordinator setup did not finish. The newly invited account was removed; please check the details and retry.' } };
-  }
+  const newUserId = result.userId;
 
   await recordAuditEvent({
     actor_user_id: adminUser.id,
@@ -266,7 +206,7 @@ export async function updateUserAccountStatus(
   user_id: string,
   status: AccountStatus
 ): Promise<AppResult<null>> {
-  const { authorized, user } = await assertSuperAdmin();
+  const { authorized, user } = await getSuperAdmin();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
 
   if (!['pending', 'active', 'rejected', 'inactive'].includes(status)) {
@@ -316,7 +256,7 @@ export async function getSystemOverview(): Promise<AppResult<{
   pendingUsers: number;
   roleBreakdown: Record<string, number>;
 }>> {
-  const { authorized } = await assertSuperAdmin();
+  const { authorized } = await getSuperAdmin();
   if (!authorized) return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
 
   const service = serviceClient();
@@ -347,7 +287,7 @@ export async function deactivateSystemUser(
   user_id: string,
   reason?: string
 ): Promise<AppResult<null>> {
-  const { authorized, user: adminUser } = await assertSuperAdmin();
+  const { authorized, user: adminUser } = await getSuperAdmin();
   if (!authorized || !adminUser) {
     return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
   }
@@ -402,7 +342,7 @@ export async function updateCoordinatorDepartments(
   user_id: string,
   departmentScopes: Array<'ICS' | 'IBE'>
 ): Promise<AppResult<null>> {
-  const { authorized, user } = await assertSuperAdmin();
+  const { authorized, user } = await getSuperAdmin();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
 
   const next = [...new Set(departmentScopes ?? [])];
@@ -455,7 +395,7 @@ export async function updateCoordinatorDepartments(
 }
 
 export async function resendStaffInvite(user_id: string): Promise<AppResult<null>> {
-  const { authorized, user } = await assertSuperAdmin();
+  const { authorized, user } = await getSuperAdmin();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
 
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL;

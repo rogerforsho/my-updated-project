@@ -12,6 +12,7 @@ interface Props {
   studentId: string;
   studentName: string;
   completedHours: number;
+  requiredHours: number;
   readOnly?: boolean;
 }
 
@@ -19,6 +20,7 @@ export default function ClearanceActionModal({
   studentId,
   studentName,
   completedHours,
+  requiredHours,
   readOnly = false,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -80,12 +82,12 @@ export default function ClearanceActionModal({
       <button
         onClick={handleOpen}
         className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-          completedHours >= 486
+          completedHours >= requiredHours
             ? 'bg-[var(--cdm-green)] text-[var(--cdm-sand)] hover:bg-[#092E1D] shadow-xs'
             : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
         }`}
       >
-        {completedHours >= 486 ? '🎓 Clearance' : 'Inspect'}
+        {completedHours >= requiredHours ? 'Clearance' : 'Inspect'}
       </button>
 
       <Modal
@@ -132,7 +134,7 @@ export default function ClearanceActionModal({
 
             {/* 3 Clearance Pillars Checklist */}
             <div className="space-y-2.5">
-              <h4 className="font-extrabold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+              <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
                 <Shield className="w-3.5 h-3.5 text-[#0A3824]" /> Institutional Clearance Gateways
               </h4>
 
@@ -148,12 +150,12 @@ export default function ClearanceActionModal({
                   </div>
                   <div>
                     <span className="font-bold">1. Verified Rendered Hours ({clearance.completed_hours} / {clearance.required_hours}h)</span>
-                    <p className="text-[10px] text-slate-500">Biometric selfie & GPS attendance log</p>
+                    <p className="text-xs text-slate-500">Biometric selfie & GPS attendance log</p>
                   </div>
                 </div>
 
                 <Badge className={clearance.hours_met ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}>
-                  {clearance.hours_met ? 'COMPLETED' : 'INCOMPLETE'}
+                  {clearance.hours_met ? 'Completed' : 'Incomplete'}
                 </Badge>
               </div>
 
@@ -169,11 +171,11 @@ export default function ClearanceActionModal({
                   </div>
                   <div>
                     <span className="font-bold">2. Final Practicum Narrative & Portfolio</span>
-                    <p className="text-[10px] text-slate-500">Approved by OJT Practicum Faculty</p>
+                    <p className="text-xs text-slate-500">Approved by OJT Practicum Faculty</p>
                   </div>
                 </div>
                 <Badge className={clearance.final_report_approved ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}>
-                  {clearance.final_report_approved ? 'APPROVED' : 'PENDING'}
+                  {clearance.final_report_approved ? 'Approved' : 'Pending'}
                 </Badge>
               </div>
 
@@ -189,13 +191,13 @@ export default function ClearanceActionModal({
                   </div>
                   <div>
                     <span className="font-bold">3. Industry Supervisor Appraisals (Passing &ge; 75.0%)</span>
-                    <p className="text-[10px] text-slate-500">
+                    <p className="text-xs text-slate-500">
                       Midterm: {clearance.midterm_score !== null ? `${clearance.midterm_score}%` : 'Not Rated'} • Final: {clearance.final_score !== null ? `${clearance.final_score}%` : 'Not Rated'}
                     </p>
                   </div>
                 </div>
                 <Badge className={clearance.evaluation_passed ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}>
-                  {clearance.evaluation_appeal_pending ? 'APPEAL PENDING' : clearance.evaluation_passed ? `${clearance.evaluation_score}% PASSED` : 'AWAITING'}
+                  {clearance.evaluation_appeal_pending ? 'Appeal pending' : clearance.evaluation_passed ? `${clearance.evaluation_score}% passed` : 'Awaiting'}
                 </Badge>
               </div>
             </div>
@@ -225,8 +227,8 @@ export default function ClearanceActionModal({
                   aria-describedby="academic-year-hint"
                   required={finalGradeNumber <= 3}
                 />
-                <p id="academic-year-hint" className="text-[11px] text-slate-600">Required for a passing grade and certificate. Enter the academic year that should appear on the certificate (YYYY-YYYY).</p>
-                <p id="final-grade-hint" className="text-[11px] text-slate-600">Grades 1.00–3.00 pass and finalize OJT with a completion certificate. Grades above 3.00 are recorded as failing and do not finalize OJT; you can update the grade after review.</p>
+                <p id="academic-year-hint" className="text-xs text-slate-600">Required for a passing grade and certificate. Enter the academic year that should appear on the certificate (YYYY-YYYY).</p>
+                <p id="final-grade-hint" className="text-xs text-slate-600">Grades 1.00–3.00 pass and finalize OJT with a completion certificate. Grades above 3.00 are recorded as failing and do not finalize OJT; you can update the grade after review.</p>
               </div>
             )}
 

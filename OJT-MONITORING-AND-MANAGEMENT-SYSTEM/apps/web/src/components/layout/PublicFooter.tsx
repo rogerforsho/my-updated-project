@@ -105,7 +105,7 @@ export default function PublicFooter() {
           <div className="border-t border-slate-200 my-3" />
 
           {/* Row 2: Governance, Policies & Development Credits */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-slate-500">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500">
             <button
               onClick={() => openModal('privacy')}
               className="hover:underline hover:text-slate-800 cursor-pointer"
@@ -139,13 +139,10 @@ export default function PublicFooter() {
             <span className="text-slate-400">
               ISO/IEC 25010:2023 Evaluated
             </span>
-            <span className="text-slate-400">
-              System Status: Operational (v1.2.0)
-            </span>
           </div>
 
           {/* Row 3: Institutional Copyright & Office Info */}
-          <div className="mt-3 pt-2 text-[11px] text-slate-400 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1">
+          <div className="mt-3 pt-2 text-xs text-slate-400 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1">
             <p>
               Colegio de Montalban &copy; {new Date().getFullYear()} &bull; Institute of Computing Studies &bull; Institute of Business &amp; Entrepreneurship &bull; Kasiglahan Village, Rodriguez, Rizal 1860
             </p>
@@ -166,7 +163,7 @@ export default function PublicFooter() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Institutional Privacy Policy</h3>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   Republic Act No. 10173 (Data Privacy Act of 2012 of the Philippines)
                 </p>
               </div>
@@ -185,7 +182,7 @@ export default function PublicFooter() {
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">1. Information We Collect</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">1. Information We Collect</h4>
                 <p>In accordance with CHED Memorandum Order (CMO) No. 104, Series of 2017, the system gathers:</p>
                 <ul className="list-disc list-inside mt-1 space-y-1 text-slate-600">
                   <li><strong>Trainee Identification:</strong> Student ID number, official name, institutional email address, academic department (ICS / IBE), and program section.</li>
@@ -196,31 +193,31 @@ export default function PublicFooter() {
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">2. Purpose of Data Processing</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">2. Purpose of Data Processing</h4>
                 <p>Data collected is strictly utilized to:</p>
                 <ul className="list-disc list-inside mt-1 space-y-1 text-slate-600">
-                  <li>Validate student completion of mandatory practicum duty hours (300–600 hours).</li>
+                  <li>Validate student completion of mandatory practicum duty hours (BSIT 486, BS-CPE 240, BSBA-HRM 300, BSENTREP 300).</li>
                   <li>Prevent fraudulent attendance logs and ensure fair academic compliance.</li>
                   <li>Facilitate academic reporting to the Practicum & Placement Office and Department Chairs.</li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">3. Data Security & Storage</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">3. Data Security & Storage</h4>
                 <p>
                   Database records are governed by PostgreSQL Row-Level Security (RLS) policies. Sensitive media captures are kept in private cloud buckets accessible strictly to authorized OJT Coordinator and designated company supervisors.
                 </p>
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">4. Retention & Archival Standards</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">4. Retention & Archival Standards (Selfie &amp; GPS Data)</h4>
                 <p>
-                  Trainee practicum files are retained for five (5) academic years following student graduation in accordance with higher education recordkeeping standards, after which digital media files are purged.
+                  Trainee practicum files, including attendance selfies and GPS records, are retained for five (5) academic years following student graduation in accordance with higher education recordkeeping standards, after which digital media files are purged.
                 </p>
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">5. Data Subject Rights & Contact</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">5. Data Subject Rights & Contact</h4>
                 <p>
                   Trainees have the right to inspect, correct, and request rectification of their practicum records. For inquiries, contact the Data Protection Officer at <span className="font-mono text-slate-800">vralphroger@gmail.com</span> or the Practicum Office at <span className="font-mono text-slate-800">vralphroger@gmail.com</span>.
                 </p>
@@ -229,7 +226,7 @@ export default function PublicFooter() {
 
             {/* Footer */}
             <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">Colegio de Montalban • Ref: POL-DPA-2026</span>
+              <span className="text-xs text-slate-400">Colegio de Montalban • Ref: POL-DPA-2026</span>
               <button
                 onClick={closeModal}
                 className="px-3.5 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium transition-colors cursor-pointer"
@@ -251,7 +248,7 @@ export default function PublicFooter() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Terms of Service & Code of Conduct</h3>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   Practicum Management & Acceptable Use Policy
                 </p>
               </div>
@@ -266,14 +263,14 @@ export default function PublicFooter() {
             {/* Scrollable Content */}
             <div className="overflow-y-auto px-6 py-5 space-y-4 text-xs leading-relaxed text-slate-600">
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">1. User Agreement</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">1. User Agreement</h4>
                 <p>
                   By logging into the Colegio de Montalban OJT System, you agree to comply with these Terms of Service, the CdM Student Handbook, and official CHED practicum guidelines.
                 </p>
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">2. Academic Integrity & Anti-Spoofing</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">2. Academic Integrity & Anti-Spoofing</h4>
                 <p>Student trainees are strictly prohibited from:</p>
                 <ul className="list-disc list-inside mt-1 space-y-1 text-slate-600">
                   <li>Employing mock location software, GPS spoofers, emulators, or VPN workarounds.</li>
@@ -286,14 +283,23 @@ export default function PublicFooter() {
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">3. OJT Coordinator & Supervisor Authority</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">3. OJT Coordinator & Supervisor Authority</h4>
                 <p>
                   OJT Coordinator and Company Supervisors hold the sole authority to review, validate, approve, or reject logged hours based on actual host training performance.
                 </p>
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-1">4. Maintenance & Support</h4>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">4. CHED CMO 104 Practicum Rules Enforced by This System</h4>
+                <ul className="list-disc list-inside mt-1 space-y-1 text-slate-600">
+                  <li>Required hours by program: BSIT 486, BS-CPE 240, BSBA-HRM 300, BSENTREP 300.</li>
+                  <li>Before deployment: one PDF or DOCX file containing the Parent/Guardian Consent Waiver (notarized), Medical Certificate, Pre-OJT Orientation Certificate, and Endorsement Letter, reviewed by the OJT Coordinator.</li>
+                  <li>A practicum schedule may span at most 5 months, at most 8 hours a day and 40 hours a week, with shifts between 6:00 AM and 9:00 PM.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 mb-1">5. Maintenance & Support</h4>
                 <p>
                   The system operates 24/7 with scheduled maintenance announced in advance. For support tickets or login concerns, email <span className="font-mono text-slate-800">vralphroger@gmail.com</span> or <span className="font-mono text-slate-800">vralphroger@gmail.com</span>.
                 </p>
@@ -302,7 +308,7 @@ export default function PublicFooter() {
 
             {/* Footer */}
             <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">Effective Academic Year 2025–2026</span>
+              <span className="text-xs text-slate-400">Effective Academic Year 2025–2026</span>
               <button
                 onClick={closeModal}
                 className="px-3.5 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium transition-colors cursor-pointer"
@@ -324,7 +330,7 @@ export default function PublicFooter() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">User Guides & FAQs</h3>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   Operational guidelines for Students, OJT Coordinator, and Supervisors
                 </p>
               </div>
@@ -432,7 +438,7 @@ export default function PublicFooter() {
                 <>
                   <FaqItem
                     question="How do I verify student intern attendance?"
-                    answer="Log in to the Web Portal or Mobile App using your supervisor account. View the real-time list of trainees clocked in at your workplace along with timestamps and selfie verification."
+                    answer="Log in to the Web Portal or the Windows desktop app using your supervisor account. View the real-time list of trainees clocked in at your workplace along with timestamps and selfie verification."
                     expanded={expandedFaq === 0}
                     onToggle={() => setExpandedFaq(expandedFaq === 0 ? null : 0)}
                   />
@@ -465,7 +471,7 @@ export default function PublicFooter() {
 
             {/* Footer */}
             <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">Need support? Contact vralphroger@gmail.com</span>
+              <span className="text-xs text-slate-400">Need support? Contact vralphroger@gmail.com</span>
               <button
                 onClick={closeModal}
                 className="px-3.5 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium transition-colors cursor-pointer"
@@ -487,7 +493,7 @@ export default function PublicFooter() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Capstone Engineering & Research Group</h3>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   Institute of Computing Studies (ICS) &bull; Colegio de Montalban
                 </p>
               </div>
@@ -515,14 +521,14 @@ export default function PublicFooter() {
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="text-xs font-bold text-slate-900">Ralph Roger Vicente</h4>
-                      <p className="text-[11px] text-slate-600 font-medium">System Architecture &amp; Development</p>
+                      <p className="text-xs text-slate-600 font-medium">System Architecture &amp; Development</p>
                     </div>
-                    <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">BSIT</span>
+                    <span className="text-xs font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">BSIT</span>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-normal">
+                  <p className="text-xs text-slate-500 leading-normal">
                     System architecture, database modeling, backend services, and overall platform integration.
                   </p>
-                  <p className="text-[10px] text-slate-400 font-mono">System Architect &bull; Backend &bull; Full-Stack</p>
+                  <p className="text-xs text-slate-400 font-mono">System Architect &bull; Backend &bull; Full-Stack</p>
                 </div>
 
                 {/* 2. Jay Baui */}
@@ -530,14 +536,14 @@ export default function PublicFooter() {
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="text-xs font-bold text-slate-900">Jay Baui</h4>
-                      <p className="text-[11px] text-slate-600 font-medium">Frontend Developer</p>
+                      <p className="text-xs text-slate-600 font-medium">Frontend Developer</p>
                     </div>
-                    <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">BSIT</span>
+                    <span className="text-xs font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">BSIT</span>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-normal">
+                  <p className="text-xs text-slate-500 leading-normal">
                     Frontend user interfaces, client components, and layout styling across web and mobile platforms.
                   </p>
-                  <p className="text-[10px] text-slate-400 font-mono">Frontend &bull; UI &bull; Mobile &amp; Web</p>
+                  <p className="text-xs text-slate-400 font-mono">Frontend &bull; UI &bull; Mobile &amp; Web</p>
                 </div>
 
                 {/* 3. Jomar Suralta */}
@@ -545,14 +551,14 @@ export default function PublicFooter() {
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="text-xs font-bold text-slate-900">Jomar Suralta</h4>
-                      <p className="text-[11px] text-slate-600 font-medium">Researcher &amp; Interviewer</p>
+                      <p className="text-xs text-slate-600 font-medium">Researcher &amp; Interviewer</p>
                     </div>
-                    <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">BSIT</span>
+                    <span className="text-xs font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">BSIT</span>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-normal">
+                  <p className="text-xs text-slate-500 leading-normal">
                     Stakeholder interview coordination, qualitative data gathering, survey administration, and field research.
                   </p>
-                  <p className="text-[10px] text-slate-400 font-mono">Researcher &bull; Interviewer &bull; Field Data</p>
+                  <p className="text-xs text-slate-400 font-mono">Researcher &bull; Interviewer &bull; Field Data</p>
                 </div>
 
                 {/* 4. Jovelyn Golis */}
@@ -560,21 +566,21 @@ export default function PublicFooter() {
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="text-xs font-bold text-slate-900">Jovelyn Golis</h4>
-                      <p className="text-[11px] text-slate-600 font-medium">Researcher &amp; Paper Documentation</p>
+                      <p className="text-xs text-slate-600 font-medium">Researcher &amp; Paper Documentation</p>
                     </div>
-                    <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">BSIT</span>
+                    <span className="text-xs font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">BSIT</span>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-normal">
+                  <p className="text-xs text-slate-500 leading-normal">
                     Thesis manuscript writing, chapter preparation, research methodology, and paper documentation.
                   </p>
-                  <p className="text-[10px] text-slate-400 font-mono">Researcher &bull; Documentation &bull; Manuscript</p>
+                  <p className="text-xs text-slate-400 font-mono">Researcher &bull; Documentation &bull; Manuscript</p>
                 </div>
               </div>
             </div>
 
             {/* Footer */}
             <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">Colegio de Montalban • Institute of Computing Studies</span>
+              <span className="text-xs text-slate-400">Colegio de Montalban • Institute of Computing Studies</span>
               <button
                 onClick={closeModal}
                 className="px-3.5 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium transition-colors cursor-pointer"

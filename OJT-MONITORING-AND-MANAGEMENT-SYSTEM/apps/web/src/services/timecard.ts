@@ -139,6 +139,49 @@ async function absentDays(supabase: NonNullable<Awaited<ReturnType<typeof coordi
   return out;
 }
 
+export interface DtrData {
+  student: { name: string; number: string; course: string; company: string };
+  rows: TimecardRow[];
+  schedule: { dailyHours: number; lunchStart: string | null; lunchMinutes: number };
+}
+
+/** One student's Daily Time Record data for a month (YYYY-MM). Same coordinator scope and RLS as the timecard. */
+export async function getDtr(studentId: string, month: string): Promise<AppResult<DtrData>> {
+  const supabase = await coordinator();
+  if (!supabase) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Choose a valid month.' } };
+  const [y, m] = month.split('-').map(Number);
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const res = await listTimecard(1, 400, { studentId, from: `${month}-01`, to: `${month}-${String(last).padStart(2, '0')}` });
+  if (res.error || !res.data) return { data: null, error: res.error ?? { code: 'SERVER_FAILURE', message: 'Could not load the record.' } };
+
+  const [{ data: s }, { data: sched }] = await Promise.all([
+    supabase.from('students').select('student_number, course, users(full_name)').eq('student_id', studentId).maybeSingle(),
+    supabase.from('practicum_schedules').select('daily_hours, lunch_break_start, lunch_break_minutes').eq('student_id', studentId)
+      .in('status', ['approved', 'modified']).order('created_at', { ascending: false }).limit(1),
+  ]);
+  if (!s) return { data: null, error: { code: 'NOT_FOUND', message: 'Student not found.' } };
+  const sc = sched?.[0];
+  const rows = res.data.rows;
+  return {
+    data: {
+      student: {
+        name: one((s as { users: { full_name: string } | { full_name: string }[] }).users)?.full_name ?? '',
+        number: (s as { student_number: string }).student_number,
+        course: (s as { course: string | null }).course ?? '',
+        company: rows.find((r) => r.company_name)?.company_name ?? '',
+      },
+      rows,
+      schedule: {
+        dailyHours: sc ? Number(sc.daily_hours) : 8,
+        lunchStart: (sc?.lunch_break_start as string | null)?.slice(0, 5) ?? null,
+        lunchMinutes: sc?.lunch_break_minutes != null ? Number(sc.lunch_break_minutes) : 0,
+      },
+    },
+    error: null,
+  };
+}
+
 export async function exportTimecardCsv(studentId: string, from: string, to: string): Promise<AppResult<{ filename: string; csv: string }>> {
   const res = await listTimecard(1, 2000, { studentId, from, to });
   if (res.error || !res.data) return { data: null, error: res.error ?? { code: 'SERVER_FAILURE', message: 'Export failed.' } };

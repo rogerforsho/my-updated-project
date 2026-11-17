@@ -1,5 +1,6 @@
 'use client';
 
+import { RowsLoading } from '@/src/components/ui/RowsLoading';
 import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Button from '@/src/components/ui/Button';
@@ -9,7 +10,7 @@ import Badge from '@/src/components/ui/Badge';
 import Modal from '@/src/components/ui/Modal';
 import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
 import { RowMenu } from '@/src/components/ui/RowMenu';
-import { Trash2, AlertTriangle, RotateCcw, Search, Filter } from '@/src/components/ui/Icons';
+import { Trash2, AlertTriangle, RotateCcw, Search, Filter, Building2 } from '@/src/components/ui/Icons';
 import {
   listCompanies, createCompany, updateCompany, setCompanyStatus, deleteCompany,
   type CompanyInput, type CompanyWithSupervisors,
@@ -51,6 +52,15 @@ export default function CoordinatorCompaniesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [copiedId, setCopiedId] = useState('');
+
+  async function copyEmail(id: string, email: string) {
+    try {
+      await navigator.clipboard.writeText(email);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((cur) => (cur === id ? '' : cur)), 1500);
+    } catch { setError('Could not copy. Select the email and copy it manually.'); }
+  }
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<CompanyWithSupervisors | null>(null);
@@ -187,7 +197,7 @@ export default function CoordinatorCompaniesPage() {
             <RotateCcw className="w-3.5 h-3.5" />
             Refresh
           </Button>
-          <Button size="sm" onClick={openCreate}>+ Add Company</Button>
+          <Button size="sm" onClick={openCreate} className="whitespace-nowrap">+ Add Company</Button>
         </div>
       </div>
 
@@ -255,13 +265,10 @@ export default function CoordinatorCompaniesPage() {
 
         {/* Table Body */}
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-slate-400 text-sm">
-            <RotateCcw className="w-5 h-5 animate-spin mr-2 text-emerald-700" />
-            Loading partner companies...
-          </div>
+          <RowsLoading label="Loading partner companies" />
         ) : filteredCompanies.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-            <span className="text-4xl mb-3">🏢</span>
+            <Building2 className="mb-3 w-9 h-9 text-slate-300" aria-hidden="true" />
             <p className="text-sm font-medium text-slate-600">
               {searchQuery || statusFilter !== 'all' ? 'No companies match your filters.' : 'No companies registered yet.'}
             </p>
@@ -297,7 +304,7 @@ export default function CoordinatorCompaniesPage() {
                   <th className="text-center px-3 py-3.5 font-semibold text-slate-700 text-xs">
                     Status
                   </th>
-                  <th className="text-right pr-5 pl-3 py-3.5 font-semibold text-slate-700 text-xs whitespace-nowrap min-w-[220px]">
+                  <th className="text-right pr-5 pl-3 py-3.5 font-semibold text-slate-700 text-xs whitespace-nowrap">
                     Actions
                   </th>
                 </tr>
@@ -313,7 +320,7 @@ export default function CoordinatorCompaniesPage() {
                       <p className="font-semibold text-slate-900 text-sm leading-snug truncate" title={c.company_name}>
                         {c.company_name}
                       </p>
-                      <p className="text-[11px] text-slate-500 mt-0.5 truncate" title={c.address}>
+                      <p className="text-xs text-slate-500 mt-0.5 truncate" title={c.address}>
                         {c.address?.trim() ? c.address : <span className="text-slate-400 italic">No address provided</span>}
                       </p>
                     </td>
@@ -327,9 +334,19 @@ export default function CoordinatorCompaniesPage() {
                           <span className="text-slate-400 italic">Not Assigned</span>
                         )}
                       </p>
-                      <p className="text-[11px] text-slate-500 mt-0.5 truncate" title={c.contact_email}>
+                      <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
                         {c.contact_email?.trim() ? (
-                          c.contact_email
+                          <>
+                            <span className="truncate" title={c.contact_email}>{c.contact_email}</span>
+                            <button
+                              type="button"
+                              onClick={() => copyEmail(c.company_id, c.contact_email.trim())}
+                              aria-label={`Copy email for ${c.company_name}`}
+                              className="shrink-0 rounded border border-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50"
+                            >
+                              {copiedId === c.company_id ? 'Copied' : 'Copy'}
+                            </button>
+                          </>
                         ) : (
                           <span className="text-slate-400 font-medium" title="No email provided">—</span>
                         )}
@@ -339,8 +356,8 @@ export default function CoordinatorCompaniesPage() {
                     {/* Workplace GPS with fallback */}
                     <td className="px-3.5 py-3.5 whitespace-nowrap">
                       {c.geofence_enabled && c.latitude != null && c.longitude != null ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          📍 {c.geofence_radius_meters ?? 50}m
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {c.geofence_radius_meters ?? 50}m
                         </span>
                       ) : (
                         <span className="text-xs text-slate-400 font-medium" title="GPS Location not configured">—</span>

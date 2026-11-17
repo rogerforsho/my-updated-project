@@ -10,7 +10,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { listStudentReports, submitStudentReport } from '../../services/reports';
 import { isNetworkAvailable } from '../../lib/syncEngine';
 import NetworkToast from '../../components/NetworkToast';
-import { STUDENT_REPORT_TYPES, type DbReport } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, STUDENT_REPORT_TYPES, isBundleType, isCoordinatorReviewType, type DbReport } from '@ojt/shared';
 import CompanyRequestModal from '../../components/CompanyRequestModal';
 import IncidentReportModal from '../../components/IncidentReportModal';
 
@@ -87,7 +87,7 @@ export default function ReportsScreen() {
           'application/pdf',
           'application/msword',
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'image/*',
+          ...(isBundleType(selectedType) ? [] : ['image/*']),
         ],
         copyToCacheDirectory: true,
       });
@@ -118,6 +118,11 @@ export default function ReportsScreen() {
       return;
     }
 
+    if (isBundleType(selectedType) && (!attachedFile || attachedFile.mimeType?.startsWith('image/'))) {
+      setModalError('Attach one PDF or DOCX file that contains all your requirements.');
+      return;
+    }
+
     setSubmitting(true);
     let result: Awaited<ReturnType<typeof submitStudentReport>>;
     try {
@@ -139,7 +144,7 @@ export default function ReportsScreen() {
     }
 
     setModalOpen(false);
-    const routedTo = ['Pre-OJT Orientation Certificate', 'Endorsement Letter', 'Incident Report'].includes(selectedType)
+    const routedTo = (isCoordinatorReviewType(selectedType) || selectedType === 'Incident Report')
       ? 'OJT Coordinator follow-up'
       : 'Supervisor review';
     setSuccess(`Report submitted successfully for ${routedTo}.`);
@@ -243,7 +248,7 @@ export default function ReportsScreen() {
                   s.statusBadgeText,
                   item.status === 'reviewed' || item.status === 'approved' || item.supervisor_decision === 'approved' ? s.textGreen : s.textAmber
                 ]}>
-                  {item.supervisor_decision === 'approved' ? 'Supervisor approved' : item.supervisor_decision === 'returned' ? 'Returned for correction' : item.status === 'approved' || item.status === 'reviewed' ? 'Coordinator approved' : item.status === 'rejected' ? 'Coordinator returned' : item.report_type === 'Weekly Progress' ? 'Submitted' : 'Pending review'}
+                  {item.supervisor_decision === 'approved' ? 'Supervisor approved' : item.supervisor_decision === 'returned' ? 'Returned for correction' : item.status === 'approved' || item.status === 'reviewed' ? 'Coordinator approved' : item.status === 'rejected' ? 'Coordinator returned' : 'Pending review'}
                 </Text>
               </View>
             </View>
@@ -260,7 +265,7 @@ export default function ReportsScreen() {
 
             {!!item.remarks && (
               <View style={s.remarksBox}>
-                <Text style={s.remarksLabel}>Student Remarks:</Text>
+                <Text style={s.remarksLabel}>{item.status === 'rejected' ? 'Coordinator note (fix and resubmit):' : 'Remarks:'}</Text>
                 <Text style={s.remarksText}>{item.remarks}</Text>
               </View>
             )}
@@ -316,7 +321,7 @@ export default function ReportsScreen() {
                 {REPORT_TYPES.map((type) => (
                   <TouchableOpacity
                     key={type}
-                    onPress={() => setSelectedType(type)}
+                    onPress={() => { setSelectedType(type); if (isBundleType(type)) setFilePath(''); }}
                     style={[s.typePill, selectedType === type && s.typePillActive]}
                     activeOpacity={0.8}
                   >
@@ -326,6 +331,23 @@ export default function ReportsScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+
+              {isBundleType(selectedType) ? (
+                <View style={{ marginBottom: 12, padding: 12, borderRadius: 10, backgroundColor: '#F3F0E4' }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#0A3824', marginBottom: 6 }}>
+                    Upload ONE PDF or DOCX that contains all of these (max 25 MB):
+                  </Text>
+                  {GATEWAY_DOCUMENT_SPECS.map((spec, i) => (
+                    <View key={spec.id} style={{ marginBottom: 4 }}>
+                      <Text style={{ fontSize: 12, color: '#0A3824' }}>{i + 1}. {spec.name}</Text>
+                      {spec.hint ? <Text style={{ fontSize: 11, color: '#526257', marginLeft: 14 }}>{spec.hint}</Text> : null}
+                    </View>
+                  ))}
+                  <Text style={{ fontSize: 11, color: '#526257', marginTop: 6 }}>
+                    Put each document on its own page, in this order. Photos and links are not accepted for this submission.
+                  </Text>
+                </View>
+              ) : null}
 
               <Text style={s.fieldLabel}>Attach Document File</Text>
               {attachedFile ? (
@@ -360,10 +382,11 @@ export default function ReportsScreen() {
                   activeOpacity={0.8}
                 >
                   <Ionicons name="cloud-upload-outline" size={20} color="#0A3824" />
-                  <Text style={s.btnAttachFileText}>Choose PDF, DOCX, or Image</Text>
+                  <Text style={s.btnAttachFileText}>{isBundleType(selectedType) ? 'Choose PDF or DOCX' : 'Choose PDF, DOCX, or Image'}</Text>
                 </TouchableOpacity>
               )}
 
+              {!isBundleType(selectedType) && (<>
               <View style={s.orDivider}>
                 <View style={s.orLine} />
                 <Text style={s.orText}>OR PASTE LINK / URL</Text>
@@ -379,6 +402,7 @@ export default function ReportsScreen() {
                 style={s.input}
                 autoCapitalize="none"
               />
+              </>)}
 
               <Text style={s.fieldLabel}>Student Remarks (Optional)</Text>
               <TextInput

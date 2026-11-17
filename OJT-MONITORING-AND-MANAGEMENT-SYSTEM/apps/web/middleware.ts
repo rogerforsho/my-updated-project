@@ -4,7 +4,7 @@ import { authCookieOptions } from './src/lib/supabase/auth-cookie';
 
 const PUBLIC_PATHS = ['/auth/sign-in', '/auth/register', '/auth/mobile-only', '/auth/pending', '/auth/reset-password', '/auth/callback', '/auth/supervisor-invite'];
 const KNOWN_PATHS = new Set([
-  '/', '/admin', '/api/internal/auto-time-out', '/api/internal/process-transactional-email', '/api/mobile/attendance', '/api/mobile/notifications', '/api/mobile/reports', '/api/mobile/registration/resubmit', '/api/mobile/schedule-proposals', '/api/registration/id-card', '/api/registration/submit', '/auth/callback', '/auth/callback/finish', '/auth/pending',
+  '/', '/admin', '/api/internal/auto-time-out', '/api/internal/import-holidays', '/api/internal/process-transactional-email', '/api/mobile/attendance', '/api/mobile/notifications', '/api/mobile/reports', '/api/mobile/registration/resubmit', '/api/mobile/schedule-proposals', '/api/registration/id-card', '/api/registration/submit', '/auth/callback', '/auth/callback/finish', '/auth/pending',
   '/auth/register', '/auth/mobile-only', '/auth/reset-password', '/auth/sign-in',
   '/coordinator/approvals', '/coordinator/assignments', '/coordinator/companies',
   '/coordinator/progress', '/coordinator/reports', '/coordinator/students', '/coordinator/import', '/coordinator/incident-reports', '/coordinator/submissions', '/coordinator/messages', '/coordinator/notifications', '/coordinator/what-if', '/coordinator/map',
@@ -86,7 +86,7 @@ export async function middleware(request: NextRequest) {
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   // Load balancer probes must not depend on a user session.
-  if (path === '/health' || path === '/ready' || path === '/api/internal/process-transactional-email' || path === '/api/internal/auto-time-out' || path.startsWith('/api/mobile/') || path === '/api/registration/id-card' || path === '/api/registration/submit') return supabaseResponse;
+  if (path === '/health' || path === '/ready' || path === '/api/internal/process-transactional-email' || path === '/api/internal/auto-time-out' || path === '/api/internal/import-holidays' || path.startsWith('/api/mobile/') || path === '/api/registration/id-card' || path === '/api/registration/submit') return supabaseResponse;
 
   // Let Next render its real not-found response for unknown URLs. Auth redirects
   // should protect existing routes without disguising broken links as sign-in.

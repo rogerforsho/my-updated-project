@@ -16,6 +16,10 @@ _Avoid_: Timesheet (unless referring to an external document)
 An attendance record that needs human review to resolve a flagged issue or correction. The Supervisor reviews assigned students' records; an OJT Coordinator may adjudicate an exception when the Supervisor cannot.
 _Avoid_: Pending attendance (a pending record may not need staff intervention)
 
+**Overdue Attendance Review**:
+A pending attendance record with a Time Out that the server received 3 or more days ago and that no Supervisor has decided. It earns no Credited Hours until decided, so an OJT Coordinator may adjudicate it as an Attendance Exception, with a recorded reason.
+_Avoid_: Stale attendance, unverified attendance
+
 **Credited Hours**:
 Verified attendance time counted toward a student's required practicum hours, excluding only the portion that overlaps the approved schedule's lunch interval.
 _Avoid_: Raw hours, elapsed hours (when referring to the amount counted toward completion)
@@ -57,8 +61,16 @@ A review of a student's registration that determines whether their system accoun
 _Avoid_: OJT requirements review
 
 **Pre-deployment Requirements**:
-Information and supporting materials an active student submits before OJT placement.
-_Avoid_: Student account registration (when referring to pre-deployment submissions)
+The four documents an active student needs approved before proposing a schedule or being placed: Parent/Guardian Consent Waiver (notarized), Medical Certificate, Pre-OJT Orientation Certificate and Endorsement Letter. The student submits them as ONE PDF or DOCX file (max 25 MB) and the OJT Coordinator makes one decision on it; a student with the four separate documents already approved stays cleared. Students already placed with an active assignment are exempt from documents added later.
+_Avoid_: Student account registration (when referring to pre-deployment submissions); Gateway credentials; MOA (out of scope)
+
+**Required Hours**:
+The practicum hours a student must complete, set by program: BSIT 486, BS-CPE 240, BSBA-HRM 300, BSENTREP 300. A student's own `required_hours` wins, otherwise the program's value applies.
+_Avoid_: Target hours, 486-hour track (only BSIT is 486)
+
+**Practicum Window**:
+The start-to-end date range of a schedule or assignment. It needs an end date, lasts at most 5 calendar months, and must leave room to reach the Required Hours.
+_Avoid_: Open-ended practicum
 
 **Pre-deployment Review**:
 A review of a student's submitted pre-deployment requirements to determine whether they are ready for placement.
@@ -71,3 +83,7 @@ _Avoid_: OJT Staff–Supervisor pair
 **Conversation**:
 The single ongoing private message thread shared by one eligible OJT Coordinator–Supervisor pair. It remains available as read-only history while the pair has no active matching placement.
 _Avoid_: Trainee-specific chat
+
+**Collapsed Group**:
+A titled group of related records on an OJT Coordinator screen that can be folded down to its header and expanded again. Folding only hides the records from view; it never removes or changes them.
+_Avoid_: Archive, hide, delete (those imply the records are gone or changed)

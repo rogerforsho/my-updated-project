@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { requireUser, requireStudent } from '../lib/studentIdentity';
 import { uploadReportToStorage } from '../lib/storage';
 import { postWebBff } from '../lib/webBff';
 import type { AppResult, DbReport } from '@ojt/shared';
@@ -18,20 +19,9 @@ export async function listStudentReports(
   page = 1,
   pageSize = 20
 ): Promise<AppResult<{ reports: DbReport[]; total: number; isCompleted: boolean }>> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { data: null, error: { code: 'UNAUTHORIZED', message: 'Not authenticated.' } };
-  }
-
-  const { data: student } = await supabase
-    .from('students')
-    .select('student_id')
-    .eq('user_id', user.id)
-    .single();
-
-  if (!student) {
-    return { data: null, error: { code: 'NOT_FOUND', message: 'Student profile not found.' } };
-  }
+  const who = await requireStudent();
+  if (!who.data) return { data: null, error: who.error };
+  const student = who.data;
 
   const { data: certificate, error: completionError } = await supabase.from('certificates')
     .select('certificate_id').eq('student_id', student.student_id).maybeSingle();
@@ -65,10 +55,9 @@ export async function submitStudentReport(
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Please attach a document file or enter a link.' } };
   }
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { data: null, error: { code: 'UNAUTHORIZED', message: 'Not authenticated.' } };
-  }
+  const me = await requireUser();
+  if (!me.data) return { data: null, error: me.error };
+  const user = { id: me.data.user_id };
 
   let finalFilePath = input.file_path?.trim() || '';
 

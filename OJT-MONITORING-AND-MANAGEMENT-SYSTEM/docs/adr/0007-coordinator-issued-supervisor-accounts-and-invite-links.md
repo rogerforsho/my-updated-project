@@ -17,7 +17,7 @@ ADR 0006 says Super Admins manage account access and that Coordinators and Super
    - It names **one company and one department** (ICS or IBE); the person signing up cannot change either.
    - Only a hash of the link is stored. The link is shown once, when it is created.
    - Creating, using and revoking a link are written to the audit log.
-4. **Abuse limits.** The sign-up page is rate limited per email address and per network, and answers identically whether or not the email already has an account, so it cannot be used to discover registered emails. If account creation fails, the use is given back.
+4. **Abuse limits.** The sign-up page is rate limited per email address and per network, and tells the visitor when the email already has an account, so they are not left waiting for an email that will never arrive. This reveals that an email is registered to anyone holding a valid link; the rate limit and the link's two-use cap bound that. If account creation fails, the use is given back.
 
 ## Consequences
 

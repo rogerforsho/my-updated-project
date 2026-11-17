@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { CompanyPicker } from '@/src/components/ui/CompanyPicker';
 import { exportTimecardCsv, listTimecard, type TimecardRow } from '@/src/services/timecard';
 import { ExceptionReview } from './ExceptionReview';
+import { DtrSheet } from './DtrSheet';
 import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
 
 const isoDaysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
@@ -33,6 +34,7 @@ function Timecard() {
   const [student, setStudent] = useState<{ id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [dtrStudentId, setDtrStudentId] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => { setSearch(searchText.trim()); setPage(1); }, 300);
@@ -80,6 +82,7 @@ function Timecard() {
               {student.name} <button type="button" aria-label="Show all students" onClick={() => { setStudent(null); setPage(1); }} className="ml-1 underline">clear</button>
             </span>
             <button type="button" onClick={download} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700">Download timecard (CSV)</button>
+            <button type="button" onClick={() => setDtrStudentId(student.id)} className="rounded-lg bg-[var(--cdm-green)] px-3 py-2 text-xs font-bold text-white">Download DTR</button>
           </>
         )}
       </div>
@@ -89,30 +92,35 @@ function Timecard() {
         {loading ? <p className="p-12 text-center text-sm text-slate-500">Loading timecard…</p> : rows.length === 0 ? (
           <p className="p-12 text-center text-sm text-slate-500">No attendance records match these filters.</p>
         ) : (
-          <table className="w-full min-w-[760px] text-left text-sm">
+          <table className="w-full min-w-[820px] text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-              <tr><th className="p-3">Student</th><th className="p-3">Date</th><th className="p-3">Time in</th><th className="p-3">Time out</th><th className="p-3">Hours</th><th className="p-3">Status</th><th className="p-3">Selfie</th><th className="p-3">GPS</th></tr>
+              <tr><th className="p-3">Student</th><th className="p-3">Date</th><th className="p-3">Time in</th><th className="p-3">Time out</th><th className="p-3">Hours</th><th className="p-3">Status</th><th className="p-3">Selfie</th><th className="p-3">GPS</th><th className="p-3">DTR</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {rows.map((r) => (
                 <tr key={r.key}>
                   <td className="p-3">
                     <button type="button" onClick={() => { setStudent({ id: r.student_id, name: r.full_name }); setPage(1); }} className="text-left font-semibold text-slate-900 hover:underline">{r.full_name || 'Student'}</button>
-                    <p className="text-[11px] text-slate-500 tabular-nums">{r.student_number}{r.company_name ? ` · ${r.company_name}` : ''}</p>
+                    <p className="text-xs text-slate-500 tabular-nums">{r.student_number}{r.company_name ? ` · ${r.company_name}` : ''}</p>
                   </td>
                   <td className="p-3 whitespace-nowrap">{r.date}</td>
                   <td className="p-3">{clock(r.time_in)}</td>
                   <td className="p-3">{clock(r.time_out)}</td>
                   <td className="p-3">{r.hours ?? '—'}</td>
-                  <td className="p-3"><span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${LATE[r.late].cls}`}>{LATE[r.late].label}</span></td>
+                  <td className="p-3"><span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${LATE[r.late].cls}`}>{LATE[r.late].label}</span></td>
                   <td className="p-3 text-xs">{SELFIE[r.selfie]}</td>
                   <td className="p-3 text-xs">{GPS[r.gps] ?? r.gps}</td>
+                  <td className="p-3">
+                    <button type="button" aria-label={`Download DTR for ${r.full_name || 'student'}`} onClick={() => setDtrStudentId(r.student_id)} className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50">DTR</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </div>
+
+      {dtrStudentId && <DtrSheet studentId={dtrStudentId} initialMonth={to.slice(0, 7)} onClose={() => setDtrStudentId(null)} />}
 
       <PagerBar page={page} totalPages={totalPages} total={total} setPage={setPage} pageSize={pageSize} setPageSize={(n) => { changePageSize(n); setPage(1); }} />
     </div>

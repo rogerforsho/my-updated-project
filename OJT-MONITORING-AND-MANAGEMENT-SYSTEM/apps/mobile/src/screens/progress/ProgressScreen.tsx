@@ -97,7 +97,7 @@ export default function ProgressScreen() {
             </View>
             <View>
               <Text style={s.statLabel}>Target</Text>
-              <Text style={s.statVal}>{progress?.required_hours || 486} hrs</Text>
+              <Text style={s.statVal}>{progress?.required_hours ?? 0} hrs</Text>
             </View>
           </View>
         </View>
@@ -138,7 +138,7 @@ export default function ProgressScreen() {
         <View style={s.infoBanner}>
           <Ionicons name="school-outline" size={26} color="#0A3824" />
           <View style={{ flex: 1 }}>
-            <Text style={s.infoBannerTitle}>486.0 Hours Target</Text>
+            <Text style={s.infoBannerTitle}>{progress ? `${progress.required_hours}.0 Hours Target` : 'Hours Target'}</Text>
             <Text style={s.infoBannerSub}>
               Ensure all daily time records are signed off by your company supervisor to count toward final clearance.
             </Text>
