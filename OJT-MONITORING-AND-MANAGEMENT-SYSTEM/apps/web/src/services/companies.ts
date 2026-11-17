@@ -161,6 +161,7 @@ export async function createCompanyBranch(input: {
     latitude: input.latitude, longitude: input.longitude, geofence_radius_meters: input.geofence_radius_meters ?? 50,
     geofence_enabled: true, is_primary: false, status: 'active',
   }).select('branch_id, company_id, branch_name, address, latitude, longitude, geofence_radius_meters, geofence_enabled, is_primary, status').single();
+  if (error?.code === '42501') return { data: null, error: { code: 'FORBIDDEN', message: 'You can add a branch only for an HTE where one of your students has a pending practicum schedule.' } };
   if (error) return { data: null, error: { code: error.code === '23505' ? 'DUPLICATE_REQUEST' : 'SERVER_FAILURE', message: error.code === '23505' ? 'A branch with this name already exists for the HTE.' : 'Failed to create HTE branch.' } };
   await recordAuditEvent({ actor_user_id: user.id, action: 'COMPANY_BRANCH_CREATED', entity_type: 'company_branch', entity_id: data.branch_id, details: { company_id: data.company_id, geofence_enabled: true } });
   return { data: data as DbCompanyBranch, error: null };

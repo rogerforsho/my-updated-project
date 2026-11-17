@@ -2309,6 +2309,24 @@ test('HTE geofence radius is limited to 30-50 m for companies and branches', asy
   assert.equal((await companies.createCompanyBranch(branch)).error.code, 'FORBIDDEN');
 });
 
+test('createCompanyBranch explains an RLS refusal instead of a generic failure', async () => {
+  const run = async dbError => {
+    const supabase = { from: table => table === 'companies'
+      ? { select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { company_id: 'company' } }) }) }) }) }
+      : { insert: () => ({ select: () => ({ single: async () => ({ data: null, error: dbError }) }) }) } };
+    const companies = load('apps/web/src/services/companies.ts', {
+      '@/src/lib/actor': { getCoordinator: async () => ({ supabase, user: { id: 'coordinator' }, authorized: true }) },
+      '@/src/lib/audit': { recordAuditEvent: async () => {} },
+    });
+    return (await companies.createCompanyBranch({ company_id: 'company', branch_name: 'NVIDIA CDM', address: '1 Road', latitude: 14.7, longitude: 121.1 })).error;
+  };
+  const denied = await run({ code: '42501' });
+  assert.equal(denied.code, 'FORBIDDEN');
+  assert.match(denied.message, /pending practicum schedule/);
+  assert.equal((await run({ code: '23505' })).code, 'DUPLICATE_REQUEST');
+  assert.equal((await run({ code: 'XX000' })).code, 'SERVER_FAILURE');
+});
+
 // Batch A: database security migrations. supabase/migrations is the single source of truth.
 function migrationSql(name) {
   return fs.readFileSync(path.join(root, 'supabase/migrations', name), 'utf8');
