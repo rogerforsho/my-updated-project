@@ -2,15 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList, RefreshControl,
   Modal, TextInput, ActivityIndicator, StyleSheet, ScrollView,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import { listStudentReports, submitStudentReport } from '../../services/reports';
+import { compileWeeklyJournals, listStudentReports, submitStudentReport } from '../../services/reports';
 import { isNetworkAvailable } from '../../lib/syncEngine';
 import NetworkToast from '../../components/NetworkToast';
-import { GATEWAY_DOCUMENT_SPECS, STUDENT_REPORT_TYPES, WEEKLY_JOURNAL_TYPE, describeReportType, isBundleType, reviewerHint, type DbReport } from '@ojt/shared';
+import { COMPILED_JOURNALS_TYPE, GATEWAY_DOCUMENT_SPECS, STUDENT_REPORT_TYPES, WEEKLY_JOURNAL_TYPE, describeReportType, isBundleType, reviewerHint, type DbReport } from '@ojt/shared';
 import CompanyRequestModal from '../../components/CompanyRequestModal';
 import IncidentReportModal from '../../components/IncidentReportModal';
 
@@ -45,6 +45,8 @@ export default function ReportsScreen() {
   const [companyRequestOpen, setCompanyRequestOpen] = useState(false);
   const [incidentOpen, setIncidentOpen] = useState(false);
   const [isCompleted, setIsCompleted] = useState<boolean | null>(null);
+  const [hoursComplete, setHoursComplete] = useState(false);
+  const [compiling, setCompiling] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
@@ -56,6 +58,7 @@ export default function ReportsScreen() {
     } else {
       setReports(result.data?.reports || []);
       setIsCompleted(result.data?.isCompleted ?? null);
+      setHoursComplete(result.data?.hoursComplete ?? false);
     }
     setLoading(false);
     setRefreshing(false);
@@ -140,6 +143,34 @@ export default function ReportsScreen() {
     load();
   };
 
+  const journals = reports.filter(r => describeReportType(r.report_type).label === WEEKLY_JOURNAL_TYPE);
+  const approvedJournals = journals.filter(r => r.supervisor_decision === 'approved').length;
+  const pendingJournals = journals.filter(r => !r.supervisor_decision).length;
+  const returnedJournals = journals.filter(r => r.supervisor_decision === 'returned').length;
+  // A returned compile can be redone; anything else means the Coordinator already has one.
+  const compiledSent = reports.some(r => r.report_type === COMPILED_JOURNALS_TYPE && r.status !== 'rejected');
+
+  const runCompile = async () => {
+    setCompiling(true);
+    setError('');
+    const result = await compileWeeklyJournals();
+    setCompiling(false);
+    if (result.error) { setError(result.error.message); return; }
+    const skipped = result.data?.notIncluded.length ?? 0;
+    setSuccess(`${result.data?.included ?? 0} journals were merged into one PDF and sent to your OJT Coordinator.${skipped ? ` ${skipped} could not be included (not a readable PDF).` : ''}`);
+    load();
+  };
+
+  const handleCompile = () => {
+    const warning = pendingJournals + returnedJournals;
+    if (!warning) { runCompile(); return; }
+    Alert.alert(
+      'Some journals will be left out',
+      `${warning} journal${warning === 1 ? ' is' : 's are'} still waiting for your Supervisor or was returned for correction. Only ${approvedJournals} approved journal${approvedJournals === 1 ? '' : 's'} will be compiled.`,
+      [{ text: 'Wait', style: 'cancel' }, { text: 'Compile now', onPress: runCompile }],
+    );
+  };
+
   if (loading) {
     return (
       <View style={s.center}>
@@ -210,6 +241,29 @@ export default function ReportsScreen() {
         keyExtractor={(item) => item.report_id}
         contentContainerStyle={s.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0A3824']} />}
+        ListHeaderComponent={isCompleted === false ? (
+          <View style={[s.reportCard, { borderColor: '#0A3824' }]}>
+            <Text style={s.reportType}>Compile Weekly Journals</Text>
+            <Text style={[s.dateText, { marginBottom: 8 }]}>
+              Merges every Supervisor-approved Weekly Journal into one PDF and sends it to your OJT Coordinator.
+            </Text>
+            <Text style={s.remarksText}>{approvedJournals} approved · {pendingJournals} waiting for Supervisor · {returnedJournals} returned</Text>
+            {compiledSent ? (
+              <Text style={[s.remarksLabel, { marginTop: 10, color: '#0A3824' }]}>Your compiled journals are with your OJT Coordinator.</Text>
+            ) : !hoursComplete ? (
+              <Text style={[s.remarksLabel, { marginTop: 10 }]}>Unlocks when you complete your Required Hours.</Text>
+            ) : (
+              <TouchableOpacity
+                onPress={handleCompile}
+                disabled={compiling || approvedJournals === 0}
+                style={[s.btnSubmitModal, { marginTop: 10, flex: 0 }, (compiling || approvedJournals === 0) && { opacity: 0.5 }]}
+                activeOpacity={0.85}
+              >
+                {compiling ? <ActivityIndicator color="#E4DBC4" /> : <Text style={s.btnSubmitModalText}>Compile and send to Coordinator</Text>}
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : null}
         ListEmptyComponent={
           <View style={s.emptyBox}>
             <Ionicons name="document-text-outline" size={44} color="#879687" style={{ marginBottom: 8 }} />

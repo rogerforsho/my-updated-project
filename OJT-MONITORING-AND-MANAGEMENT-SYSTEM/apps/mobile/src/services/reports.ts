@@ -18,7 +18,7 @@ export interface SubmitReportInput {
 export async function listStudentReports(
   page = 1,
   pageSize = 20
-): Promise<AppResult<{ reports: DbReport[]; total: number; isCompleted: boolean }>> {
+): Promise<AppResult<{ reports: DbReport[]; total: number; isCompleted: boolean; hoursComplete: boolean }>> {
   const who = await requireStudent();
   if (!who.data) return { data: null, error: who.error };
   const student = who.data;
@@ -27,6 +27,10 @@ export async function listStudentReports(
     .select('certificate_id').eq('student_id', student.student_id).maybeSingle();
   if (completionError)
     return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to check your OJT completion.' } };
+
+  // Required Hours reached; the server re-checks this before compiling.
+  const { data: progress } = await supabase.from('internship_progress')
+    .select('progress_status').eq('student_id', student.student_id).maybeSingle();
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -42,7 +46,12 @@ export async function listStudentReports(
     return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load submitted reports.' } };
   }
 
-  return { data: { reports: (data as DbReport[]) ?? [], total: count ?? 0, isCompleted: Boolean(certificate) }, error: null };
+  return { data: { reports: (data as DbReport[]) ?? [], total: count ?? 0, isCompleted: Boolean(certificate), hoursComplete: progress?.progress_status === 'completed' }, error: null };
+}
+
+/** Merges the student's approved Weekly Journals into one PDF and sends it to the OJT Coordinator. */
+export function compileWeeklyJournals() {
+  return postWebBff<{ included: number; notIncluded: string[] }>('/api/mobile/reports/compile-journals', {});
 }
 
 export async function submitStudentReport(
