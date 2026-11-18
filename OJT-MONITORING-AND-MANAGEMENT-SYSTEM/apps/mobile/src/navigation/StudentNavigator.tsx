@@ -8,6 +8,7 @@ import ReportsScreen from '../screens/reports/ReportsScreen';
 import NotificationsScreen from '../screens/notifications/NotificationsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import EvaluationsScreen from '../screens/evaluations/EvaluationsScreen';
+import HteEvaluationScreen from '../screens/hteEvaluation/HteEvaluationScreen';
 
 const Tab = createBottomTabNavigator<StudentTabParamList>();
 
@@ -68,6 +69,16 @@ export default function StudentNavigator() {
             <Ionicons name={focused ? 'document-text' : 'document-text-outline'} size={size ?? 22} color={color} />
           ),
           title: 'Reports',
+        }}
+      />
+      <Tab.Screen
+        name="HteEvaluation"
+        component={HteEvaluationScreen}
+        options={{
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'business' : 'business-outline'} size={size ?? 22} color={color} />
+          ),
+          title: 'HTE Eval',
         }}
       />
       <Tab.Screen

@@ -6,6 +6,7 @@ export * from './types/attendance';
 export * from './validation';
 export * from './geo';
 export * from './gateway';
+export * from './hteEvaluation';
 export * from './attendanceDate';
 export * from './schedulePolicy';
 export * from './courses';

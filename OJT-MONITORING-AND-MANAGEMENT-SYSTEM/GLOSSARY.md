@@ -61,8 +61,20 @@ A review of a student's registration that determines whether their system accoun
 _Avoid_: OJT requirements review
 
 **Pre-deployment Requirements**:
-The four documents an active student needs approved before proposing a schedule or being placed: Parent/Guardian Consent Waiver (notarized), Medical Certificate, Pre-OJT Orientation Certificate and Endorsement Letter. The student submits them as ONE PDF or DOCX file (max 25 MB) and the OJT Coordinator makes one decision on it; a student with the four separate documents already approved stays cleared. Students already placed with an active assignment are exempt from documents added later.
+The four documents an active student needs approved before proposing a schedule or being placed: Parent/Guardian Consent Waiver (notarized), Medical Certificate, Pre-OJT Orientation Certificate and Endorsement Letter. The student submits them as ONE PDF file (max 25 MB) and the OJT Coordinator makes one decision on it; a student with the four separate documents already approved stays cleared. Students already placed with an active assignment are exempt from documents added later.
 _Avoid_: Student account registration (when referring to pre-deployment submissions); Gateway credentials; MOA (out of scope)
+
+**Weekly Journal**:
+The only routine journal a student submits, as a PDF (max 3 MB). The HTE Supervisor approves it or returns it with a comment.
+_Avoid_: Daily Journal, Weekly Progress, Accomplishment Report (retired names; old rows stay reviewable)
+
+**Compiled Weekly Journals**:
+One PDF, with a cover page, that merges every Supervisor-approved Weekly Journal in date order. The student sends it to the OJT Coordinator once Required Hours are complete.
+_Avoid_: Journal bundle
+
+**HTE Evaluation**:
+The form a student fills in once after completing Required Hours to rate their Host Training Establishment (11 criteria, rated 1 to 5, weighted to 100, plus comments). Only the student and the department's OJT Coordinator can read it; the Supervisor cannot.
+_Avoid_: HTE feedback form, Supervisor evaluation (that is the Supervisor's rating of the student)
 
 **Required Hours**:
 The practicum hours a student must complete, set by program: BSIT 486, BS-CPE 240, BSBA-HRM 300, BSENTREP 300. A student's own `required_hours` wins, otherwise the program's value applies.
