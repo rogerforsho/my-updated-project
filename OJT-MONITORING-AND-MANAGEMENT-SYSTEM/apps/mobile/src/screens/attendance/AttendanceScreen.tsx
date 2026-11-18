@@ -8,8 +8,9 @@ import {
 } from 'react-native';
 import { FaceCamera, useCameraPermissions, useFaceCamera, useFaceValidation, type FaceRequirements } from '@rbayuokt/expo-face-vision';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, type CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import {
   recordTimeIn,
@@ -30,7 +31,7 @@ import NetworkToast from '../../components/NetworkToast';
 import ScheduleProposalModal from '../../components/ScheduleProposalModal';
 import { fetchStudentScheduleProposal } from '../../services/schedule';
 import type { DbAttendance, DbPracticumSchedule } from '@ojt/shared';
-import type { StudentTabParamList } from '../../navigation/types';
+import type { StudentStackParamList, StudentTabParamList } from '../../navigation/types';
 
 type Step = 'idle' | 'selfie' | 'submitting';
 type SubTab = 'check_in' | 'history';
@@ -66,7 +67,10 @@ const FACE_HINTS: Record<string, string> = {
 
 export default function AttendanceScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<BottomTabNavigationProp<StudentTabParamList>>();
+  const navigation = useNavigation<CompositeNavigationProp<
+    BottomTabNavigationProp<StudentTabParamList>,
+    NativeStackNavigationProp<StudentStackParamList>
+  >>();
   const [activeTab, setActiveTab] = useState<SubTab>('check_in');
   const [permission, requestPermission] = useCameraPermissions();
   const [step, setStep] = useState<Step>('idle');

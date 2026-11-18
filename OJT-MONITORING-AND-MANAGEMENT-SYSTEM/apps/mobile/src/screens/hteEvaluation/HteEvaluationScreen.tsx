@@ -3,7 +3,6 @@ import {
   View, Text, TouchableOpacity, TextInput, ActivityIndicator, StyleSheet, ScrollView,
   RefreshControl, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
   HTE_EVALUATION_SECTIONS, HTE_RATING_MAX, HTE_RATING_MIN, isValidHteRatings, scoreHteEvaluation, scoreHteSection,
@@ -14,7 +13,6 @@ import { getHteEvaluation, submitHteEvaluation, type HteEvaluationState } from '
 const SCALE = Array.from({ length: HTE_RATING_MAX - HTE_RATING_MIN + 1 }, (_, i) => HTE_RATING_MIN + i);
 
 export default function HteEvaluationScreen() {
-  const insets = useSafeAreaInsets();
   const [state, setState] = useState<HteEvaluationState | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -65,7 +63,7 @@ export default function HteEvaluationScreen() {
   const shown: Partial<HteRatings> = submitted?.ratings ?? ratings;
 
   return (
-    <KeyboardAvoidingView style={[s.root, { paddingTop: insets.top }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={s.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={s.header}>
         <Text style={s.kicker}>Colegio de Montalban OJT</Text>
         <Text style={s.title}>HTE Evaluation</Text>

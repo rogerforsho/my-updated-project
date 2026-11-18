@@ -3,13 +3,11 @@ import {
   View, Text, TouchableOpacity, FlatList, RefreshControl,
   ActivityIndicator, ScrollView, StyleSheet,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { listStudentFeed, markNotificationRead, markAllNotificationsRead, archiveNotification, type MobileFeedItem } from '../../services/notifications';
 import SwipeToArchive from '../../components/SwipeToArchive';
 
 export default function NotificationsScreen() {
-  const insets = useSafeAreaInsets();
   const [feed, setFeed] = useState<MobileFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -105,7 +103,7 @@ export default function NotificationsScreen() {
   }
 
   return (
-    <View style={[s.root, { paddingTop: insets.top }]}>
+    <View style={s.root}>
       {/* Header */}
       <View style={s.header}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>

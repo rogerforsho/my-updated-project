@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import type { StudentTabParamList } from './types';
+import type { StudentStackParamList, StudentTabParamList } from './types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AttendanceScreen from '../screens/attendance/AttendanceScreen';
 import ProgressScreen from '../screens/progress/ProgressScreen';
@@ -10,10 +11,12 @@ import ProfileScreen from '../screens/profile/ProfileScreen';
 import EvaluationsScreen from '../screens/evaluations/EvaluationsScreen';
 import HteEvaluationScreen from '../screens/hteEvaluation/HteEvaluationScreen';
 import GroupScreen from '../screens/group/GroupScreen';
+import MoreScreen from '../screens/more/MoreScreen';
 
 const Tab = createBottomTabNavigator<StudentTabParamList>();
+const Stack = createNativeStackNavigator<StudentStackParamList>();
 
-export default function StudentNavigator() {
+function StudentTabs() {
   const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
@@ -29,7 +32,7 @@ export default function StudentNavigator() {
         },
         tabBarActiveTintColor: '#0A3824',
         tabBarInactiveTintColor: '#7A887D',
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '700', marginTop: 2 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: 2 },
       }}
     >
       <Tab.Screen
@@ -53,16 +56,6 @@ export default function StudentNavigator() {
         }}
       />
       <Tab.Screen
-        name="Evaluations"
-        component={EvaluationsScreen}
-        options={{
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'star' : 'star-outline'} size={size ?? 22} color={color} />
-          ),
-          title: 'Results',
-        }}
-      />
-      <Tab.Screen
         name="Reports"
         component={ReportsScreen}
         options={{
@@ -70,26 +63,6 @@ export default function StudentNavigator() {
             <Ionicons name={focused ? 'document-text' : 'document-text-outline'} size={size ?? 22} color={color} />
           ),
           title: 'Reports',
-        }}
-      />
-      <Tab.Screen
-        name="HteEvaluation"
-        component={HteEvaluationScreen}
-        options={{
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'business' : 'business-outline'} size={size ?? 22} color={color} />
-          ),
-          title: 'HTE Eval',
-        }}
-      />
-      <Tab.Screen
-        name="Notifications"
-        component={NotificationsScreen}
-        options={{
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'notifications' : 'notifications-outline'} size={size ?? 22} color={color} />
-          ),
-          title: 'Alerts',
         }}
       />
       <Tab.Screen
@@ -103,15 +76,35 @@ export default function StudentNavigator() {
         }}
       />
       <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
+        name="More"
+        component={MoreScreen}
         options={{
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={size ?? 22} color={color} />
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="ellipsis-horizontal" size={size ?? 22} color={color} />
           ),
-          title: 'Account',
+          title: 'More',
         }}
       />
     </Tab.Navigator>
+  );
+}
+
+const pushedHeader = {
+  headerShown: true,
+  headerTintColor: '#0A3824',
+  headerStyle: { backgroundColor: '#FFFEFB' },
+  headerShadowVisible: false,
+  headerTitleStyle: { fontWeight: '700' as const },
+};
+
+export default function StudentNavigator() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Tabs" component={StudentTabs} />
+      <Stack.Screen name="Evaluations" component={EvaluationsScreen} options={{ ...pushedHeader, title: 'Results' }} />
+      <Stack.Screen name="HteEvaluation" component={HteEvaluationScreen} options={{ ...pushedHeader, title: 'HTE Evaluation' }} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ ...pushedHeader, title: 'Alerts' }} />
+      <Stack.Screen name="Profile" component={ProfileScreen} options={{ ...pushedHeader, title: 'Account' }} />
+    </Stack.Navigator>
   );
 }

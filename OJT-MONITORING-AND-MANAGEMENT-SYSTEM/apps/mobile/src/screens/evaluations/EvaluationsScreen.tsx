@@ -3,12 +3,10 @@ import {
   ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TextInput,
   TouchableOpacity, View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { listOwnEvaluations, submitOwnEvaluationAppeal, type StudentEvaluationRecord } from '../../services/evaluations';
 
 export default function EvaluationsScreen() {
-  const insets = useSafeAreaInsets();
   const [records, setRecords] = useState<StudentEvaluationRecord[]>([]);
   const [completion, setCompletion] = useState<{ final_grade: number; recorded_at: string; finalized_at: string | null; certificate_status: 'active' | 'revoked' | null } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,7 +49,7 @@ export default function EvaluationsScreen() {
   if (loading) return <View style={s.center}><ActivityIndicator size="large" color="#0A3824" /></View>;
 
   return (
-    <View style={[s.root, { paddingTop: insets.top }]}>
+    <View style={s.root}>
       <ScrollView
         contentContainerStyle={s.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} colors={['#0A3824']} />}

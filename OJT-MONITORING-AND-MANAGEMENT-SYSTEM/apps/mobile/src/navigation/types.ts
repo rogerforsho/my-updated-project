@@ -8,10 +8,16 @@ export type AuthStackParamList = {
 export type StudentTabParamList = {
   Attendance: undefined;
   Progress: undefined;
-  Evaluations: undefined;
   Reports: undefined;
+  Group: undefined;
+  More: undefined;
+};
+
+// Screens opened from the More tab. Route names match the old tab names.
+export type StudentStackParamList = {
+  Tabs: undefined;
+  Evaluations: undefined;
   HteEvaluation: undefined;
   Notifications: undefined;
-  Group: undefined;
   Profile: undefined;
 };
