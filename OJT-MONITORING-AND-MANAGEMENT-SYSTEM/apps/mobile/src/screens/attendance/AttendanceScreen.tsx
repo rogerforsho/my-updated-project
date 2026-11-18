@@ -30,6 +30,7 @@ import { GATEWAY_DOCUMENT_SPECS, getGatewayStatus, isBundleType, isWithinGeofenc
 import NetworkToast from '../../components/NetworkToast';
 import ScheduleProposalModal from '../../components/ScheduleProposalModal';
 import { fetchStudentScheduleProposal } from '../../services/schedule';
+import { refreshAttendanceReminders } from '../../lib/attendanceReminders';
 import type { DbAttendance, DbPracticumSchedule } from '@ojt/shared';
 import type { StudentStackParamList, StudentTabParamList } from '../../navigation/types';
 
@@ -169,6 +170,7 @@ export default function AttendanceScreen() {
     const identity = await getCachedAttendanceIdentity();
     const eligibilityKey = identity ? `cdm_ojt_attendance_eligibility_${identity.user.user_id}` : null;
     const online = await isNetworkAvailable();
+    let reminderSchedule: DbPracticumSchedule | null = null;
     // Cache only the existing attendance prerequisites, scoped to this account.
     if (!online) {
       setIsGatewayCleared(false);
@@ -181,6 +183,7 @@ export default function AttendanceScreen() {
           setIsGatewayCleared(cached.cleared === true);
           setGatewayDocs(cached.progress || []);
           setScheduleProposal(cached.schedule || null);
+          reminderSchedule = cached.schedule || null;
         }
       } catch { /* Remain blocked until prerequisites can be checked online. */ }
     } else try {
@@ -215,6 +218,7 @@ export default function AttendanceScreen() {
           if (schedRes.data) {
             setScheduleProposal(schedRes.data);
             cachedSchedule = schedRes.data;
+            reminderSchedule = schedRes.data;
           }
         } catch {
           // Ignore if offline
@@ -229,6 +233,8 @@ export default function AttendanceScreen() {
 
     const record = await getTodayAttendance();
     setTodayRecord(record);
+    // Only with a known schedule: a failed fetch must not wipe reminders that are already set.
+    if (reminderSchedule) void refreshAttendanceReminders(reminderSchedule, record, online);
     const queue = await getOfflineQueue();
     const queueIdentity = await getCachedAttendanceIdentity();
     applyQueue(queue, queueIdentity?.student_id);

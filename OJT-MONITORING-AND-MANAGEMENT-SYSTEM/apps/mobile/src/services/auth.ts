@@ -5,6 +5,7 @@ import type { AppResult, RegisterStudentInput, ResubmitStudentRegistrationInput,
 import { isStudentRegistrationCourse } from '@ojt/shared';
 import { getWebPortalUrl } from '../lib/webPortal';
 import { getWebBff, postWebBff } from '../lib/webBff';
+import { cancelAttendanceReminders } from '../lib/attendanceReminders';
 
 export async function registerStudent(input: RegisterStudentInput): Promise<AppResult<null>> {
   // Validation
@@ -124,6 +125,7 @@ export async function requestStudentPasswordReset(email: string): Promise<AppRes
 }
 
 export async function signOut(): Promise<void> {
+  await cancelAttendanceReminders(); // the next student on this phone must not get this account's reminders
   await clearAttendanceIdentity();
   await supabase.auth.signOut();
 }

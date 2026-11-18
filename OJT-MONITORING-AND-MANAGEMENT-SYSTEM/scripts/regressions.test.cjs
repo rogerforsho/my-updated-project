@@ -112,6 +112,8 @@ function mobileFixture() {
         return { data: { path: filename }, error: null };
       },
     },
+    // auth.ts cancels phone reminders on sign-out; expo-notifications cannot load under node.
+    [path.join(root, 'apps/mobile/src/lib/attendanceReminders.ts')]: { async cancelAttendanceReminders() {} },
     'expo-secure-store': secureStore,
     'expo-network': { async getNetworkStateAsync() {
       return { isConnected: state.online, isInternetReachable: state.online };

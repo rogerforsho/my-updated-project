@@ -49,6 +49,12 @@
     "plugins": [
       "expo-secure-store",
       [
+        "expo-notifications",
+        {
+          "color": "#0A3824"
+        }
+      ],
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "Colegio de Montalban OJT System requires your location to verify workplace presence when clocking in or out."

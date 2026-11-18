@@ -11,3 +11,4 @@ export * from './attendanceDate';
 export * from './schedulePolicy';
 export * from './courses';
 export * from './expectedEnd';
+export * from './attendanceReminders';
