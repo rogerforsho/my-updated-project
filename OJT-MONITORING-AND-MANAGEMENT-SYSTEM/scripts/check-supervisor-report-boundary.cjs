@@ -79,6 +79,17 @@ async function main() {
   await db.exec(sql); // Migration should be safe to retry.
   await db.exec(weeklySql);
   await db.exec(weeklySql);
+  // The type list now lives in one function; the policy, guard and notify trigger all call it.
+  const typeFnSql = read('20261118000500_supervisor_reviewed_type_function.sql');
+  await db.exec(typeFnSql);
+  await db.exec(typeFnSql);
+  const gatewayTs = fs.readFileSync(path.join(__dirname, '../shared/gateway.ts'), 'utf8');
+  const weeklyType = gatewayTs.match(/WEEKLY_JOURNAL_TYPE\s*=\s*'([^']+)'/)[1];
+  assert.equal((await db.query('SELECT private.is_supervisor_reviewed_type($1) AS ok', [weeklyType])).rows[0].ok, true,
+    'shared/gateway.ts WEEKLY_JOURNAL_TYPE must be a Supervisor-reviewed type in SQL');
+  for (const t of ['Endorsement Letter', 'Incident Report', 'Compiled Weekly Journals', null]) {
+    assert.equal((await db.query('SELECT private.is_supervisor_reviewed_type($1) AS ok', [t])).rows[0].ok, false, `${t} is not Supervisor-reviewed`);
+  }
   await db.exec('CREATE TRIGGER guard_ojt_client_write BEFORE UPDATE ON public.reports FOR EACH ROW EXECUTE FUNCTION public.guard_ojt_client_write()');
 
   await db.exec("SET ROLE authenticated; SET request.jwt.claim.sub = '00000000-0000-4000-8000-000000000001'");
