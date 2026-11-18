@@ -203,6 +203,7 @@ function workflowFixture(role = 'Admin', options = {}) {
     return modules[name] ||= load(`apps/web/src/services/${name}.ts`, {
       '@/src/lib/supabase/server': { createClient: async () => client },
       '@/src/lib/trusted-actor': trustedActor,
+      '@/src/services/supervisorTrainees': { listSupervisedTrainees: async () => ({ data: options.trainees ?? [], error: null }) },
       '@/src/lib/actor': load('apps/web/src/lib/actor.ts', {
         'server-only': {}, '@/src/lib/trusted-actor': trustedActor,
         '@/src/lib/department-scope': departmentScopeModule,
@@ -681,26 +682,39 @@ test('evaluation uses a 5-point rating per criterion and requires a comment for 
   const fixture = workflowFixture('Supervisor', { tables: {
     supervisors: [{ user_id: 'actor', supervisor_id: 'supervisor' }],
     student_assignments: [{ student_id: 'student', supervisor_id: 'supervisor', assignment_id: 'assignment', assignment_status: 'active' }],
-  } });
+  }, trainees: [{ student_id: 'student', completed_hours: 486, required_hours: 486 }] });
   const evaluations = fixture.module('evaluations');
   const ratings = { technical_competence: 5, productivity_dependability: 4, attendance_punctuality: 4, communication_skills: 3, work_ethics_professionalism: 5 };
   for (const bad of [0, 6, 2.5, '4', NaN])
-    assert.equal((await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'midterm', performance_score: null, feedback: 'Fine', criteria: { ...ratings, communication_skills: bad } })).error.code, 'VALIDATION_FAILURE');
-  assert.equal((await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'midterm', performance_score: 99, feedback: 'No rubric' })).error.code, 'VALIDATION_FAILURE');
+    assert.equal((await evaluations.createEvaluation({ student_id: 'student', performance_score: null, feedback: 'Fine', criteria: { ...ratings, communication_skills: bad } })).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await evaluations.createEvaluation({ student_id: 'student', performance_score: 99, feedback: 'No rubric' })).error.code, 'VALIDATION_FAILURE');
   const low = { ...ratings, attendance_punctuality: 2 };
-  const missing = await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'midterm', performance_score: null, feedback: '   ', criteria: low });
+  const missing = await evaluations.createEvaluation({ student_id: 'student', performance_score: null, feedback: '   ', criteria: low });
   assert.equal(missing.error.code, 'VALIDATION_FAILURE');
   assert.match(missing.error.message, /below 3/);
   assert.equal(fixture.writes.length, 0);
 
-  assert.equal((await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'midterm', performance_score: null, feedback: '', criteria: ratings })).error, null);
-  assert.equal((await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'final', performance_score: null, feedback: 'Often late in week 3.', criteria: low })).error, null);
+  assert.equal((await evaluations.createEvaluation({ student_id: 'student', performance_score: null, feedback: '', criteria: ratings })).error, null);
+  assert.equal((await evaluations.createEvaluation({ student_id: 'student', performance_score: null, feedback: 'Often late in week 3.', criteria: low })).error, null);
   const [midterm, final] = fixture.tables.evaluations;
+  assert.deepEqual(fixture.tables.evaluations.map(e => e.evaluation_type), ['final', 'final']);
   // stored as weighted points (25/20/20/15/20) so summaries, grades and appeals keep the 100-point scale
   assert.deepEqual({ ...midterm.rubric_scores }, { technical_competence: 25, productivity_dependability: 16, attendance_punctuality: 16, communication_skills: 9, work_ethics_professionalism: 20 });
   assert.equal(midterm.performance_score, 86);
   assert.equal(midterm.feedback, '');
   assert.equal(final.performance_score, 78);
+});
+
+test('a trainee who has not finished the required hours cannot be evaluated', async () => {
+  const fixture = workflowFixture('Supervisor', { tables: {
+    supervisors: [{ user_id: 'actor', supervisor_id: 'supervisor' }],
+    student_assignments: [{ student_id: 'student', supervisor_id: 'supervisor', assignment_id: 'assignment', assignment_status: 'active' }],
+  }, trainees: [{ student_id: 'student', completed_hours: 312, required_hours: 486 }] });
+  const ratings = { technical_competence: 5, productivity_dependability: 4, attendance_punctuality: 4, communication_skills: 3, work_ethics_professionalism: 5 };
+  const result = await fixture.module('evaluations').createEvaluation({ student_id: 'student', performance_score: null, feedback: '', criteria: ratings });
+  assert.equal(result.error.code, 'VALIDATION_FAILURE');
+  assert.match(result.error.message, /312 of 486 hours \(174 left\)/);
+  assert.equal(fixture.writes.length, 0);
 });
 
 test('modal traps keyboard focus, closes on Escape, and restores focus and scroll state', () => {
@@ -1520,8 +1534,8 @@ test('core student, OJT Coordinator, and supervisor service paths return useful 
   const supervisor = workflowFixture('Supervisor', { tables: {
     supervisors: [{ user_id: 'actor', supervisor_id: 'supervisor' }],
     student_assignments: [{ student_id: 'student', supervisor_id: 'supervisor', assignment_id: 'assignment', assignment_status: 'active' }],
-  } });
-  assert.equal((await supervisor.module('evaluations').createEvaluation({ student_id: 'student', performance_score: null, feedback: 'Good progress.', evaluation_type: 'midterm', criteria: { technical_competence: 5, productivity_dependability: 4, attendance_punctuality: 4, communication_skills: 4, work_ethics_professionalism: 4 } })).error, null);
+  }, trainees: [{ student_id: 'student', completed_hours: 486, required_hours: 486 }] });
+  assert.equal((await supervisor.module('evaluations').createEvaluation({ student_id: 'student', performance_score: null, feedback: 'Good progress.', criteria: { technical_competence: 5, productivity_dependability: 4, attendance_punctuality: 4, communication_skills: 4, work_ethics_professionalism: 4 } })).error, null);
   assert.equal(supervisor.tables.evaluations[0].performance_score, 85);
 
   const head = workflowFixture('Coordinator', { tables: { students: [{ student_id: 'student', course: 'BSIT', users: { account_status: 'active' }, internship_progress: { completed_hours: 120, progress_status: 'in_progress' } }] } });

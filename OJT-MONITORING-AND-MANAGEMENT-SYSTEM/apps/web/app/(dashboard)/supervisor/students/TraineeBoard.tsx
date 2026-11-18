@@ -232,7 +232,13 @@ export function TraineeBoard({ trainees, intake }: { trainees: SupervisedTrainee
               </dl>
               <div className="mt-3">
                 <div className="flex justify-between text-xs text-slate-500">
-                  <span>{t.completed_hours} / {t.required_hours} hours ({pct}%)</span>
+                  <span>
+                    {t.completed_hours} / {t.required_hours} Credited Hours ({pct}%)
+                    {' · '}
+                    {t.completed_hours >= t.required_hours
+                      ? <a href="/supervisor/evaluations" className="font-bold text-teal-700 underline">Hours complete · ready for final evaluation</a>
+                      : `${Math.round((t.required_hours - t.completed_hours) * 100) / 100} h left`}
+                  </span>
                   <span>{t.expected_end ? `Expected end ${t.expected_end}` : 'Expected end: not available'}</span>
                 </div>
                 <div className="mt-1 h-2 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-teal-600" style={{ width: `${pct}%` }} /></div>

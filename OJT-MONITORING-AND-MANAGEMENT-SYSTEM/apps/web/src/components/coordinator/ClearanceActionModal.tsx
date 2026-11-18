@@ -190,9 +190,9 @@ export default function ClearanceActionModal({
                     {clearance.evaluation_passed ? <Check className="w-3 h-3 stroke-[3]" /> : <Award className="w-3 h-3" />}
                   </div>
                   <div>
-                    <span className="font-bold">3. Industry Supervisor Appraisals (Passing &ge; 75.0%)</span>
+                    <span className="font-bold">3. Supervisor Final Evaluation (Passing &ge; 75.0%)</span>
                     <p className="text-xs text-slate-500">
-                      Midterm: {clearance.midterm_score !== null ? `${clearance.midterm_score}%` : 'Not Rated'} • Final: {clearance.final_score !== null ? `${clearance.final_score}%` : 'Not Rated'}
+                      Final: {clearance.final_score !== null ? `${clearance.final_score}%` : 'Not Rated'}
                     </p>
                   </div>
                 </div>

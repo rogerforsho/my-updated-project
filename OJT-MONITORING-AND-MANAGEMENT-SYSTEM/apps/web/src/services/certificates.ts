@@ -115,9 +115,7 @@ export async function checkClearanceStatus(student_id: string): Promise<AppResul
     : null;
 
   const evalScore = finalScore !== null ? finalScore : midtermScore;
-  const evaluationPassed = !evaluationAppealPending
-    && midtermScore !== null && midtermScore >= 75
-    && finalScore !== null && finalScore >= 75;
+  const evaluationPassed = !evaluationAppealPending && finalScore !== null && finalScore >= 75;
 
   // 5. Read the Coordinator-entered grade and any finalized certificate.
   const { data: grade, error: gradeError } = await supabase.from('ojt_final_grades')

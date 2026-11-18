@@ -84,10 +84,10 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- 45 evaluations by the local supervisor (midterm/final mix)
+  -- 45 final evaluations by the local supervisor (the only evaluation stage)
   FOR i IN 1..45 LOOP
     INSERT INTO evaluations (student_id, supervisor_id, performance_score, feedback, evaluation_date, evaluation_type)
-    VALUES (st_ids[i], local_sup, 70 + (i * 7) % 30, 'Demo feedback for trainee ' || i || '.', current_date - i, CASE WHEN i % 2 = 0 THEN 'final' ELSE 'midterm' END)
+    VALUES (st_ids[i], local_sup, 70 + (i * 7) % 30, 'Demo feedback for trainee ' || i || '.', current_date - i, 'final')
     RETURNING evaluation_id INTO eid;
     ev_ids := ev_ids || eid;
   END LOOP;

@@ -53,7 +53,7 @@ export default function AccessPortalModal({ isOpen, onClose }: AccessPortalModal
     {
       role: 'Company Supervisor',
       badge: 'Host Training Establishment',
-      description: 'Review attendance and daily reports for assigned students, and submit midterm and final evaluations.',
+      description: 'Review attendance and daily reports for assigned students, and submit the final evaluation once a trainee completes their hours.',
       href: '/auth/sign-in?role=supervisor',
       icon: Building2,
       color: 'border-emerald-500/40 hover:border-emerald-500 bg-emerald-50/40',

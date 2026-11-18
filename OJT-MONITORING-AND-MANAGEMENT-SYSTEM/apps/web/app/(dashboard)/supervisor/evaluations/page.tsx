@@ -10,7 +10,7 @@ import { Badge } from '@/src/components/ui/Badge';
 import { Star } from '@/src/components/ui/Icons';
 import {
   createEvaluation, listAssignedStudentsForEvaluation, listEvaluationsForSupervisor,
-  type EvaluationRubricCriteria
+  type EvaluationRubricCriteria, type EvaluationCandidate
 } from '@/src/services/evaluations';
 
 
@@ -39,19 +39,21 @@ export default function SupervisorEvaluationsPage() {
   const [total, setTotal] = useState(0);
   const [searchText, setSearchText] = useState('');
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [pageSize, changePageSize] = usePageSize();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [studentId, setStudentId] = useState('');
-  const [evaluationType, setEvaluationType] = useState<'midterm' | 'final'>('midterm');
   const [feedback, setFeedback] = useState('');
   const [criteria, setCriteria] = useState<EvaluationRubricCriteria>(DEFAULT_CRITERIA);
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [students, setStudents] = useState<{ student_id: string; full_name: string; student_number: string; course: string }[]>([]);
+  const [students, setStudents] = useState<EvaluationCandidate[]>([]);
+  const hoursLeft = (s: EvaluationCandidate) => Math.max(0, Math.round((s.required_hours - s.completed_hours) * 100) / 100);
+  const isEligible = (s: EvaluationCandidate) => hoursLeft(s) === 0 && !s.already_evaluated;
+  const eligibleCount = students.filter(isEligible).length;
+  const picked = students.find(s => s.student_id === studentId);
 
   const computedTotalScore = RUBRIC.reduce((sum, { key, weight }) => sum + (weight * criteria[key]) / 5, 0);
   const commentRequired = RUBRIC.some(({ key }) => criteria[key] < 3);
@@ -59,12 +61,12 @@ export default function SupervisorEvaluationsPage() {
   const load = useCallback(async (p: number) => {
     setLoading(true);
     setError('');
-    const result = await listEvaluationsForSupervisor(p, pageSize, { search, type: typeFilter });
+    const result = await listEvaluationsForSupervisor(p, pageSize, { search });
     setLoading(false);
     if (result.error) { setError(result.error.message); return; }
     setEvaluations(result.data!.evaluations);
     setTotal(result.data!.total);
-  }, [search, typeFilter, pageSize]);
+  }, [search, pageSize]);
 
   useEffect(() => {
     const t = setTimeout(() => { setSearch(searchText.trim()); setPage(1); }, 300);
@@ -96,7 +98,6 @@ export default function SupervisorEvaluationsPage() {
         const parsed = JSON.parse(saved);
         if (parsed.feedback) setFeedback(parsed.feedback);
         if (isValidRatings(parsed.criteria)) setCriteria(parsed.criteria);
-        if (parsed.evaluationType) setEvaluationType(parsed.evaluationType);
         setDraftRestored(true);
       }
     } catch {}
@@ -108,7 +109,6 @@ export default function SupervisorEvaluationsPage() {
     const timer = setTimeout(() => {
       try {
         localStorage.setItem(`ojt_eval_draft_${studentId}`, JSON.stringify({
-          evaluationType,
           feedback,
           criteria,
           timestamp: new Date().toISOString(),
@@ -116,7 +116,7 @@ export default function SupervisorEvaluationsPage() {
       } catch {}
     }, 1000);
     return () => clearTimeout(timer);
-  }, [studentId, evaluationType, feedback, criteria, modalOpen]);
+  }, [studentId, feedback, criteria, modalOpen]);
 
   async function handleSave() {
     setFormError('');
@@ -132,7 +132,6 @@ export default function SupervisorEvaluationsPage() {
     setSaving(true);
     const result = await createEvaluation({
       student_id: studentId,
-      evaluation_type: evaluationType,
       performance_score: computedTotalScore,
       feedback: feedback.trim(),
       criteria,
@@ -151,6 +150,8 @@ export default function SupervisorEvaluationsPage() {
     setCriteria(DEFAULT_CRITERIA);
     setDraftRestored(false);
     load(page);
+    const refreshed = await listAssignedStudentsForEvaluation();
+    if (refreshed.data) setStudents(refreshed.data);
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -168,7 +169,7 @@ export default function SupervisorEvaluationsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Trainee Performance Evaluations</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Rate each competency on a 5-point scale. A comment is required for any rating below 3.</p>
+          <p className="text-sm text-slate-500 mt-0.5">One final evaluation per trainee, once they have finished their required practicum hours. Rate each competency on a 5-point scale; a comment is required for any rating below 3.</p>
         </div>
         <Button
           onClick={async () => {
@@ -197,16 +198,6 @@ export default function SupervisorEvaluationsPage() {
           placeholder="Search trainee name or ID..."
           className="w-full sm:w-72 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-teal-500"
         />
-        <select
-          aria-label="Filter by evaluation stage"
-          value={typeFilter}
-          onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
-          className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm"
-        >
-          <option value="all">All stages</option>
-          <option value="midterm">Midterm</option>
-          <option value="final">Final</option>
-        </select>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
@@ -215,7 +206,7 @@ export default function SupervisorEvaluationsPage() {
         ) : evaluations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
             <Star className="mb-3 w-9 h-9 text-slate-300" aria-hidden="true" />
-            <p className="text-sm font-semibold text-slate-700">{search || typeFilter !== 'all' ? 'No evaluations match your filters' : 'No evaluations submitted yet'}</p>
+            <p className="text-sm font-semibold text-slate-700">{search ? 'No evaluations match your search' : 'No evaluations submitted yet'}</p>
             <p className="text-xs text-slate-400 mt-1">Submit competency ratings for your assigned interns.</p>
           </div>
         ) : (
@@ -243,7 +234,7 @@ export default function SupervisorEvaluationsPage() {
                         ? 'bg-amber-50 text-amber-800 border-amber-200'
                         : 'bg-[#0A3824]/10 text-[#0A3824] border-[#0A3824]/30'
                     }`}>
-                      {e.evaluation_type === 'midterm' ? 'Midterm (243h)' : 'Final (486h)'}
+                      {e.evaluation_type === 'midterm' ? 'Midterm (legacy)' : 'Final'}
                     </Badge>
                   </td>
                   <td className="px-5 py-4">
@@ -284,7 +275,7 @@ export default function SupervisorEvaluationsPage() {
               <Button
                 onClick={handleSave}
                 loading={saving}
-                disabled={students.length === 0 || !studentId}
+                disabled={!picked || !isEligible(picked)}
                 className="bg-[#0A3824] hover:bg-[#092E1D] text-[var(--cdm-sand)] font-bold shadow-md px-5"
               >
                 Submit Official Evaluation
@@ -294,50 +285,6 @@ export default function SupervisorEvaluationsPage() {
         }
       >
         <div className="space-y-4">
-          {/* Evaluation Stage Selector */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-700">
-              Practicum Evaluation Milestone Stage <span className="text-rose-500">*</span>
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setEvaluationType('midterm')}
-                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                  evaluationType === 'midterm'
-                    ? 'border-[#0A3824] bg-emerald-50/70 ring-2 ring-[#0A3824]'
-                    : 'border-slate-200 bg-white hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-slate-900">Midterm Evaluation</span>
-                  <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
-                    243h Target
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 mt-1">Midway progress checkpoint (50% completion)</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setEvaluationType('final')}
-                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                  evaluationType === 'final'
-                    ? 'border-[#0A3824] bg-emerald-50/70 ring-2 ring-[#0A3824]'
-                    : 'border-slate-200 bg-white hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-slate-900">Final Exit Appraisal</span>
-                  <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-                    486h Clearance
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 mt-1">Final exit appraisal for degree clearance</p>
-              </button>
-            </div>
-          </div>
-
           {/* Trainee Selection */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-slate-700">
@@ -359,13 +306,30 @@ export default function SupervisorEvaluationsPage() {
                 onChange={e => handleStudentSelect(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#0A3824] shadow-xs"
               >
-                <option value="">Select assigned trainee ({students.length} available)</option>
+                <option value="">Select trainee ({eligibleCount} ready for final evaluation)</option>
                 {students.map(s => (
-                  <option key={s.student_id} value={s.student_id}>
-                    {s.full_name} — {s.student_number} ({s.course})
+                  <option key={s.student_id} value={s.student_id} disabled={!isEligible(s)}>
+                    {s.full_name} — {s.completed_hours} / {s.required_hours} h
+                    {s.already_evaluated ? ' · Already evaluated' : hoursLeft(s) > 0 ? ` · ${hoursLeft(s)} h left` : ''}
                   </option>
                 ))}
               </select>
+            )}
+            {students.length > 0 && eligibleCount === 0 && (
+              <p className="text-xs text-amber-800">
+                None of your trainees can be evaluated yet. A trainee is evaluated once their Credited Hours reach the required hours.
+              </p>
+            )}
+            {picked && (
+              <div className="text-xs text-slate-500">
+                <div className="flex justify-between">
+                  <span>{picked.completed_hours} / {picked.required_hours} Credited Hours</span>
+                  <span>{hoursLeft(picked) === 0 ? 'Hours complete' : `${hoursLeft(picked)} h left`}</span>
+                </div>
+                <div className="mt-1 h-2 rounded-full bg-slate-100">
+                  <div className="h-2 rounded-full bg-teal-600" style={{ width: `${Math.min(100, Math.round((picked.completed_hours / picked.required_hours) * 100))}%` }} />
+                </div>
+              </div>
             )}
 
             {draftRestored && (

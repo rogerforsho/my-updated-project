@@ -42,7 +42,7 @@ There are four roles: OJT Student, Supervisor, OJT Coordinator, Super Admin. The
 - Dashboard of assigned students.
 - Attendance review: Verify or mark Disputed (stored as Rejected).
 - Weekly Journals: approve or return with required feedback (retired Daily Journals and Accomplishment Reports stay reviewable).
-- Midterm and final evaluations on a 1–5 scale; a comment is required for scores below 3 (verified).
+- One final evaluation per trainee on a 1–5 scale, allowed only after the required hours are finished; a comment is required for scores below 3.
 - Text chat with the Coordinator, notifications.
 - Off-site/schedule dates are finite (migration `finite_offsite_schedule_dates`); the approval UI is only partly traced.
 
