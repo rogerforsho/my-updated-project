@@ -48,7 +48,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/supervisor/messages': 'Messages',
   '/supervisor/notifications': 'Notifications',
   '/supervisor/attendance': 'Attendance Verification',
-  '/supervisor/reports': 'Daily Accomplishment Reports',
+  '/supervisor/reports': 'Trainee Weekly Journals',
   '/supervisor/evaluations': 'Performance Evaluations',
   '/admin': 'Administrative Console',
   '/map': 'Partner Companies',

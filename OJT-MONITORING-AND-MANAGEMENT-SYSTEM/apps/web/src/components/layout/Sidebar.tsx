@@ -59,7 +59,7 @@ const NAV_ITEMS: Record<string, NavItem[]> = {
   Supervisor: [
     { label: 'My Students', href: '/supervisor/students', icon: Users },
     { label: 'Attendance', href: '/supervisor/attendance', icon: Clock },
-    { label: 'Daily Reports', href: '/supervisor/reports', icon: FileText },
+    { label: 'Weekly Journals', href: '/supervisor/reports', icon: FileText },
     { label: 'Evaluations', href: '/supervisor/evaluations', icon: Star },
     { label: 'Messages', href: '/supervisor/messages', icon: MessagesSquare },
     { label: 'Notifications', href: '/supervisor/notifications', icon: Bell },
