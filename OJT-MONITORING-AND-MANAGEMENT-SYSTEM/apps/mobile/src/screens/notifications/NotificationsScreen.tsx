@@ -6,8 +6,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { listStudentFeed, markNotificationRead, markAllNotificationsRead, archiveNotification, type MobileFeedItem } from '../../services/notifications';
 import SwipeToArchive from '../../components/SwipeToArchive';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { type } from '../../theme';
 
 export default function NotificationsScreen() {
+  const insets = useSafeAreaInsets();
   const [feed, setFeed] = useState<MobileFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -105,11 +108,11 @@ export default function NotificationsScreen() {
   return (
     <View style={s.root}>
       {/* Header */}
-      <View style={s.header}>
+      <View style={[s.header, { paddingTop: insets.top + 8 }]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View>
             <Text style={s.headerKicker}>Colegio de Montalban OJT</Text>
-            <Text style={s.title}>Notices & Alerts</Text>
+            <Text style={s.title}>Notifications</Text>
           </View>
           {hasUnread && (
             <TouchableOpacity onPress={handleMarkAllRead} accessibilityRole="button" accessibilityLabel="Mark all as read" style={s.markAllBtn} activeOpacity={0.8}>
@@ -258,8 +261,8 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F4F6F2' },
   center: { flex: 1, backgroundColor: '#F4F6F2', alignItems: 'center', justifyContent: 'center' },
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 14 },
-  headerKicker: { fontSize: 11, fontWeight: '800', color: '#0A3824', textTransform: 'uppercase', letterSpacing: 0.5 },
-  title: { fontSize: 24, fontWeight: '900', color: '#092E1D' },
+  headerKicker: type.kicker,
+  title: type.title,
   subtitle: { fontSize: 12, color: '#526257', marginTop: 2 },
   markAllBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: 'rgba(10,56,36,0.08)' },
   markAllText: { fontSize: 11, fontWeight: '700', color: '#0A3824' },

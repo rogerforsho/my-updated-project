@@ -4,12 +4,19 @@ import {
   KeyboardAvoidingView, Platform, Linking, RefreshControl, AppState,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, type } from '../../theme';
 import { requireUser } from '../../lib/studentIdentity';
 import { enqueueChatMessage, listChatOutbox, removeChatOutboxItem, type ChatOutboxItem } from '../../lib/chatOutbox';
 import {
   listGroupMessages, flushChatOutbox, subscribeGroupMessages, listGroupDocuments, getGroupDocumentUrl,
   type GroupMessage, type GroupDocument,
 } from '../../services/groupChat';
+
+const dayLabel = (iso: string) => {
+  const d = new Date(iso);
+  return d.toDateString() === new Date().toDateString() ? 'Today' : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+};
 
 // A message still on the phone (waiting for signal, or refused by the server) shown beside the sent ones.
 type ChatRow = GroupMessage & { pending?: 'sending' | 'rejected'; reason?: string };
@@ -131,17 +138,23 @@ export default function GroupScreen() {
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
             ListEmptyComponent={<Text style={s.empty}>No messages yet. Say hello to your department.</Text>}
-            renderItem={({ item }) => {
+            renderItem={({ item, index }) => {
               const mine = item.sender_user_id === me;
+              const prev = rows[index - 1];
+              const newDay = !prev || dayLabel(prev.created_at) !== dayLabel(item.created_at);
+              // Same sender within the same day: show the name once and tuck the bubbles together.
+              const grouped = !newDay && prev.sender_user_id === item.sender_user_id;
               return (
+                <View style={grouped ? { marginTop: -6 } : undefined}>
+                {newDay && <Text style={s.day}>{dayLabel(item.created_at)}</Text>}
                 <View style={[s.bubbleRow, { justifyContent: mine ? 'flex-end' : 'flex-start' }]}>
                   <View style={[s.bubble, mine ? s.bubbleMine : s.bubbleOther, item.pending === 'sending' && { opacity: 0.6 }]}>
-                    {!mine && <Text style={s.sender}>{item.sender_name}{item.sender_role === 'Coordinator' ? ' · Coordinator' : ''}</Text>}
+                    {!mine && !grouped && <Text style={s.sender}>{item.sender_name}{item.sender_role === 'Coordinator' ? ' · Coordinator' : ''}</Text>}
                     <Text style={[s.body, mine && { color: '#fff' }]}>{item.content}</Text>
                     <Text style={[s.time, mine && { color: '#CFE6D8' }]}>
                       {item.pending === 'sending' ? "Sending… will send when you're back online"
                         : item.pending === 'rejected' ? `Not sent: ${item.reason}`
-                        : new Date(item.created_at).toLocaleString()}
+                        : new Date(item.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                     </Text>
                     {item.pending === 'rejected' && (
                       <TouchableOpacity onPress={() => discard(item.message_id)} accessibilityRole="button" accessibilityLabel="Delete unsent message">
@@ -150,6 +163,7 @@ export default function GroupScreen() {
                     )}
                   </View>
                 </View>
+                </View>
               );
             }}
           />
@@ -157,8 +171,8 @@ export default function GroupScreen() {
             <TextInput value={draft} onChangeText={setDraft} placeholder="Message your department…" multiline maxLength={4000}
               style={s.input} accessibilityLabel="Write a message" />
             <TouchableOpacity onPress={send} disabled={!draft.trim() || !me} accessibilityRole="button" accessibilityLabel="Send"
-              style={[s.sendBtn, (!draft.trim() || !me) && { opacity: 0.5 }]}>
-              <Text style={s.sendText}>Send</Text>
+              style={[s.sendBtn, (!draft.trim() || !me) && { opacity: 0.35 }]}>
+              <Ionicons name="arrow-up" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
         </>
@@ -171,8 +185,11 @@ export default function GroupScreen() {
           ListEmptyComponent={<Text style={s.empty}>No documents yet. Files your Coordinator sends you appear here.</Text>}
           renderItem={({ item }) => (
             <TouchableOpacity onPress={() => openDocument(item)} accessibilityRole="button" accessibilityLabel={`Open ${item.title}`} style={s.docCard} activeOpacity={0.8}>
-              <Text style={s.docTitle}>{item.title}</Text>
-              <Text style={s.docMeta}>{item.file_name} · {new Date(item.created_at).toLocaleDateString()}</Text>
+              <View style={s.docIcon}><Ionicons name="document-text-outline" size={20} color={colors.ink} /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.docTitle}>{item.title}</Text>
+                <Text style={s.docMeta}>{item.file_name} · {new Date(item.created_at).toLocaleDateString()}</Text>
+              </View>
             </TouchableOpacity>
           )}
         />
@@ -184,14 +201,16 @@ export default function GroupScreen() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F6F8F5' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F6F8F5' },
-  header: { paddingHorizontal: 16, paddingBottom: 8 },
-  kicker: { fontSize: 11, fontWeight: '700', color: '#7A887D', textTransform: 'uppercase', marginTop: 8 },
-  title: { fontSize: 22, fontWeight: '800', color: '#0A3824' },
-  tabs: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  tab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: '#DCE5DB', backgroundColor: '#FFFEFB' },
-  tabActive: { backgroundColor: '#0A3824', borderColor: '#0A3824' },
+  header: { paddingHorizontal: 20, paddingBottom: 8 },
+  kicker: { ...type.kicker, marginTop: 8 },
+  title: type.title,
+  // One rounded track with the selected option filled, instead of two loose pills.
+  tabs: { flexDirection: 'row', marginTop: 12, padding: 3, borderRadius: 999, backgroundColor: colors.tint },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 999 },
+  tabActive: { backgroundColor: colors.ink },
   tabText: { fontSize: 13, fontWeight: '700', color: '#3D4A40' },
   tabTextActive: { color: '#fff' },
+  day: { alignSelf: 'center', fontSize: 11, fontWeight: '700', color: colors.muted, marginVertical: 8 },
   error: { marginHorizontal: 16, marginBottom: 4, padding: 8, borderRadius: 8, backgroundColor: '#FDECEC', color: '#9B1C1C', fontSize: 13 },
   empty: { textAlign: 'center', color: '#7A887D', marginTop: 40, fontSize: 14 },
   bubbleRow: { flexDirection: 'row' },
@@ -202,10 +221,10 @@ const s = StyleSheet.create({
   body: { fontSize: 14, color: '#1F2A22' },
   time: { fontSize: 10, color: '#7A887D', marginTop: 3 },
   composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#DCE5DB', backgroundColor: '#FFFEFB' },
-  input: { flex: 1, maxHeight: 110, minHeight: 40, borderWidth: 1, borderColor: '#DCE5DB', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, backgroundColor: '#fff' },
-  sendBtn: { backgroundColor: '#0A3824', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 11 },
-  sendText: { color: '#fff', fontWeight: '800', fontSize: 14 },
-  docCard: { backgroundColor: '#FFFEFB', borderWidth: 1, borderColor: '#DCE5DB', borderRadius: 14, padding: 14 },
+  input: { flex: 1, maxHeight: 110, minHeight: 42, borderWidth: 1, borderColor: '#DCE5DB', borderRadius: 21, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, backgroundColor: '#fff' },
+  sendBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0A3824' },
+  docCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFFEFB', borderWidth: 1, borderColor: '#DCE5DB', borderRadius: 16, padding: 14 },
+  docIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.tint },
   docTitle: { fontSize: 15, fontWeight: '800', color: '#0A3824' },
   docMeta: { fontSize: 12, color: '#7A887D', marginTop: 3 },
 });

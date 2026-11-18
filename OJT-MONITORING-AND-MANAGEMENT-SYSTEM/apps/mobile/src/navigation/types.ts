@@ -10,6 +10,7 @@ export type StudentTabParamList = {
   Progress: undefined;
   Reports: undefined;
   Group: undefined;
+  Notifications: undefined;
   More: undefined;
 };
 
@@ -18,6 +19,5 @@ export type StudentStackParamList = {
   Tabs: undefined;
   Evaluations: undefined;
   HteEvaluation: undefined;
-  Notifications: undefined;
   Profile: undefined;
 };

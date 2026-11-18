@@ -194,7 +194,7 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F4F6F2' },
   center: { flex: 1, backgroundColor: '#F4F6F2', justifyContent: 'center', alignItems: 'center' },
   header: { backgroundColor: '#FFFEFB', paddingHorizontal: 20, paddingTop: 14, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#DCE5DB' },
-  kicker: { color: '#A8792B', fontSize: 10, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' },
+  kicker: { color: '#65806D', fontSize: 10, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' },
   title: { color: '#092E1D', fontSize: 20, fontWeight: '800', marginTop: 2 },
   subtitle: { color: '#68776B', fontSize: 11, marginTop: 2 },
   content: { padding: 20, gap: 12, paddingBottom: 40 },

@@ -4,11 +4,11 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import type { StudentStackParamList } from '../../navigation/types';
+import { type } from '../../theme';
 
 const ROWS: { route: Exclude<keyof StudentStackParamList, 'Tabs'>; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { route: 'Evaluations', label: 'Results', icon: 'star-outline' },
   { route: 'HteEvaluation', label: 'HTE Evaluation', icon: 'business-outline' },
-  { route: 'Notifications', label: 'Alerts', icon: 'notifications-outline' },
   { route: 'Profile', label: 'Account', icon: 'person-outline' },
 ];
 
@@ -40,7 +40,7 @@ export default function MoreScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F4F6F2', paddingHorizontal: 20 },
-  title: { fontSize: 28, fontWeight: '800', color: '#0A3824', paddingTop: 16, paddingBottom: 16 },
+  title: { ...type.title, paddingTop: 16, paddingBottom: 16 },
   card: { backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1, borderColor: '#DCE5DB', overflow: 'hidden' },
   row: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18 },
   rowDivider: { borderTopWidth: 1, borderTopColor: '#EEF2ED' },
