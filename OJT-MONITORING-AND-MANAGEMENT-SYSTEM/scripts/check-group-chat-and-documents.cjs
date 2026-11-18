@@ -5,8 +5,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 
-const migration = fs.readFileSync(
-  path.join(__dirname, '..', 'supabase', 'migrations', '20261118000400_group_chat_and_documents.sql'), 'utf8');
+const migration = ['20261118000400_group_chat_and_documents.sql', '20261118000600_group_chat_client_id.sql']
+  .map(f => fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', f), 'utf8')).join('\n');
 
 const id = n => `00000000-0000-4000-8000-0000000000${n}`;
 const ICS_COORD = id('c1'), IBE_COORD = id('c2');
@@ -50,8 +50,8 @@ async function main() {
     await db.exec(`SET ROLE authenticated; SELECT set_config('test.uid', '${uid}', false)`);
     try { return await db.query(sql); } finally { await db.exec('RESET ROLE'); }
   };
-  const post = (sender, dept, text) =>
-    db.query(`SELECT * FROM public.post_group_chat_message('${sender}', '${dept}', '${text}')`);
+  const post = (sender, dept, text, clientId) =>
+    db.query(`SELECT * FROM public.post_group_chat_message('${sender}', '${dept}', '${text}'${clientId ? `, '${clientId}'` : ''})`);
   const send = (sender, dept, ids, path = `chat/${ICS_COORD}/${FILE}.pdf`) =>
     db.query(`SELECT * FROM public.send_coordinator_document('${sender}', '${dept}', 'Syllabus', '${path}', 'Syllabus.pdf', ${ids})`);
   const visible = async (uid, table) => (await as(uid, `SELECT count(*)::int AS n FROM public.${table}`)).rows[0].n;
@@ -73,6 +73,18 @@ async function main() {
   await assert.rejects(() => as(ICS_A, `INSERT INTO public.group_chat_messages(department, sender_user_id, sender_name, sender_role, content)
     VALUES ('ICS', '${ICS_A}', 'Ana', 'Student', 'direct')`), /permission denied/);
   await assert.rejects(() => as(ICS_A, `SELECT public.post_group_chat_message('${ICS_A}', 'ICS', 'x')`), /permission denied/);
+
+  // A retried offline message (same client_id) is stored once and returns the same row.
+  const CID = '33333333-3333-4333-8333-333333333333', CID2 = '44444444-4444-4444-8444-444444444444';
+  const first = (await post(ICS_A, 'ICS', 'sent offline', CID)).rows[0];
+  const retry = (await post(ICS_A, 'ICS', 'sent offline', CID)).rows[0];
+  assert.equal(retry.message_id, first.message_id);
+  await post(ICS_A, 'ICS', 'another', CID2);
+  await post(ICS_A, 'ICS', 'no id');
+  await post(ICS_A, 'ICS', 'no id');
+  assert.equal(await visible(ICS_A, 'group_chat_messages'), 2 + 1 + 1 + 2);
+  // The same client_id from another sender is a different message.
+  assert.notEqual((await post(ICS_B, 'ICS', 'sent offline', CID)).rows[0].message_id, first.message_id);
 
   // ---- documents
   await assert.rejects(() => send(ICS_A, 'ICS', 'NULL'), /Only a Coordinator/);

@@ -1,14 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList, ActivityIndicator, StyleSheet,
-  KeyboardAvoidingView, Platform, Linking, RefreshControl,
+  KeyboardAvoidingView, Platform, Linking, RefreshControl, AppState,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { requireUser } from '../../lib/studentIdentity';
+import { enqueueChatMessage, listChatOutbox, removeChatOutboxItem, type ChatOutboxItem } from '../../lib/chatOutbox';
 import {
-  listGroupMessages, sendGroupMessage, subscribeGroupMessages, listGroupDocuments, getGroupDocumentUrl,
+  listGroupMessages, flushChatOutbox, subscribeGroupMessages, listGroupDocuments, getGroupDocumentUrl,
   type GroupMessage, type GroupDocument,
 } from '../../services/groupChat';
+
+// A message still on the phone (waiting for signal, or refused by the server) shown beside the sent ones.
+type ChatRow = GroupMessage & { pending?: 'sending' | 'rejected'; reason?: string };
 
 export default function GroupScreen() {
   const insets = useSafeAreaInsets();
@@ -17,22 +21,22 @@ export default function GroupScreen() {
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [documents, setDocuments] = useState<GroupDocument[]>([]);
   const [draft, setDraft] = useState('');
+  const [outbox, setOutbox] = useState<ChatOutboxItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-  const listRef = useRef<FlatList<GroupMessage>>(null);
+  const listRef = useRef<FlatList<ChatRow>>(null);
 
   const loadMessages = useCallback(async () => {
     const res = await listGroupMessages();
     if (res.error) setError(res.error.message);
-    else { setError(''); setMessages(res.data ?? []); }
+    else setMessages(res.data ?? []);
   }, []);
 
   const loadDocuments = useCallback(async () => {
     const res = await listGroupDocuments();
     if (res.error) setError(res.error.message);
-    else { setError(''); setDocuments(res.data ?? []); }
+    else setDocuments(res.data ?? []);
   }, []);
 
   useEffect(() => {
@@ -45,15 +49,46 @@ export default function GroupScreen() {
     return subscribeGroupMessages(() => { void loadMessages(); });
   }, [loadMessages, loadDocuments]);
 
+  // Sends whatever is waiting on the phone, then reloads. No signal is not an error: the messages stay queued.
+  const flush = useCallback(async () => {
+    if (!me) return;
+    await flushChatOutbox(me);
+    await loadMessages();
+    setOutbox(await listChatOutbox(me));
+  }, [me, loadMessages]);
+
+  // Save first, send second: the text is safe on the phone even if the app closes mid-send.
   const send = async () => {
     const content = draft.trim();
-    if (!content || sending) return;
-    setSending(true); setError('');
-    const res = await sendGroupMessage(content);
-    if (res.error) setError(res.error.message);
-    else { setDraft(''); await loadMessages(); }
-    setSending(false);
+    if (!content || !me) return;
+    setDraft(''); setError('');
+    await enqueueChatMessage(me, content);
+    setOutbox(await listChatOutbox(me));
+    await flush();
   };
+
+  const discard = async (clientId: string) => {
+    await removeChatOutboxItem(clientId);
+    setOutbox(await listChatOutbox(me));
+  };
+
+  const waiting = outbox.some(i => !i.rejected);
+  useEffect(() => {
+    void flush();
+    const sub = AppState.addEventListener('change', state => { if (state === 'active') void flush(); });
+    // shortcut: a 15 s poll while messages wait (no network-change listener); upgrade if battery use matters.
+    const timer = waiting ? setInterval(() => { void flush(); }, 15000) : null;
+    return () => { sub.remove(); if (timer) clearInterval(timer); };
+  }, [flush, waiting]);
+
+  const rows = useMemo<ChatRow[]>(() => {
+    const sent = new Set(messages.map(m => m.client_id).filter(Boolean));
+    const queued = outbox.filter(i => !sent.has(i.client_id)).map<ChatRow>(i => ({
+      message_id: i.client_id, sender_user_id: me, sender_name: '', sender_role: '',
+      content: i.content, created_at: i.created_at, pending: i.rejected ? 'rejected' : 'sending', reason: i.rejected,
+    }));
+    return [...messages, ...queued];
+  }, [messages, outbox, me]);
 
   const openDocument = async (item: GroupDocument) => {
     setError('');
@@ -63,8 +98,8 @@ export default function GroupScreen() {
   };
 
   const onRefresh = async () => {
-    setRefreshing(true);
-    await Promise.all([loadMessages(), loadDocuments()]);
+    setRefreshing(true); setError('');
+    await Promise.all([flush(), loadDocuments()]);
     setRefreshing(false);
   };
 
@@ -90,7 +125,7 @@ export default function GroupScreen() {
         <>
           <FlatList
             ref={listRef}
-            data={messages}
+            data={rows}
             keyExtractor={m => m.message_id}
             contentContainerStyle={{ padding: 16, gap: 10 }}
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
@@ -100,10 +135,19 @@ export default function GroupScreen() {
               const mine = item.sender_user_id === me;
               return (
                 <View style={[s.bubbleRow, { justifyContent: mine ? 'flex-end' : 'flex-start' }]}>
-                  <View style={[s.bubble, mine ? s.bubbleMine : s.bubbleOther]}>
+                  <View style={[s.bubble, mine ? s.bubbleMine : s.bubbleOther, item.pending === 'sending' && { opacity: 0.6 }]}>
                     {!mine && <Text style={s.sender}>{item.sender_name}{item.sender_role === 'Coordinator' ? ' · Coordinator' : ''}</Text>}
                     <Text style={[s.body, mine && { color: '#fff' }]}>{item.content}</Text>
-                    <Text style={[s.time, mine && { color: '#CFE6D8' }]}>{new Date(item.created_at).toLocaleString()}</Text>
+                    <Text style={[s.time, mine && { color: '#CFE6D8' }]}>
+                      {item.pending === 'sending' ? "Sending… will send when you're back online"
+                        : item.pending === 'rejected' ? `Not sent: ${item.reason}`
+                        : new Date(item.created_at).toLocaleString()}
+                    </Text>
+                    {item.pending === 'rejected' && (
+                      <TouchableOpacity onPress={() => discard(item.message_id)} accessibilityRole="button" accessibilityLabel="Delete unsent message">
+                        <Text style={[s.time, { color: '#fff', fontWeight: '800', marginTop: 4 }]}>Delete</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               );
@@ -112,9 +156,9 @@ export default function GroupScreen() {
           <View style={[s.composer, { paddingBottom: Math.max(insets.bottom, 8) }]}>
             <TextInput value={draft} onChangeText={setDraft} placeholder="Message your department…" multiline maxLength={4000}
               style={s.input} accessibilityLabel="Write a message" />
-            <TouchableOpacity onPress={send} disabled={!draft.trim() || sending} accessibilityRole="button" accessibilityLabel="Send"
-              style={[s.sendBtn, (!draft.trim() || sending) && { opacity: 0.5 }]}>
-              <Text style={s.sendText}>{sending ? '…' : 'Send'}</Text>
+            <TouchableOpacity onPress={send} disabled={!draft.trim() || !me} accessibilityRole="button" accessibilityLabel="Send"
+              style={[s.sendBtn, (!draft.trim() || !me) && { opacity: 0.5 }]}>
+              <Text style={s.sendText}>Send</Text>
             </TouchableOpacity>
           </View>
         </>
