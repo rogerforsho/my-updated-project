@@ -1,17 +1,19 @@
 import crypto from 'node:crypto';
 import { mobileBffFailure, mobileBffPreamble } from '@/src/lib/mobile-bff';
 import { getServiceClient } from '@/src/lib/supabase/service';
+import { toPublicSupabaseUrl } from '@/src/lib/supabase/public-url';
 import { recordAuditEvent } from '@/src/lib/audit';
 import { mergePdfs, type MergeSource } from '@/src/lib/mergePdfs';
-import { COMPILED_JOURNALS_TYPE, WEEKLY_JOURNAL_TYPE } from '@ojt/shared';
+import { FINAL_REPORT_MAX_BYTES, WEEKLY_JOURNAL_TYPE } from '@ojt/shared';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-// Keeps the merged file under the 50 MB private-documents bucket limit.
-const MAX_TOTAL_BYTES = 45 * 1024 * 1024;
-
-/** Merges the student's Supervisor-approved Weekly Journals into one PDF and submits it to the Coordinator. */
+/**
+ * Builds a draft Final Report: every Weekly Journal the student uploaded, merged into one PDF.
+ * Nothing is submitted. The student opens the draft, then submits it as the Final Report
+ * (POST /api/mobile/reports) or uploads their own completed version instead.
+ */
 export async function POST(request: Request) {
   const pre = await mobileBffPreamble(request, {
     beforeLimit: async (actor) => {
@@ -32,37 +34,33 @@ export async function POST(request: Request) {
     .select('progress_status, completed_hours').eq('student_id', actor.studentId).maybeSingle();
   if (progressError) return fail(503, 'SERVER_FAILURE', 'Could not check your progress.');
   if (progress?.progress_status !== 'completed')
-    return fail(409, 'FORBIDDEN', 'You can compile your journals after you complete your Required Hours.');
+    return fail(409, 'FORBIDDEN', 'You can build your Final Report after you complete your Required Hours.');
 
-  // One compiled file at a time: a new one is allowed only after the Coordinator returned the last.
-  const { data: existing, error: existingError } = await db.from('reports').select('report_id')
-    .eq('student_id', actor.studentId).eq('report_type', COMPILED_JOURNALS_TYPE).in('status', ['submitted', 'reviewed', 'approved']).limit(1);
-  if (existingError) return fail(503, 'SERVER_FAILURE', 'Could not check earlier submissions.');
-  if (existing?.length) return fail(409, 'FORBIDDEN', 'Your compiled journals are already with your OJT Coordinator.');
-
-  // Pre-rename rows are covered too, in case the migration has not reached this database yet.
+  // Every journal counts, approved or not: some students miss Supervisor approvals. Pre-rename rows are covered too.
   const { data: journals, error: journalsError } = await db.from('reports')
-    .select('file_path, submission_date').eq('student_id', actor.studentId)
-    .in('report_type', [WEEKLY_JOURNAL_TYPE, 'Weekly Progress']).eq('supervisor_decision', 'approved')
+    .select('file_path, submission_date, supervisor_decision').eq('student_id', actor.studentId)
+    .in('report_type', [WEEKLY_JOURNAL_TYPE, 'Weekly Progress'])
     .order('submission_date', { ascending: true });
   if (journalsError) return fail(503, 'SERVER_FAILURE', 'Could not load your journals.');
-  if (!journals?.length) return fail(400, 'VALIDATION_FAILURE', 'You have no approved Weekly Journals to compile yet.');
+  if (!journals?.length) return fail(400, 'VALIDATION_FAILURE', 'You have no Weekly Journals to build your Final Report from yet.');
 
   const sources: MergeSource[] = [];
   const notIncluded: string[] = [];
   let totalBytes = 0;
   for (const [index, journal] of journals.entries()) {
-    const name = `Journal ${index + 1} (submitted ${String(journal.submission_date).slice(0, 10)})`;
+    const status = journal.supervisor_decision === 'approved' ? 'approved'
+      : journal.supervisor_decision === 'returned' ? 'returned' : 'waiting for Supervisor';
+    const name = `Journal ${index + 1} (submitted ${String(journal.submission_date).slice(0, 10)}, ${status})`;
     // Older rows may hold a link or a DOCX/photo; only stored PDFs can be merged.
     if (!/\.pdf$/i.test(journal.file_path) || /^https?:/i.test(journal.file_path)) { notIncluded.push(name); continue; }
     const { data: file, error } = await db.storage.from('private-documents').download(journal.file_path);
     if (error || !file) { notIncluded.push(name); continue; }
     totalBytes += file.size;
-    if (totalBytes > MAX_TOTAL_BYTES)
-      return fail(413, 'VALIDATION_FAILURE', 'Your journals are too large to compile into one file. Ask your OJT Coordinator for help.');
+    if (totalBytes > FINAL_REPORT_MAX_BYTES)
+      return fail(413, 'VALIDATION_FAILURE', 'Your journals are too large to merge into one file. Ask your OJT Coordinator for help.');
     sources.push({ name, bytes: new Uint8Array(await file.arrayBuffer()) });
   }
-  if (!sources.length) return fail(400, 'VALIDATION_FAILURE', 'None of your approved journals are PDF files, so nothing could be compiled.');
+  if (!sources.length) return fail(400, 'VALIDATION_FAILURE', 'None of your journals are PDF files, so nothing could be merged.');
 
   const [{ data: student }, { data: assignment }] = await Promise.all([
     db.from('students').select('course, users(full_name)').eq('student_id', actor.studentId).maybeSingle(),
@@ -73,7 +71,7 @@ export async function POST(request: Request) {
   const assignmentRow = assignment as { start_date?: string; end_date?: string | null; companies?: { company_name?: string } | null } | null;
 
   const merged = await mergePdfs({
-    title: 'Compiled Weekly Journals',
+    title: 'Final Report: Compiled Weekly Journals',
     details: [
       `Student: ${studentRow?.users?.full_name ?? 'Unknown'}`,
       `Program: ${studentRow?.course ?? 'Unknown'}`,
@@ -86,31 +84,27 @@ export async function POST(request: Request) {
   if (!merged.included.length) return fail(400, 'VALIDATION_FAILURE', 'None of your journals could be read. They may be password protected.');
   const allSkipped = [...notIncluded, ...merged.skipped];
 
+  // shortcut: a draft the student never submits stays in storage; add a cleanup job if storage grows.
   const filePath = `${actor.user.id}/reports/${crypto.randomUUID()}.pdf`;
   const { error: uploadError } = await db.storage.from('private-documents')
     .upload(filePath, merged.bytes, { contentType: 'application/pdf', upsert: false });
-  if (uploadError) return fail(503, 'SERVER_FAILURE', 'Could not store the compiled PDF.');
+  if (uploadError) return fail(503, 'SERVER_FAILURE', 'Could not store the draft PDF.');
 
-  const { data: report, error: insertError } = await db.from('reports').insert({
-    student_id: actor.studentId,
-    report_type: COMPILED_JOURNALS_TYPE,
-    file_path: filePath,
-    status: 'submitted',
-    remarks: allSkipped.length ? `Not included (not a readable PDF): ${allSkipped.join(', ')}` : null,
-  }).select('report_id').single();
-  if (insertError || !report) {
-    await db.storage.from('private-documents').remove([filePath]);
-    return fail(503, 'SERVER_FAILURE', 'Failed to submit the compiled journals.');
-  }
-
+  const { data: signed } = await db.storage.from('private-documents').createSignedUrl(filePath, 300);
   await recordAuditEvent({
     actor_user_id: actor.user.id,
-    action: 'REPORT_JOURNALS_COMPILED',
-    entity_type: 'report',
-    entity_id: report.report_id,
+    action: 'REPORT_FINAL_DRAFT_BUILT',
+    entity_type: 'student',
+    entity_id: actor.studentId,
     details: { included: merged.included.length, skipped: allSkipped.length, pages: merged.pageCount, client: 'mobile' },
   });
-  return Response.json({ data: { included: merged.included.length, notIncluded: allSkipped }, error: null }, {
-    status: 200, headers: { 'Cache-Control': 'no-store' },
-  });
+  return Response.json({
+    data: {
+      file_path: filePath,
+      signedUrl: signed?.signedUrl ? toPublicSupabaseUrl(signed.signedUrl) : null,
+      included: merged.included.length,
+      notIncluded: allSkipped,
+    },
+    error: null,
+  }, { status: 200, headers: { 'Cache-Control': 'no-store' } });
 }

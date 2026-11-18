@@ -2,7 +2,7 @@ import { mobileBffFailure, mobileBffPreamble } from '@/src/lib/mobile-bff';
 import { getServiceClient } from '@/src/lib/supabase/service';
 import { validateUploadedBytes } from '@/src/lib/uploadValidation';
 import { recordAuditEvent } from '@/src/lib/audit';
-import { BUNDLE_EXTENSIONS, BUNDLE_MAX_BYTES, STUDENT_REPORT_TYPES, WEEKLY_JOURNAL_MAX_BYTES, WEEKLY_JOURNAL_TYPE } from '@ojt/shared';
+import { BUNDLE_EXTENSIONS, BUNDLE_MAX_BYTES, FINAL_REPORT_MAX_BYTES, FINAL_REPORT_TYPE, STUDENT_REPORT_TYPES, WEEKLY_JOURNAL_MAX_BYTES, WEEKLY_JOURNAL_TYPE } from '@ojt/shared';
 
 export const runtime = 'nodejs';
 
@@ -35,7 +35,8 @@ export async function POST(request: Request) {
   if (!isOwnedStoragePath)
     return mobileBffFailure({ status: 403, code: 'FORBIDDEN', message: 'Upload a PDF file before submitting.' });
 
-  const maxBytes = reportType === WEEKLY_JOURNAL_TYPE ? WEEKLY_JOURNAL_MAX_BYTES : BUNDLE_MAX_BYTES;
+  const maxBytes = reportType === WEEKLY_JOURNAL_TYPE ? WEEKLY_JOURNAL_MAX_BYTES
+    : reportType === FINAL_REPORT_TYPE ? FINAL_REPORT_MAX_BYTES : BUNDLE_MAX_BYTES;
   const { data: file, error: downloadError } = await actor.supabase.storage.from('private-documents').download(filePath);
   if (downloadError || !file)
     return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Upload the document again before submitting it.' });

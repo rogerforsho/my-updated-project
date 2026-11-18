@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase';
 import { requireUser, requireStudent } from '../lib/studentIdentity';
 import { uploadReportToStorage } from '../lib/storage';
 import { postWebBff } from '../lib/webBff';
-import type { AppResult, DbReport } from '@ojt/shared';
+import { FINAL_REPORT_TYPE, type AppResult, type DbReport } from '@ojt/shared';
 
 export interface SubmitReportInput {
   report_type: string;
@@ -49,9 +49,14 @@ export async function listStudentReports(
   return { data: { reports: (data as DbReport[]) ?? [], total: count ?? 0, isCompleted: Boolean(certificate), hoursComplete: progress?.progress_status === 'completed' }, error: null };
 }
 
-/** Merges the student's approved Weekly Journals into one PDF and sends it to the OJT Coordinator. */
+/** Builds a draft Final Report from every Weekly Journal. Nothing is sent until the student submits it. */
 export function compileWeeklyJournals() {
-  return postWebBff<{ included: number; notIncluded: string[] }>('/api/mobile/reports/compile-journals', {});
+  return postWebBff<{ file_path: string; signedUrl: string | null; included: number; notIncluded: string[] }>('/api/mobile/reports/compile-journals', {});
+}
+
+/** Submits a built draft as the Final Report; the OJT Coordinator reviews it. */
+export function submitFinalReportDraft(filePath: string) {
+  return postWebBff<null>('/api/mobile/reports', { report_type: FINAL_REPORT_TYPE, file_path: filePath, remarks: null });
 }
 
 export async function submitStudentReport(

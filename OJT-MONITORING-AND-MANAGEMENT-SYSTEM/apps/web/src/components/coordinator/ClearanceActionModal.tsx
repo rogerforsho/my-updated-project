@@ -115,7 +115,7 @@ export default function ClearanceActionModal({
       >
         {loading ? (
           <div className="py-12 text-center text-sm text-slate-400">
-            Verifying 3-pillar clearance records...
+            Verifying the 4 clearance gateways...
           </div>
         ) : error ? (
           <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl">
@@ -179,7 +179,27 @@ export default function ClearanceActionModal({
                 </Badge>
               </div>
 
-              {/* Pillar 3 */}
+              {/* Pillar 3: student's evaluation of the HTE */}
+              <div className={`p-3 rounded-xl border flex items-center justify-between ${
+                clearance.hte_evaluation_submitted ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' : 'bg-slate-50 border-slate-200 text-slate-700'
+              }`}>
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                    clearance.hte_evaluation_submitted ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-600'
+                  }`}>
+                    {clearance.hte_evaluation_submitted ? <Check className="w-3 h-3 stroke-[3]" /> : <FileText className="w-3 h-3" />}
+                  </div>
+                  <div>
+                    <span className="font-bold">3. Student Evaluation of the HTE</span>
+                    <p className="text-xs text-slate-500">Submitted by the student after the Required Hours</p>
+                  </div>
+                </div>
+                <Badge className={clearance.hte_evaluation_submitted ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}>
+                  {clearance.hte_evaluation_submitted ? 'Submitted' : 'Awaiting'}
+                </Badge>
+              </div>
+
+              {/* Pillar 4 */}
               <div className={`p-3 rounded-xl border flex items-center justify-between ${
                 clearance.evaluation_passed ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' : 'bg-slate-50 border-slate-200 text-slate-700'
               }`}>
@@ -190,7 +210,7 @@ export default function ClearanceActionModal({
                     {clearance.evaluation_passed ? <Check className="w-3 h-3 stroke-[3]" /> : <Award className="w-3 h-3" />}
                   </div>
                   <div>
-                    <span className="font-bold">3. Supervisor Final Evaluation (Passing &ge; 75.0%)</span>
+                    <span className="font-bold">4. Supervisor Final Evaluation (Passing &ge; 75.0%)</span>
                     <p className="text-xs text-slate-500">
                       Final: {clearance.final_score !== null ? `${clearance.final_score}%` : 'Not Rated'}
                     </p>

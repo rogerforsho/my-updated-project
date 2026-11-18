@@ -2,15 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList, RefreshControl,
   Modal, TextInput, ActivityIndicator, StyleSheet, ScrollView,
-  KeyboardAvoidingView, Platform, Alert,
+  KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import { compileWeeklyJournals, listStudentReports, submitStudentReport } from '../../services/reports';
+import { compileWeeklyJournals, listStudentReports, submitFinalReportDraft, submitStudentReport } from '../../services/reports';
 import { isNetworkAvailable } from '../../lib/syncEngine';
 import NetworkToast from '../../components/NetworkToast';
-import { COMPILED_JOURNALS_TYPE, GATEWAY_DOCUMENT_SPECS, STUDENT_REPORT_TYPES, WEEKLY_JOURNAL_TYPE, describeReportType, isBundleType, reviewerHint, type DbReport } from '@ojt/shared';
+import { FINAL_REPORT_TYPE, GATEWAY_DOCUMENT_SPECS, STUDENT_REPORT_TYPES, WEEKLY_JOURNAL_TYPE, describeReportType, isBundleType, reviewerHint, type DbReport } from '@ojt/shared';
 import CompanyRequestModal from '../../components/CompanyRequestModal';
 import IncidentReportModal from '../../components/IncidentReportModal';
 
@@ -47,6 +47,8 @@ export default function ReportsScreen() {
   const [isCompleted, setIsCompleted] = useState<boolean | null>(null);
   const [hoursComplete, setHoursComplete] = useState(false);
   const [compiling, setCompiling] = useState(false);
+  const [draft, setDraft] = useState<{ file_path: string; signedUrl: string | null } | null>(null);
+  const [sendingDraft, setSendingDraft] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
@@ -147,28 +149,30 @@ export default function ReportsScreen() {
   const approvedJournals = journals.filter(r => r.supervisor_decision === 'approved').length;
   const pendingJournals = journals.filter(r => !r.supervisor_decision).length;
   const returnedJournals = journals.filter(r => r.supervisor_decision === 'returned').length;
-  // A returned compile can be redone; anything else means the Coordinator already has one.
-  const compiledSent = reports.some(r => r.report_type === COMPILED_JOURNALS_TYPE && r.status !== 'rejected');
+  // A rejected Final Report can be redone; anything else means the Coordinator already has one.
+  const finalSent = reports.some(r => r.report_type === FINAL_REPORT_TYPE && r.status !== 'rejected');
 
-  const runCompile = async () => {
+  const handleBuildDraft = async () => {
     setCompiling(true);
     setError('');
     const result = await compileWeeklyJournals();
     setCompiling(false);
-    if (result.error) { setError(result.error.message); return; }
-    const skipped = result.data?.notIncluded.length ?? 0;
-    setSuccess(`${result.data?.included ?? 0} journals were merged into one PDF and sent to your OJT Coordinator.${skipped ? ` ${skipped} could not be included (not a readable PDF).` : ''}`);
-    load();
+    if (result.error || !result.data) { setError(result.error?.message ?? 'Could not build your Final Report.'); return; }
+    setDraft({ file_path: result.data.file_path, signedUrl: result.data.signedUrl });
+    const skipped = result.data.notIncluded.length;
+    setSuccess(`${result.data.included} journals were merged into one PDF. Open it to check, then submit it.${skipped ? ` ${skipped} could not be included (not a readable PDF).` : ''}`);
   };
 
-  const handleCompile = () => {
-    const warning = pendingJournals + returnedJournals;
-    if (!warning) { runCompile(); return; }
-    Alert.alert(
-      'Some journals will be left out',
-      `${warning} journal${warning === 1 ? ' is' : 's are'} still waiting for your Supervisor or was returned for correction. Only ${approvedJournals} approved journal${approvedJournals === 1 ? '' : 's'} will be compiled.`,
-      [{ text: 'Wait', style: 'cancel' }, { text: 'Compile now', onPress: runCompile }],
-    );
+  const handleSubmitDraft = async () => {
+    if (!draft) return;
+    setSendingDraft(true);
+    setError('');
+    const result = await submitFinalReportDraft(draft.file_path);
+    setSendingDraft(false);
+    if (result.error) { setError(result.error.message); return; }
+    setDraft(null);
+    setSuccess('Final Report submitted. It was sent to your OJT Coordinator for review.');
+    load();
   };
 
   if (loading) {
@@ -243,23 +247,35 @@ export default function ReportsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0A3824']} />}
         ListHeaderComponent={isCompleted === false ? (
           <View style={[s.reportCard, { borderColor: '#0A3824' }]}>
-            <Text style={s.reportType}>Compile Weekly Journals</Text>
+            <Text style={s.reportType}>Build my Final Report</Text>
             <Text style={[s.dateText, { marginBottom: 8 }]}>
-              Merges every Supervisor-approved Weekly Journal into one PDF and sends it to your OJT Coordinator.
+              Merges all your Weekly Journals into one PDF. Check it, then submit it as your Final Report, or upload your own completed version with Submit.
             </Text>
-            <Text style={s.remarksText}>{approvedJournals} approved · {pendingJournals} waiting for Supervisor · {returnedJournals} returned</Text>
-            {compiledSent ? (
-              <Text style={[s.remarksLabel, { marginTop: 10, color: '#0A3824' }]}>Your compiled journals are with your OJT Coordinator.</Text>
+            <Text style={s.remarksText}>{journals.length} journals · {approvedJournals} approved · {pendingJournals} waiting for Supervisor · {returnedJournals} returned</Text>
+            {finalSent ? (
+              <Text style={[s.remarksLabel, { marginTop: 10, color: '#0A3824' }]}>Your Final Report is with your OJT Coordinator.</Text>
             ) : !hoursComplete ? (
               <Text style={[s.remarksLabel, { marginTop: 10 }]}>Unlocks when you complete your Required Hours.</Text>
+            ) : draft ? (
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                {!!draft.signedUrl && (
+                  <TouchableOpacity onPress={() => Linking.openURL(draft.signedUrl!)} style={[s.btnSubmitModal, { flex: 0 }]} activeOpacity={0.85}>
+                    <Text style={s.btnSubmitModalText}>Open draft</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={handleSubmitDraft} disabled={sendingDraft}
+                  style={[s.btnSubmitModal, { flex: 0 }, sendingDraft && { opacity: 0.5 }]} activeOpacity={0.85}>
+                  {sendingDraft ? <ActivityIndicator color="#E4DBC4" /> : <Text style={s.btnSubmitModalText}>Submit as Final Report</Text>}
+                </TouchableOpacity>
+              </View>
             ) : (
               <TouchableOpacity
-                onPress={handleCompile}
-                disabled={compiling || approvedJournals === 0}
-                style={[s.btnSubmitModal, { marginTop: 10, flex: 0 }, (compiling || approvedJournals === 0) && { opacity: 0.5 }]}
+                onPress={handleBuildDraft}
+                disabled={compiling || journals.length === 0}
+                style={[s.btnSubmitModal, { marginTop: 10, flex: 0 }, (compiling || journals.length === 0) && { opacity: 0.5 }]}
                 activeOpacity={0.85}
               >
-                {compiling ? <ActivityIndicator color="#E4DBC4" /> : <Text style={s.btnSubmitModalText}>Compile and send to Coordinator</Text>}
+                {compiling ? <ActivityIndicator color="#E4DBC4" /> : <Text style={s.btnSubmitModalText}>Build draft</Text>}
               </TouchableOpacity>
             )}
           </View>

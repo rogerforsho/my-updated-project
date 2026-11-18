@@ -37,6 +37,8 @@ export const WEEKLY_JOURNAL_TYPE = 'Weekly Journal';
 /** One merged PDF of every approved Weekly Journal. Built by the server, not picked by the student. */
 export const COMPILED_JOURNALS_TYPE = 'Compiled Weekly Journals';
 export const FINAL_REPORT_TYPE = 'final_report';
+/** A compiled draft of every weekly journal can be large; the private bucket allows 50 MB. */
+export const FINAL_REPORT_MAX_BYTES = 45 * 1024 * 1024;
 export const INCIDENT_REPORT_TYPE = 'Incident Report';
 
 /** What a student can pick in the Submit form. Daily Journal and Accomplishment Report are retired. */

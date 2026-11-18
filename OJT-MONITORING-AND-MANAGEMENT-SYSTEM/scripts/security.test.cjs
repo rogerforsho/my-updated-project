@@ -458,6 +458,7 @@ test('failing grade is recorded without completion; passing grade finalizes and 
     internship_progress: [{ student_id: 'student', completed_hours: 486 }],
     reports: [{ student_id: 'student', report_type: 'final_report', status: 'approved' }],
     evaluations: [{ evaluation_id: 'midterm', student_id: 'student', evaluation_type: 'midterm', performance_score: 90 }, { evaluation_id: 'final', student_id: 'student', evaluation_type: 'final', performance_score: 90 }],
+    hte_evaluations: [{ student_id: 'student' }],
     evaluation_appeals: [], certificates: [], ojt_final_grades: [],
   } });
   const service = fixture.module('certificates');
@@ -487,6 +488,7 @@ test('completion requires both passing Supervisor evaluations and no pending app
     internship_progress: [{ student_id: 'student', completed_hours: 486 }],
     reports: [{ student_id: 'student', report_type: 'final_report', status: 'approved' }],
     evaluations: [{ evaluation_id: 'midterm', student_id: 'student', evaluation_type: 'midterm', performance_score: 90 }, { evaluation_id: 'final', student_id: 'student', evaluation_type: 'final', performance_score: 90 }],
+    hte_evaluations: [{ student_id: 'student' }],
     evaluation_appeals: [],
     certificates: [],
   } });
@@ -500,6 +502,9 @@ test('completion requires both passing Supervisor evaluations and no pending app
   assert.equal((await service.checkClearanceStatus('student')).data.can_issue, false);
   fixture.tables.evaluation_appeals[0].status = 'upheld';
   assert.equal((await service.checkClearanceStatus('student')).data.can_issue, true);
+  const hte = fixture.tables.hte_evaluations.pop();
+  assert.equal((await service.checkClearanceStatus('student')).data.can_issue, false, 'the student HTE evaluation is a clearance gateway');
+  fixture.tables.hte_evaluations.push(hte);
 });
 
 test('department report loads the complete cohort and rejects incomplete results instead of exporting a partial report', async () => {
