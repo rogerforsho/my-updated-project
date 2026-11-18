@@ -26,6 +26,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard Overview',
   '/coordinator/approvals': 'Trainee Approvals',
   '/coordinator/messages': 'Messages',
+  '/coordinator/group-chat': 'Group Chat',
+  '/coordinator/documents': 'Documents',
   '/coordinator/notifications': 'Notifications',
   '/coordinator/reports': 'Progress & Reports',
   '/coordinator/students': 'Trainee Roster',

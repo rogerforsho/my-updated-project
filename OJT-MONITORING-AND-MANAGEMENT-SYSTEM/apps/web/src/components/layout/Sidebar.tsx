@@ -52,6 +52,8 @@ const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Incident Reports', href: '/coordinator/incident-reports', icon: ShieldAlert, section: 'Monitoring' },
     { label: 'Evaluations', href: '/coordinator/supervisor-evaluations', icon: Star, section: 'Evaluation' },
     { label: 'Messages', href: '/coordinator/messages', icon: MessagesSquare, section: 'Inbox' },
+    { label: 'Group Chat', href: '/coordinator/group-chat', icon: Users, section: 'Inbox' },
+    { label: 'Documents', href: '/coordinator/documents', icon: FileText, section: 'Inbox' },
     { label: 'Notifications', href: '/coordinator/notifications', icon: Bell, section: 'Inbox' },
   ],
   Supervisor: [

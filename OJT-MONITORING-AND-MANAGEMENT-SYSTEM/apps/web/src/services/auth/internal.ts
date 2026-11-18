@@ -11,7 +11,7 @@ export function serviceClient() {
   return cachedServiceClient;
 }
 export type AuthAction = 'login' | 'register' | 'password_reset_request' | 'password_reset_verify' | 'id_card_upload' |
-  'report_upload' | 'report_submit' | 'attendance_submit' | 'selfie_upload' | 'password_reset_admin' | 'student_import';
+  'report_upload' | 'report_submit' | 'attendance_submit' | 'selfie_upload' | 'password_reset_admin' | 'student_import' | 'group_chat_post';
 
 export function auditSubjectHash(value: string): string | undefined {
   const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -74,6 +74,7 @@ export async function authActionLimit(
     selfie_upload: { max: 100, seconds: 3600 },
     password_reset_admin: { max: 100, seconds: 3600 },
     student_import: { max: 20, seconds: 3600 },
+    group_chat_post: { max: 100, seconds: 600 },
   };
   const budget = ipBudgets[action];
   const ipAllowed = await claimActionLimit(action, secret, 'ip:' + (clientIp || 'local-development'), budget.max, budget.seconds);

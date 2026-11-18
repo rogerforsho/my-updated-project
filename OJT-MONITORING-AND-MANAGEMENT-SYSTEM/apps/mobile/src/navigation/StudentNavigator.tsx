@@ -9,6 +9,7 @@ import NotificationsScreen from '../screens/notifications/NotificationsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import EvaluationsScreen from '../screens/evaluations/EvaluationsScreen';
 import HteEvaluationScreen from '../screens/hteEvaluation/HteEvaluationScreen';
+import GroupScreen from '../screens/group/GroupScreen';
 
 const Tab = createBottomTabNavigator<StudentTabParamList>();
 
@@ -89,6 +90,16 @@ export default function StudentNavigator() {
             <Ionicons name={focused ? 'notifications' : 'notifications-outline'} size={size ?? 22} color={color} />
           ),
           title: 'Alerts',
+        }}
+      />
+      <Tab.Screen
+        name="Group"
+        component={GroupScreen}
+        options={{
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} size={size ?? 22} color={color} />
+          ),
+          title: 'Group',
         }}
       />
       <Tab.Screen
