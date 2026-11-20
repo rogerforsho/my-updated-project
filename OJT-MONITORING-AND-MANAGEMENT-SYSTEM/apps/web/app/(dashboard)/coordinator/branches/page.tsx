@@ -14,6 +14,7 @@ export default function BranchesPage() {
   const [saving, setSaving] = useState(false);
 
   const [allBranches, setAllBranches] = useState<MapBranch[]>([]);
+  const [allLoaded, setAllLoaded] = useState(false); // keeps the empty message from flashing while loading
 
   useEffect(() => {
     if (companyId) {
@@ -26,6 +27,7 @@ export default function BranchesPage() {
     void listMapBranches().then((result) => {
       if (result.data) {
         setAllBranches([...result.data].sort((a, b) => a.company_name.localeCompare(b.company_name) || a.branch_name.localeCompare(b.branch_name)));
+        setAllLoaded(true);
       } else setError(result.error?.message ?? 'Could not load branches.');
     });
   }, [companyId]);
@@ -60,7 +62,7 @@ export default function BranchesPage() {
       <p className="text-sm text-slate-600">{branch.address}</p>
       <p className="text-xs text-slate-500">{branch.latitude}, {branch.longitude}</p>
     </div>)}
-    {!companyId && allBranches.length === 0 && <p className="text-sm text-slate-600">No branches yet. Pick a company to add one.</p>}</div>
+    {!companyId && allLoaded && allBranches.length === 0 &&<p className="text-sm text-slate-600">No branches yet. Pick a company to add one.</p>}</div>
     {!!companyId && <form onSubmit={submit} className="mt-6 rounded-xl border bg-white p-5">
       <h2 className="font-bold text-slate-900">Add verified branch</h2>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
