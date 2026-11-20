@@ -24,7 +24,7 @@ type MobileAttendanceRow = {
   time_in_selfie_path: string;
   time_out_selfie_path: string | null;
   verification_status: 'pending' | 'verified' | 'rejected';
-  late_status: 'on_time' | 'late' | 'unknown';
+  late_status: 'on_time' | 'late' | 'not_work_day' | 'no_schedule' | 'unknown';
   sync_status: 'synced' | 'pending_sync' | 'conflict';
   time_in_lat: number | null;
   time_in_lng: number | null;

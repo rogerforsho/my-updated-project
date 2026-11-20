@@ -15,7 +15,7 @@ export interface TimecardRow {
   time_in: string | null;
   time_out: string | null;
   hours: number | null;
-  late: 'on_time' | 'late' | 'unknown' | 'absent';
+  late: 'on_time' | 'late' | 'not_work_day' | 'no_schedule' | 'unknown' | 'absent';
   selfie: 'in_out' | 'in_only' | 'none';
   gps: string;
 }

@@ -31,6 +31,7 @@ import NetworkToast from '../../components/NetworkToast';
 import ScheduleProposalModal from '../../components/ScheduleProposalModal';
 import { fetchStudentScheduleProposal } from '../../services/schedule';
 import { refreshAttendanceReminders } from '../../lib/attendanceReminders';
+import { punctuality } from '../../lib/punctuality';
 import type { DbAttendance, DbPracticumSchedule } from '@ojt/shared';
 import type { StudentStackParamList, StudentTabParamList } from '../../navigation/types';
 
@@ -95,6 +96,7 @@ export default function AttendanceScreen() {
   const [isGatewayCleared, setIsGatewayCleared] = useState(false);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [scheduleProposal, setScheduleProposal] = useState<DbPracticumSchedule | null>(null);
+  const scheduleTimeIn = scheduleProposal?.status === 'approved' ? scheduleProposal.time_in : null;
   const capturingSelfie = useRef(false);
 
   const { width: winW, height: winH } = useWindowDimensions();
@@ -880,11 +882,8 @@ export default function AttendanceScreen() {
                     </View>
                     <View style={s.statusRow}>
                       <Text style={s.statusLabel}>Punctuality</Text>
-                      <Text style={[
-                        s.statusValue,
-                        todayRecord.late_status === 'late' ? { color: '#dc2626' } : { color: '#0A3824' }
-                      ]}>
-                        {todayRecord.late_status.replace('_', ' ').toUpperCase()}
+                      <Text style={[s.statusValue, { color: punctuality(todayRecord, scheduleTimeIn).color }]}>
+                        {punctuality(todayRecord, scheduleTimeIn).text}
                       </Text>
                     </View>
                     <View style={s.statusRow}>
@@ -1089,8 +1088,8 @@ export default function AttendanceScreen() {
                 </View>
                 <View style={s.timeCol}>
                   <Text style={s.timeLabel}>Punctuality</Text>
-                  <Text style={[s.timeValue, item.late_status === 'late' ? { color: '#dc2626' } : { color: '#0A3824' }]}>
-                    {item.late_status.replace('_', ' ')}
+                  <Text style={[s.timeValue, { color: punctuality(item).color }]}>
+                    {punctuality(item).text}
                   </Text>
                 </View>
               </View>

@@ -2209,8 +2209,8 @@ test('offline attendance from a closed assignment syncs within its placement dat
   const rows = {
     student_assignments: [{ assignment_id: 'assignment', student_id: 'student', company_id: 'company', branch_id: 'branch', assignment_status: 'completed', start_date: '2026-10-01', end_date: '2026-10-19' }],
     company_branches: [{ company_id: 'company', branch_id: 'branch', status: 'inactive', latitude: 14, longitude: 121, geofence_radius_meters: 150, geofence_enabled: true }],
-    practicum_schedules: [{ student_id: 'student', company_id: 'company', branch_id: 'branch', status: 'approved', start_date: '2026-10-01', end_date: '2026-10-19', work_modality: 'on_site' }],
-    attendance: [], work_schedules: [],
+    practicum_schedules: [{ student_id: 'student', company_id: 'company', branch_id: 'branch', status: 'approved', start_date: '2026-10-01', end_date: '2026-10-19', work_modality: 'on_site', time_in: '08:00:00', work_days: [1, 2, 3, 4, 5] }],
+    attendance: [],
   };
   let inserted = null;
   const client = { from(table) {
@@ -2260,6 +2260,7 @@ test('offline attendance from a closed assignment syncs within its placement dat
   assert.equal(inserted.time_in, capturedAt);
   assert.equal(inserted.verification_status, 'pending');
   assert.ok(inserted.time_in_received_at, 'server receipt time is recorded separately');
+  assert.equal(inserted.late_status, 'late', 'judged against the approved schedule start, not a company cutoff');
 });
 
 test('student resubmission requires the rejected-student BFF and bounds streamed JSON', async () => {

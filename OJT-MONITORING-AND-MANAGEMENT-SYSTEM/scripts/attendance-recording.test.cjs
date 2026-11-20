@@ -119,12 +119,15 @@ test('location evidence: remote, missing GPS, inside, outside, geofence off', ()
     { latitude: 15, longitude: 121, distanceMeters: null, status: 'verified', flagReason: null });
 });
 
-test('late status compares Philippine local time with the cutoff and ignores weekends', () => {
+test('punctuality compares Philippine local time with the approved schedule and names why it cannot', () => {
   const { lateStatusFor: l } = recording();
-  assert.equal(l('2026-10-05T08:00:00+08:00', '08:00:00'), 'on_time');
-  assert.equal(l('2026-10-05T08:00:01+08:00', '08:00:00'), 'late');
-  assert.equal(l('2026-10-05T08:00:01+08:00', null), 'unknown');
-  assert.equal(l('2026-10-04T09:00:00+08:00', '08:00:00'), 'unknown');
+  const weekdays = { timeIn: '08:00:00', workDays: [1, 2, 3, 4, 5] };
+  assert.equal(l('2026-10-05T08:00:00+08:00', weekdays), 'on_time');
+  assert.equal(l('2026-10-05T08:00:01+08:00', weekdays), 'late');
+  assert.equal(l('2026-10-05T08:00:01+08:00', null), 'no_schedule');
+  assert.equal(l('2026-10-04T09:00:00+08:00', weekdays), 'not_work_day');
+  assert.equal(l('2026-10-05T09:00:00+08:00', { timeIn: '08:00', workDays: [2, 3] }), 'not_work_day');
+  assert.equal(l('2026-10-03T09:00:00+08:00', { timeIn: '08:00', workDays: [6] }), 'late');
 });
 
 test('capture time rules: future beyond skew and weekday-only time-in', () => {

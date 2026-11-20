@@ -13,7 +13,9 @@ const clock = (v: string | null) => (v ? new Date(v).toLocaleTimeString([], { ho
 const LATE: Record<TimecardRow['late'], { label: string; cls: string }> = {
   on_time: { label: 'On time', cls: 'bg-emerald-50 text-emerald-800' },
   late: { label: 'Late', cls: 'bg-amber-50 text-amber-800' },
-  unknown: { label: 'Unknown', cls: 'bg-slate-100 text-slate-600' },
+  not_work_day: { label: 'Not a work day', cls: 'bg-slate-100 text-slate-600' },
+  no_schedule: { label: 'No approved schedule', cls: 'bg-slate-100 text-slate-600' },
+  unknown: { label: 'Not rated', cls: 'bg-slate-100 text-slate-600' },
   absent: { label: 'Absent', cls: 'bg-red-50 text-red-800' },
 };
 const SELFIE = { in_out: 'In and out', in_only: 'In only', none: 'None' } as const;
@@ -23,7 +25,7 @@ const GPS: Record<string, string> = {
 
 // shortcut: 1000-log cap per range, move grouping to an SQL view/RPC if coordinators hit it
 const FETCH_CAP = 1000;
-const LATE_ORDER: TimecardRow['late'][] = ['on_time', 'late', 'unknown', 'absent'];
+const LATE_ORDER: TimecardRow['late'][] = ['on_time', 'late', 'not_work_day', 'no_schedule', 'unknown', 'absent'];
 
 function Timecard() {
   const [rows, setRows] = useState<TimecardRow[]>([]);

@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   });
   if (pre.response) return pre.response;
   const { actor, body: input } = pre;
-  const adapter = supabaseAttendanceAdapter(getServiceClient(), actor.supabase);
+  const adapter = supabaseAttendanceAdapter(getServiceClient());
   const studentId = actor.studentId;
   const latitude = input.latitude;
   const longitude = input.longitude;

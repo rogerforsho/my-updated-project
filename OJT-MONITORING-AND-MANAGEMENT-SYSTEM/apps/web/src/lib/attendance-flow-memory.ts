@@ -9,15 +9,13 @@ export class MemoryAttendanceAdapter implements AttendanceAdapter {
   beforeWrite: (() => void) | null = null;
   private selfies: Set<string>;
   private policy: AttendancePolicy | 'unavailable' | null;
-  private cutoff: string | null;
 
-  constructor(opts: { selfies?: string[]; rows?: Row[]; policy?: AttendancePolicy | 'unavailable' | null; cutoff?: string | null } = {}) {
+  constructor(opts: { selfies?: string[]; rows?: Row[]; policy?: AttendancePolicy | 'unavailable' | null; schedule?: AttendancePolicy['schedule'] } = {}) {
     this.selfies = new Set(opts.selfies ?? []);
     this.rows = opts.rows ?? [];
     this.policy = opts.policy === undefined
-      ? { companyId: 'c', remote: false, geofenceEnabled: true, latitude: 14, longitude: 121, radiusMeters: 150 }
+      ? { companyId: 'c', remote: false, geofenceEnabled: true, latitude: 14, longitude: 121, radiusMeters: 150, schedule: opts.schedule ?? null }
       : opts.policy;
-    this.cutoff = opts.cutoff ?? null;
   }
 
   async hasValidSelfie(path: string) { return this.selfies.has(path); }
@@ -25,7 +23,6 @@ export class MemoryAttendanceAdapter implements AttendanceAdapter {
   async findByDate(studentId: string, date: string) {
     return this.rows.find(r => r.student_id === studentId && r.attendance_date === date) ?? null;
   }
-  async lateCutoff() { return this.cutoff; }
   async insertTimeIn(row: Record<string, unknown>) {
     this.beforeWrite?.();
     const attendance_id = `mem-${this.rows.length + 1}`;

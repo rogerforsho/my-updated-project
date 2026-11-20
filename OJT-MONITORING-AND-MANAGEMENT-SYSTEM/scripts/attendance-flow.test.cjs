@@ -38,7 +38,7 @@ const autoRow = { attendance_id: 'r1', student_id: S, assignment_id: 'a1', atten
   time_out_flag_reason: AUTO };
 
 test('time-in records a pending row with evidence and late status', async () => {
-  const a = mem({ cutoff: '08:00:00' });
+  const a = mem({ schedule: { timeIn: '08:00:00', workDays: [1, 2, 3, 4, 5] } });
   const r = await flow.recordTimeIn(a, S, inInput({ capturedAt: '2026-10-05T08:30:00+08:00' }), NOW);
   assert.equal(r.ok, true);
   const row = a.rows[0];

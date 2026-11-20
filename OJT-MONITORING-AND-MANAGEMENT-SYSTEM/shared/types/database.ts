@@ -154,7 +154,8 @@ export interface DbStudentAssignment {
 
 export type QrValidationStatus = 'valid' | 'invalid' | 'expired';
 export type VerificationStatus = 'pending' | 'verified' | 'rejected';
-export type LateStatus = 'on_time' | 'late' | 'unknown';
+// 'unknown' is only on rows from before schedule-based punctuality; new rows are one of the other four.
+export type LateStatus = 'on_time' | 'late' | 'not_work_day' | 'no_schedule' | 'unknown';
 export type SyncStatus = 'synced' | 'pending_sync' | 'conflict';
 export type LocationStatus = 'verified' | 'flagged_out_of_bounds' | 'location_unavailable' | 'not_applicable';
 
