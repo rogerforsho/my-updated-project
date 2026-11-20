@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createCompanyBranch, listCompanyBranches } from '@/src/services/companies';
+import { createCompanyBranch, listCompanyBranches, listMapBranches, type MapBranch } from '@/src/services/companies';
 import { CompanyPicker } from '@/src/components/ui/CompanyPicker';
 import type { DbCompanyBranch } from '@ojt/shared';
 import CoordinatorSectionNav from '@/src/components/coordinator/CoordinatorSectionNav';
@@ -13,9 +13,22 @@ export default function BranchesPage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (companyId) void listCompanyBranches(companyId).then((result) => {
-    if (result.data) setBranches(result.data); else setError(result.error?.message ?? 'Could not load branches.');
-  }); else setBranches([]); }, [companyId]);
+  const [allBranches, setAllBranches] = useState<MapBranch[]>([]);
+
+  useEffect(() => {
+    if (companyId) {
+      void listCompanyBranches(companyId).then((result) => {
+        if (result.data) setBranches(result.data); else setError(result.error?.message ?? 'Could not load branches.');
+      });
+      return;
+    }
+    setBranches([]);
+    void listMapBranches().then((result) => {
+      if (result.data) {
+        setAllBranches([...result.data].sort((a, b) => a.company_name.localeCompare(b.company_name) || a.branch_name.localeCompare(b.branch_name)));
+      } else setError(result.error?.message ?? 'Could not load branches.');
+    });
+  }, [companyId]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault(); setError(''); setSaving(true);
@@ -40,7 +53,14 @@ export default function BranchesPage() {
       <p className="font-semibold text-slate-900">{branch.branch_name}{branch.is_primary ? ' · Primary' : ''}</p>
       <p className="text-sm text-slate-600">{branch.address}</p>
       <p className="text-xs text-slate-500">{branch.latitude}, {branch.longitude} · {branch.geofence_radius_meters} m radius</p>
-    </div>)}</div>
+    </div>)}
+    {!companyId && allBranches.map((branch) => <div key={branch.branch_id} className="rounded-xl border bg-white p-4">
+      <p className="text-xs font-medium uppercase text-slate-500">{branch.company_name}</p>
+      <p className="font-semibold text-slate-900">{branch.branch_name}</p>
+      <p className="text-sm text-slate-600">{branch.address}</p>
+      <p className="text-xs text-slate-500">{branch.latitude}, {branch.longitude}</p>
+    </div>)}
+    {!companyId && allBranches.length === 0 && <p className="text-sm text-slate-600">No branches yet. Pick a company to add one.</p>}</div>
     {!!companyId && <form onSubmit={submit} className="mt-6 rounded-xl border bg-white p-5">
       <h2 className="font-bold text-slate-900">Add verified branch</h2>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
