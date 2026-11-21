@@ -656,6 +656,15 @@ test('installer downloads allow only known filenames and reject traversal before
   assert.equal(result.headers.get('content-length'), '4');
 });
 
+test('installer download without a local file redirects to the release asset, never the releases page', async () => {
+  const route = load('apps/web/app/downloads/[filename]/route.ts', { fs: { existsSync() { return false; } } });
+  for (const filename of ['CdM-OJT-Portal-Setup-1.0.0.exe', 'CdM OJT Portal Setup 1.0.0.exe']) {
+    const result = await route.GET(new Request('http://localhost/downloads/test'), { params: Promise.resolve({ filename }) });
+    assert.equal(result.status, 302);
+    assert.equal(result.headers.get('location'), 'https://github.com/rogerforsho/my-updated-project/releases/download/v1.0.0/CdM-OJT-Portal-Setup-1.0.0.exe');
+  }
+});
+
 test('clearance details require authentication and students can read only their own record', async () => {
   const anonymous = workflowFixture(null);
   assert.equal((await anonymous.module('certificates').checkClearanceStatus('student')).error.code, 'FORBIDDEN');
