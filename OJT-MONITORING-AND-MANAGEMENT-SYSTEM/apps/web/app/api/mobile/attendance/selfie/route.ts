@@ -1,32 +1,17 @@
 import crypto from 'node:crypto';
-import { authenticateMobileStudent, mobileBffFailure } from '@/src/lib/mobile-bff';
+import { mobileBffFailure, mobileBffPreamble } from '@/src/lib/mobile-bff';
 import { getServiceClient } from '@/src/lib/supabase/service';
-import { authActionLimit } from '@/src/services/auth/internal';
-import { readLimitedJson } from '@/src/lib/read-limited-json';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
-  const auth = await authenticateMobileStudent(request);
-  if (auth.error) return mobileBffFailure(auth.error);
-
-  const limitError = await authActionLimit('selfie_upload', auth.actor.user.id, 60, 3600, 'user');
-  if (limitError) return mobileBffFailure({
-    status: limitError.code === 'RATE_LIMITED' ? 429 : 503,
-    code: limitError.code,
-    message: limitError.message,
+  const pre = await mobileBffPreamble(request, {
+    limit: { action: 'selfie_upload', max: 60, windowSeconds: 3600 },
+    body: { maxBytes: 16 * 1024, label: 'Upload request' },
   });
-
-  const parsed = await readLimitedJson(request, 16 * 1024);
-  if (parsed.error === 'too_large')
-    return mobileBffFailure({ status: 413, code: 'VALIDATION_FAILURE', message: 'Upload request is too large.' });
-  if (parsed.error)
-    return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Upload request could not be read.' });
-  const body = parsed.data;
-  if (!body || typeof body !== 'object' || Array.isArray(body))
-    return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Invalid upload request.' });
-
-  const input = body as Record<string, unknown>;
+  if (pre.response) return pre.response;
+  const { actor } = pre;
+  const input = pre.body;
   if (input.type !== 'time_in' && input.type !== 'time_out')
     return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Invalid attendance upload type.' });
   const uploadId = input.upload_id;
@@ -34,8 +19,8 @@ export async function POST(request: Request) {
     return mobileBffFailure({ status: 400, code: 'VALIDATION_FAILURE', message: 'Invalid attendance upload identifier.' });
 
   const path = typeof uploadId === 'string'
-    ? `${auth.actor.studentId}/${input.type}_${uploadId}.jpg`
-    : `${auth.actor.studentId}/${input.type}_${Date.now()}_${crypto.randomUUID()}.jpg`;
+    ? `${actor.studentId}/${input.type}_${uploadId}.jpg`
+    : `${actor.studentId}/${input.type}_${Date.now()}_${crypto.randomUUID()}.jpg`;
   const storage = getServiceClient().storage.from('attendance-selfies');
   if (typeof uploadId === 'string') {
     const { data: exists, error: existsError } = await storage.exists(path);

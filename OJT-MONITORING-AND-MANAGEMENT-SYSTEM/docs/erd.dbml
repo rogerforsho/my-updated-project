@@ -88,7 +88,7 @@ Table evaluations {
   evaluation_id uuid [pk]
   student_id uuid [ref: > students.student_id]
   supervisor_id uuid [ref: > supervisors.supervisor_id]
-  evaluation_type text [note: 'midterm or final']
+  evaluation_type text [note: 'final only; legacy midterm rows are kept as history']
   performance_score numeric
   feedback text
 }

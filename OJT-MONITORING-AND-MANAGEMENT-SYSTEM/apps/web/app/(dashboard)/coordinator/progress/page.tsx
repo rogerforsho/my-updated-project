@@ -48,6 +48,24 @@ export default async function CoordinatorProgressPage({ searchParams }: Props) {
           <p className="text-sm text-slate-500 mt-1">Real-time rendered hours and milestone tracking for 4th-year ICS & IBE trainees; targets follow each student’s configured requirement.</p>
         </div>
         <div className="flex items-center gap-2">
+          <details className="relative">
+            <summary className="list-none cursor-pointer whitespace-nowrap rounded-lg border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              Download CSV
+            </summary>
+            <div className="absolute right-0 z-10 mt-1 w-44 rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+              {statusTabs.map((tab) => {
+                const q = new URLSearchParams();
+                if (courseFilter) q.set('course', courseFilter);
+                if (tab.key) q.set('status', tab.key);
+                return (
+                  <a key={tab.key} href={`/api/coordinator/progress/export${q.toString() ? `?${q}` : ''}`} download
+                    className="block rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                    {tab.label}
+                  </a>
+                );
+              })}
+            </div>
+          </details>
           <Badge variant="outline" className="px-3.5 py-1.5 text-sm font-semibold bg-emerald-50 text-[#0A3824] border-emerald-200">
             {total} Total Trainees
           </Badge>
@@ -147,13 +165,13 @@ export default async function CoordinatorProgressPage({ searchParams }: Props) {
                       </td>
                       <td className="py-4 px-4">
                         <div className="text-xs font-bold text-slate-900">
-                          {s.completed_hours} <span className="text-slate-400 font-normal">/ {s.required_hours || 486} hrs</span>
+                          {s.completed_hours} <span className="text-slate-400 font-normal">/ {s.required_hours} hrs</span>
                         </div>
-                        <div className="text-[11px] text-slate-400">{s.remaining_hours} hrs remaining</div>
+                        <div className="text-xs text-slate-400">{s.remaining_hours} hrs remaining</div>
                       </td>
                       <td className="py-4 px-4">
                         <div className="space-y-1">
-                          <div className="flex justify-between text-[11px] font-semibold text-slate-700">
+                          <div className="flex justify-between text-xs font-semibold text-slate-700">
                             <span>{s.percentage}%</span>
                             <span className="text-slate-400 font-normal">{s.remaining_hours <= 0 ? 'Target Reached' : `${s.remaining_hours.toFixed(1)}h left`}</span>
                           </div>
@@ -192,6 +210,7 @@ export default async function CoordinatorProgressPage({ searchParams }: Props) {
                             studentId={s.student_id}
                             studentName={s.full_name}
                             completedHours={s.completed_hours}
+                            requiredHours={s.required_hours}
                           />
                         </div>
                       </td>

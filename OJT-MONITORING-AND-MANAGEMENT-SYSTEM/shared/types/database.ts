@@ -154,7 +154,8 @@ export interface DbStudentAssignment {
 
 export type QrValidationStatus = 'valid' | 'invalid' | 'expired';
 export type VerificationStatus = 'pending' | 'verified' | 'rejected';
-export type LateStatus = 'on_time' | 'late' | 'unknown';
+// 'unknown' is only on rows from before schedule-based punctuality; new rows are one of the other four.
+export type LateStatus = 'on_time' | 'late' | 'not_work_day' | 'no_schedule' | 'unknown';
 export type SyncStatus = 'synced' | 'pending_sync' | 'conflict';
 export type LocationStatus = 'verified' | 'flagged_out_of_bounds' | 'location_unavailable' | 'not_applicable';
 
@@ -248,6 +249,8 @@ export interface DbNotification {
   notification_date: string;
   status: NotificationStatus;
   related_conversation_id?: string | null;
+  /** Set when the student swipe-archives the notice; archived rows are hidden from the mobile feed. */
+  archived_at?: string | null;
 }
 
 export type ProgressStatus = 'not_started' | 'in_progress' | 'completed';

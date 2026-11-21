@@ -6,6 +6,7 @@ on:
   schedule:
     - cron: '*/5 * * * *'
     - cron: '*/30 * * * *'
+    - cron: '0 1 1 * *'
   workflow_dispatch:
 
 env:
@@ -17,10 +18,19 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '*/5 * * * *' }}
     runs-on: ubuntu-latest
     steps:
-      - run: curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" "$CRON_BASE_URL/api/internal/process-transactional-email"
+      - run: |
+          curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" "$CRON_BASE_URL/api/internal/process-transactional-email"
 
   auto-time-out:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '*/30 * * * *' }}
     runs-on: ubuntu-latest
     steps:
-      - run: curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" "$CRON_BASE_URL/api/internal/auto-time-out"
+      - run: |
+          curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" "$CRON_BASE_URL/api/internal/auto-time-out"
+
+  import-holidays:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '0 1 1 * *' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" "$CRON_BASE_URL/api/internal/import-holidays"

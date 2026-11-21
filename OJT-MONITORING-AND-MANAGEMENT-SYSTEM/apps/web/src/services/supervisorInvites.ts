@@ -21,6 +21,8 @@ export interface SupervisorInviteRow {
   max_uses: number;
   expires_at: string;
   revoked_at: string | null;
+  created_at: string;
+  created_by: string | null;
   status: 'active' | 'used_up' | 'expired' | 'revoked';
 }
 
@@ -64,14 +66,14 @@ export async function listSupervisorInvites(): Promise<AppResult<{ departments: 
   const actor = await grantedCoordinator();
   if (!actor) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
   const { data, error } = await getServiceClient().from('supervisor_invites')
-    .select('invite_id, department, use_count, max_uses, expires_at, revoked_at, companies(company_name)')
+    .select('invite_id, department, use_count, max_uses, expires_at, revoked_at, created_at, created_by, companies(company_name)')
     .in('department', actor.departments).order('created_at', { ascending: false }).limit(100);
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not load invitation links.' } };
   const now = Date.now();
   const rows = (data ?? []).map((r) => {
     const company = Array.isArray(r.companies) ? r.companies[0] : r.companies;
     const status: SupervisorInviteRow['status'] = r.revoked_at ? 'revoked' : new Date(r.expires_at).getTime() <= now ? 'expired' : r.use_count >= r.max_uses ? 'used_up' : 'active';
-    return { invite_id: r.invite_id, department: r.department, company_name: company?.company_name ?? '', use_count: r.use_count, max_uses: r.max_uses, expires_at: r.expires_at, revoked_at: r.revoked_at, status } as SupervisorInviteRow;
+    return { invite_id: r.invite_id, department: r.department, company_name: company?.company_name ?? '', use_count: r.use_count, max_uses: r.max_uses, expires_at: r.expires_at, revoked_at: r.revoked_at, created_at: r.created_at, created_by: r.created_by, status } as SupervisorInviteRow;
   });
   return { data: { departments: actor.departments, invites: rows }, error: null };
 }
@@ -120,9 +122,35 @@ export async function acceptSupervisorInvite(token: string, input: { full_name: 
   const result = await provisionSupervisor({ full_name, email, position, company_id: invite.company_id });
   if (result.error) {
     await db.rpc('release_supervisor_invite', { p_invite_id: invite.invite_id }); // the sign-up did not happen, so the use is returned
-    if (result.error.code === 'DUPLICATE_REQUEST') return { data: null, error: null };
+    if (result.error.code === 'DUPLICATE_REQUEST') return { data: null, error: { code: 'DUPLICATE_REQUEST', message: 'This email already has an account in this system. Sign in or reset your password, or use a different email.' } };
     return { data: null, error: { code: 'SERVER_FAILURE', message: 'Your account could not be set up. Please try again or ask your OJT Coordinator.' } };
   }
   await recordAuditEvent({ action: 'SUPERVISOR_INVITE_USED', entity_type: 'supervisor_invite', entity_id: invite.invite_id, details: { department: invite.department, company_id: invite.company_id } });
+
+  // Tell the Coordinator who made the link. The account already exists, so a failure here must not fail the sign-up.
+  try {
+    const { data: made } = await db.from('supervisor_invites').select('created_by, companies(company_name)').eq('invite_id', invite.invite_id).maybeSingle();
+    if (made?.created_by) {
+      const company = Array.isArray(made.companies) ? made.companies[0] : made.companies;
+      const { error } = await db.from('notifications').insert({
+        receiver_user_id: made.created_by,
+        message: `${full_name} (${email}) signed up as a Supervisor for ${company?.company_name ?? 'your company'} using your invitation link.`,
+        status: 'unread', notification_date: new Date().toISOString(),
+      });
+      if (error) console.error('supervisor invite notification failed', error.message);
+    }
+  } catch (e) { console.error('supervisor invite notification failed', e); }
   return { data: null, error: null };
+}
+
+/** Coordinator-only: does this email already have an account? Lets the panel warn before a link is sent to it. */
+export async function checkInviteRecipient(rawEmail: string): Promise<AppResult<{ exists: boolean; role?: string }>> {
+  const actor = await grantedCoordinator();
+  if (!actor) return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
+  const email = rawEmail?.trim().toLowerCase();
+  if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Enter a valid email.' } };
+  const { data, error } = await getServiceClient().from('users').select('role').eq('email', email).maybeSingle();
+  if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not check that email.' } };
+  return { data: { exists: !!data, role: data?.role }, error: null };
 }

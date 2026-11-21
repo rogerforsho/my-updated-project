@@ -5,6 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 const { TextDecoder } = require('node:util');
+const { mobileBffMock } = require('./mobile-bff-harness.cjs');
 
 const root = path.resolve(__dirname, '..');
 
@@ -196,20 +197,22 @@ function workflowFixture(role = 'Admin', options = {}) {
     return { data: {}, error: null };
   } } };
   const modules = {};
+  const trustedActor = load('apps/web/src/lib/trusted-actor.ts', { 'server-only': {}, '@/src/lib/supabase/server': { createClient: async () => client } });
+  const departmentScopeModule = load('apps/web/src/lib/department-scope.ts', { 'server-only': {} });
   function module(name) {
     return modules[name] ||= load(`apps/web/src/services/${name}.ts`, {
       '@/src/lib/supabase/server': { createClient: async () => client },
-      '@/src/lib/trusted-actor': { async getTrustedActor() {
-        const { data: { user } } = await client.auth.getUser();
-        const profile = user ? (tables.users || []).find(row => row.user_id === user.id) || null : null;
-        return profile?.account_status === 'active'
-          ? { supabase: client, user, profile }
-          : { supabase: client, user: null, profile: null };
-      } },
+      '@/src/lib/trusted-actor': trustedActor,
+      '@/src/services/supervisorTrainees': { listSupervisedTrainees: async () => ({ data: options.trainees ?? [], error: null }) },
+      '@/src/lib/actor': load('apps/web/src/lib/actor.ts', {
+        'server-only': {}, '@/src/lib/trusted-actor': trustedActor,
+        '@/src/lib/department-scope': departmentScopeModule,
+        '@/src/lib/actor-access': load('apps/web/src/lib/actor-access.ts'),
+      }),
       '@/src/lib/supabase/service': { getServiceClient: () => { serviceCalls++; return service; } },
       '@/src/lib/supabase/public-url': load('apps/web/src/lib/supabase/public-url.ts'),
       '@/src/lib/departments': load('apps/web/src/lib/departments.ts'),
-      '@/src/lib/department-scope': load('apps/web/src/lib/department-scope.ts', { 'server-only': {} }),
+      '@/src/lib/department-scope': departmentScopeModule,
       '@/src/lib/email/send-account-status': { sendAccountStatusEmail: async () => { emailCount++; return { success: true }; } },
       '@/src/lib/audit': { recordAuditEvent: async input => { events.push(input); } },
       './reports': { checkStudentGatewayStatus: async () => ({ isCleared: true, approvedCount: 5, missing: [] }) },
@@ -230,18 +233,19 @@ function workflowFixture(role = 'Admin', options = {}) {
 
 const attendanceId = number => `00000000-0000-4000-8000-${String(number).padStart(12, '0')}`;
 
-test('mobile schedules require both approved gateway documents before saving a proposal', async () => {
+test('mobile schedules require all four approved gateway documents before saving a proposal', async () => {
   const fixture = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }], reports: [] } });
   const route = load('apps/web/app/api/mobile/schedule-proposals/route.ts', {
     '@supabase/supabase-js': { createClient: () => fixture.client },
-    '@ojt/shared': { ...load('shared/schedulePolicy.ts'), ...load('shared/gateway.ts') },
+    '@/src/services/auth/internal': { async authActionLimit() { return null; } },
+    '@ojt/shared': { ...load('shared/schedulePolicy.ts'), ...load('shared/gateway.ts'), ...load('shared/courses.ts') },
   }, { NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test' });
   const request = () => new Request('https://portal.test/api/mobile/schedule-proposals', {
     method: 'POST', headers: { authorization: 'Bearer test', 'content-type': 'application/json' },
     body: JSON.stringify({ work_modality: 'on_site', work_days: [1,2,3,4,5], time_in: '08:00', time_out: '17:00',
-      lunch_break_minutes: 60, lunch_break_start: '12:00', start_date: '2026-10-26' }),
+      lunch_break_minutes: 60, lunch_break_start: '12:00', start_date: '2026-10-26', end_date: '2027-01-26' }),
   });
-  for (const report_type of ['Pre-OJT Orientation Certificate', 'Endorsement Letter']) {
+  for (const report_type of ['Parent/Guardian Consent Waiver', 'Medical Certificate', 'Pre-OJT Orientation Certificate', 'Endorsement Letter']) {
     const response = await route.POST(request());
     assert.equal(response.status, 400);
     assert.equal(fixture.writes.length, 0);
@@ -252,14 +256,29 @@ test('mobile schedules require both approved gateway documents before saving a p
   assert.equal(fixture.tables.practicum_schedules.length, 1);
 });
 
+test('students already placed with an active assignment are exempt from the gateway documents', async () => {
+  const fixture = workflowFixture('Student', { tables: {
+    students: [{ student_id: 'student', user_id: 'actor' }], reports: [],
+    student_assignments: [{ student_id: 'student', assignment_id: 'assignment', assignment_status: 'active' }],
+  } });
+  const route = load('apps/web/app/api/mobile/schedule-proposals/route.ts', {
+    '@supabase/supabase-js': { createClient: () => fixture.client },
+    '@/src/services/auth/internal': { async authActionLimit() { return null; } },
+    '@ojt/shared': { ...load('shared/schedulePolicy.ts'), ...load('shared/gateway.ts'), ...load('shared/courses.ts') },
+  }, { NEXT_PUBLIC_SUPABASE_URL: 'https://test.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'test' });
+  const response = await route.POST(new Request('https://portal.test/api/mobile/schedule-proposals', {
+    method: 'POST', headers: { authorization: 'Bearer test', 'content-type': 'application/json' },
+    body: JSON.stringify({ work_modality: 'on_site', work_days: [1,2,3,4,5], time_in: '08:00', time_out: '17:00',
+      lunch_break_minutes: 60, lunch_break_start: '12:00', start_date: '2026-10-26', end_date: '2027-01-26' }),
+  }));
+  assert.equal(response.status, 200);
+});
+
 test('completed students get a closed-record response before report upload or submission touches evidence', async () => {
   const fixture = workflowFixture('Student', { tables: { certificates: [{ student_id: 'student', certificate_id: 'certificate' }] } });
   for (const filename of ['reports/route.ts', 'reports/upload/route.ts']) {
     const route = load('apps/web/app/api/mobile/' + filename, {
-      '@/src/lib/mobile-bff': {
-        async authenticateMobileStudent() { return { actor: { user: { id: 'actor' }, studentId: 'student', supabase: fixture.client }, error: null }; },
-        mobileBffFailure(error) { return Response.json({ error }, { status: error.status }); },
-      },
+      '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'actor' }, studentId: 'student', supabase: fixture.client }),
       '@/src/lib/supabase/service': { getServiceClient: () => fixture.service },
       '@/src/services/auth/internal': { async authActionLimit() { return null; } },
       '@/src/lib/uploadValidation': { validateUploadedBytes: () => ({ data: true, error: null }) },
@@ -281,10 +300,7 @@ test('attendance policy query failures report service unavailability rather than
   });
   const route = load('apps/web/app/api/mobile/attendance/route.ts', {
     '@ojt/shared': { getAttendanceDate: () => '2026-10-19', getPhilippineClock: () => new Date('2026-10-19T08:00:00Z') },
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent() { return { actor: { user: { id: 'actor' }, studentId: 'student', supabase: fixture.client }, error: null }; },
-      mobileBffFailure(error) { return Response.json({ error }, { status: error.status }); },
-    },
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'actor' }, studentId: 'student', supabase: fixture.client }),
     '@/src/lib/supabase/service': { getServiceClient: () => ({ ...fixture.service, storage: { from: () => ({
       async info() { return { data: { size: 1, contentType: 'image/jpeg' }, error: null }; },
       async download() { return { data: new Blob(['x'], { type: 'image/jpeg' }), error: null }; },
@@ -304,7 +320,7 @@ test('attendance policy query failures report service unavailability rather than
 test('mobile report listing exposes certificate completion so completed students cannot open the submission UI', async () => {
   const fixture = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }], certificates: [{ student_id: 'student', certificate_id: 'certificate' }] } });
   const reports = load('apps/mobile/src/services/reports.ts', {
-    '../lib/supabase': { supabase: fixture.client },
+    '../lib/supabase': { supabase: fixture.client }, './supabase': { supabase: fixture.client },
     '../lib/storage': {}, '../lib/webBff': {},
   });
   const response = await reports.listStudentReports();
@@ -442,6 +458,7 @@ test('failing grade is recorded without completion; passing grade finalizes and 
     internship_progress: [{ student_id: 'student', completed_hours: 486 }],
     reports: [{ student_id: 'student', report_type: 'final_report', status: 'approved' }],
     evaluations: [{ evaluation_id: 'midterm', student_id: 'student', evaluation_type: 'midterm', performance_score: 90 }, { evaluation_id: 'final', student_id: 'student', evaluation_type: 'final', performance_score: 90 }],
+    hte_evaluations: [{ student_id: 'student' }],
     evaluation_appeals: [], certificates: [], ojt_final_grades: [],
   } });
   const service = fixture.module('certificates');
@@ -471,6 +488,7 @@ test('completion requires both passing Supervisor evaluations and no pending app
     internship_progress: [{ student_id: 'student', completed_hours: 486 }],
     reports: [{ student_id: 'student', report_type: 'final_report', status: 'approved' }],
     evaluations: [{ evaluation_id: 'midterm', student_id: 'student', evaluation_type: 'midterm', performance_score: 90 }, { evaluation_id: 'final', student_id: 'student', evaluation_type: 'final', performance_score: 90 }],
+    hte_evaluations: [{ student_id: 'student' }],
     evaluation_appeals: [],
     certificates: [],
   } });
@@ -484,6 +502,9 @@ test('completion requires both passing Supervisor evaluations and no pending app
   assert.equal((await service.checkClearanceStatus('student')).data.can_issue, false);
   fixture.tables.evaluation_appeals[0].status = 'upheld';
   assert.equal((await service.checkClearanceStatus('student')).data.can_issue, true);
+  const hte = fixture.tables.hte_evaluations.pop();
+  assert.equal((await service.checkClearanceStatus('student')).data.can_issue, false, 'the student HTE evaluation is a clearance gateway');
+  fixture.tables.hte_evaluations.push(hte);
 });
 
 test('department report loads the complete cohort and rejects incomplete results instead of exporting a partial report', async () => {
@@ -523,7 +544,7 @@ test('OJT Coordinator approvals, grading, assignments, and schedule reviews reje
       ['reports', 'reviewReport', ['report', 'approved']],
       ['reports', 'sendRequirementReminder', ['foreign-user', ['Report']]],
       ['evaluations', 'overrideEvaluation', ['evaluation', 90, 'Review']],
-      ['assignments', 'createAssignment', [{ student_id: 'foreign', company_id: 'company', supervisor_id: 'supervisor', start_date: '2026-10-06' }]],
+      ['assignments', 'createAssignment', [{ student_id: 'foreign', company_id: 'company', supervisor_id: 'supervisor', start_date: '2026-10-06', end_date: '2027-01-06' }]],
       ['assignments', 'updateAssignmentStatus', ['assignment', 'completed']],
       ['assignments', 'updateStudentStatus', ['foreign', 'dropped']],
       ['assignments', 'reassignStudent', ['foreign', 'company', 'supervisor', '2026-10-06']],
@@ -547,14 +568,14 @@ test('OJT Coordinator can approve, assign, and review their department without m
       reports: [{ report_id: 'report', student_id: 'own', report_type: 'Pre-OJT Orientation Certificate', status: 'submitted' }],
       evaluations: [{ evaluation_id: 'evaluation', student_id: 'own', performance_score: 60 }],
       supervisors: [{ supervisor_id: 'supervisor', company_id: 'company' }],
-      practicum_schedules: [{ schedule_id: 'schedule', student_id: 'own', status: 'pending' }],
+      practicum_schedules: [{ schedule_id: 'schedule', student_id: 'own', status: 'pending', work_days: [1, 2, 3, 4, 5], daily_hours: 8, start_date: '2026-10-06', end_date: '2027-01-06' }],
     } });
     assert.equal((await fixture.module('auth').updateStudentAccountStatus('student-user', 'active')).error, null);
     assert.equal((await fixture.module('reports').reviewReport('report', 'approved')).error, null);
     assert.equal((await fixture.module('evaluations').overrideEvaluation('evaluation', 90, 'Review')).error.code, 'VALIDATION_FAILURE');
-    assert.equal((await fixture.module('assignments').createAssignment({ student_id: 'own', company_id: 'company', branch_id: 'branch', supervisor_id: 'supervisor', start_date: '2026-10-06' })).error, null);
+    assert.equal((await fixture.module('assignments').createAssignment({ student_id: 'own', company_id: 'company', branch_id: 'branch', supervisor_id: 'supervisor', start_date: '2026-10-06', end_date: '2027-01-06' })).error, null);
     assert.equal((await fixture.module('schedule').reviewPracticumSchedule('schedule', 'approve', {
-      company_id: 'company', branch_id: 'branch', supervisor_id: 'supervisor', start_date: '2026-10-06',
+      company_id: 'company', branch_id: 'branch', supervisor_id: 'supervisor', start_date: '2026-10-06', end_date: '2027-01-06',
     })).error, null);
     assert.equal(fixture.tables.users[1].account_status, 'active');
     assert.equal(fixture.tables.reports[0].status, 'approved');
@@ -591,7 +612,7 @@ test('web schedule insert persists the policy-normalized lunch interval', async 
   } });
   const result = await fixture.module('schedule').submitPracticumSchedule({
     work_days: [1, 2, 3, 4, 5], time_in: '08:00', time_out: '17:00',
-    lunch_break_minutes: undefined, lunch_break_start: '12:00', start_date: '2026-10-12',
+    lunch_break_minutes: undefined, lunch_break_start: '12:00', start_date: '2026-10-12', end_date: '2027-02-12',
     work_modality: 'onsite',
   });
   assert.equal(result.error, null);
@@ -666,26 +687,39 @@ test('evaluation uses a 5-point rating per criterion and requires a comment for 
   const fixture = workflowFixture('Supervisor', { tables: {
     supervisors: [{ user_id: 'actor', supervisor_id: 'supervisor' }],
     student_assignments: [{ student_id: 'student', supervisor_id: 'supervisor', assignment_id: 'assignment', assignment_status: 'active' }],
-  } });
+  }, trainees: [{ student_id: 'student', completed_hours: 486, required_hours: 486 }] });
   const evaluations = fixture.module('evaluations');
   const ratings = { technical_competence: 5, productivity_dependability: 4, attendance_punctuality: 4, communication_skills: 3, work_ethics_professionalism: 5 };
   for (const bad of [0, 6, 2.5, '4', NaN])
-    assert.equal((await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'midterm', performance_score: null, feedback: 'Fine', criteria: { ...ratings, communication_skills: bad } })).error.code, 'VALIDATION_FAILURE');
-  assert.equal((await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'midterm', performance_score: 99, feedback: 'No rubric' })).error.code, 'VALIDATION_FAILURE');
+    assert.equal((await evaluations.createEvaluation({ student_id: 'student', performance_score: null, feedback: 'Fine', criteria: { ...ratings, communication_skills: bad } })).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await evaluations.createEvaluation({ student_id: 'student', performance_score: 99, feedback: 'No rubric' })).error.code, 'VALIDATION_FAILURE');
   const low = { ...ratings, attendance_punctuality: 2 };
-  const missing = await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'midterm', performance_score: null, feedback: '   ', criteria: low });
+  const missing = await evaluations.createEvaluation({ student_id: 'student', performance_score: null, feedback: '   ', criteria: low });
   assert.equal(missing.error.code, 'VALIDATION_FAILURE');
   assert.match(missing.error.message, /below 3/);
   assert.equal(fixture.writes.length, 0);
 
-  assert.equal((await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'midterm', performance_score: null, feedback: '', criteria: ratings })).error, null);
-  assert.equal((await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'final', performance_score: null, feedback: 'Often late in week 3.', criteria: low })).error, null);
+  assert.equal((await evaluations.createEvaluation({ student_id: 'student', performance_score: null, feedback: '', criteria: ratings })).error, null);
+  assert.equal((await evaluations.createEvaluation({ student_id: 'student', performance_score: null, feedback: 'Often late in week 3.', criteria: low })).error, null);
   const [midterm, final] = fixture.tables.evaluations;
+  assert.deepEqual(fixture.tables.evaluations.map(e => e.evaluation_type), ['final', 'final']);
   // stored as weighted points (25/20/20/15/20) so summaries, grades and appeals keep the 100-point scale
   assert.deepEqual({ ...midterm.rubric_scores }, { technical_competence: 25, productivity_dependability: 16, attendance_punctuality: 16, communication_skills: 9, work_ethics_professionalism: 20 });
   assert.equal(midterm.performance_score, 86);
   assert.equal(midterm.feedback, '');
   assert.equal(final.performance_score, 78);
+});
+
+test('a trainee who has not finished the required hours cannot be evaluated', async () => {
+  const fixture = workflowFixture('Supervisor', { tables: {
+    supervisors: [{ user_id: 'actor', supervisor_id: 'supervisor' }],
+    student_assignments: [{ student_id: 'student', supervisor_id: 'supervisor', assignment_id: 'assignment', assignment_status: 'active' }],
+  }, trainees: [{ student_id: 'student', completed_hours: 312, required_hours: 486 }] });
+  const ratings = { technical_competence: 5, productivity_dependability: 4, attendance_punctuality: 4, communication_skills: 3, work_ethics_professionalism: 5 };
+  const result = await fixture.module('evaluations').createEvaluation({ student_id: 'student', performance_score: null, feedback: '', criteria: ratings });
+  assert.equal(result.error.code, 'VALIDATION_FAILURE');
+  assert.match(result.error.message, /312 of 486 hours \(174 left\)/);
+  assert.equal(fixture.writes.length, 0);
 });
 
 test('modal traps keyboard focus, closes on Escape, and restores focus and scroll state', () => {
@@ -1452,6 +1486,30 @@ test('Supervisors decide daily reports once and Coordinators cannot double-revie
   assert.equal(coordinator.tables.reports[0].status, 'submitted');
 });
 
+// Regression: the service once allowed only Daily Journal and Accomplishment Report, so a Weekly
+// Journal showed in the Supervisor's list but approving it failed with FORBIDDEN.
+test('Supervisors can decide a Weekly Journal but not a Coordinator-reviewed type', async () => {
+  const supervisor = workflowFixture('Supervisor', { tables: {
+    reports: [
+      { report_id: 'weekly-1', student_id: 'student-1', report_type: 'Weekly Journal', status: 'submitted', supervisor_decision: null },
+      { report_id: 'final-1', student_id: 'student-1', report_type: 'final_report', status: 'submitted', supervisor_decision: null },
+    ],
+    supervisors: [{ user_id: 'actor', supervisor_id: 'supervisor-1' }],
+    student_assignments: [{ student_id: 'student-1', supervisor_id: 'supervisor-1', assignment_status: 'active' }],
+  } });
+  assert.equal((await supervisor.module('reports').endorseReportBySupervisor('weekly-1', 'approved', 'Good week.')).error, null);
+  assert.equal(supervisor.tables.reports[0].supervisor_decision, 'approved');
+  assert.equal((await supervisor.module('reports').endorseReportBySupervisor('final-1', 'approved', 'Nope.')).error.code, 'FORBIDDEN');
+});
+
+test('students can no longer submit a Daily Journal, and only PDF paths are accepted', async () => {
+  const student = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }] } });
+  const reports = student.module('reports');
+  assert.equal((await reports.submitReport({ report_type: 'Daily Journal', file_path: 'actor/reports/00000000-0000-4000-8000-000000000001.pdf' })).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await reports.submitReport({ report_type: 'Weekly Journal', file_path: 'actor/reports/00000000-0000-4000-8000-000000000001.docx' })).error.code, 'FORBIDDEN');
+  assert.equal(student.tables.reports?.length ?? 0, 0);
+});
+
 test('students can submit a final report and the OJT Coordinator can approve it', async () => {
   const student = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }] } });
   assert.equal((await student.module('reports').submitReport({ report_type: 'final_report', file_path: 'actor/reports/00000000-0000-4000-8000-000000000001.pdf' })).error, null);
@@ -1467,22 +1525,22 @@ test('students can submit a final report and the OJT Coordinator can approve it'
 
 test('core student, OJT Coordinator, and supervisor service paths return useful results', async () => {
   const student = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }] } });
-  assert.equal((await student.module('reports').submitReport({ report_type: 'Weekly Progress', file_path: 'actor/reports/00000000-0000-4000-8000-000000000001.pdf' })).error, null);
+  assert.equal((await student.module('reports').submitReport({ report_type: 'Weekly Journal', file_path: 'actor/reports/00000000-0000-4000-8000-000000000001.pdf' })).error, null);
   assert.equal(student.tables.reports[0].student_id, 'student');
 
   const coordinator = workflowFixture('Coordinator', { tables: {
     students: [{ student_id: 'student', course: 'BSIT' }],
     supervisors: [{ supervisor_id: 'supervisor', company_id: 'company' }],
   } });
-  const assignment = await coordinator.module('assignments').createAssignment({ student_id: 'student', supervisor_id: 'supervisor', company_id: 'company', branch_id: 'branch', start_date: '2026-10-05' });
+  const assignment = await coordinator.module('assignments').createAssignment({ student_id: 'student', supervisor_id: 'supervisor', company_id: 'company', branch_id: 'branch', start_date: '2026-10-05', end_date: '2027-01-05' });
   assert.equal(assignment.error, null);
   assert.equal(coordinator.tables.student_assignments[0].assignment_status, 'active');
 
   const supervisor = workflowFixture('Supervisor', { tables: {
     supervisors: [{ user_id: 'actor', supervisor_id: 'supervisor' }],
     student_assignments: [{ student_id: 'student', supervisor_id: 'supervisor', assignment_id: 'assignment', assignment_status: 'active' }],
-  } });
-  assert.equal((await supervisor.module('evaluations').createEvaluation({ student_id: 'student', performance_score: null, feedback: 'Good progress.', evaluation_type: 'midterm', criteria: { technical_competence: 5, productivity_dependability: 4, attendance_punctuality: 4, communication_skills: 4, work_ethics_professionalism: 4 } })).error, null);
+  }, trainees: [{ student_id: 'student', completed_hours: 486, required_hours: 486 }] });
+  assert.equal((await supervisor.module('evaluations').createEvaluation({ student_id: 'student', performance_score: null, feedback: 'Good progress.', criteria: { technical_competence: 5, productivity_dependability: 4, attendance_punctuality: 4, communication_skills: 4, work_ethics_professionalism: 4 } })).error, null);
   assert.equal(supervisor.tables.evaluations[0].performance_score, 85);
 
   const head = workflowFixture('Coordinator', { tables: { students: [{ student_id: 'student', course: 'BSIT', users: { account_status: 'active' }, internship_progress: { completed_hours: 120, progress_status: 'in_progress' } }] } });
@@ -1794,7 +1852,11 @@ test('supervisor onboarding sends a setup invitation without creating a password
   const supervisors = load('apps/web/src/services/supervisors.ts', {
     '@/src/lib/supabase/server': { createClient: async () => supabase },
     '@/src/lib/supabase/service': { getServiceClient: () => service },
-    '@/src/lib/department-scope': { async departmentScope() { return { error: null }; } },
+    '@/src/lib/actor': load('apps/web/src/lib/actor.ts', {
+      'server-only': {}, '@/src/lib/actor-access': load('apps/web/src/lib/actor-access.ts'),
+      '@/src/lib/trusted-actor': { async getTrustedActor() { return { supabase, user: { id: 'coordinator-1' }, profile: { role: 'Coordinator' } }; } },
+      '@/src/lib/department-scope': { async departmentScope() { return { error: null }; } },
+    }),
   }, { NEXT_PUBLIC_APP_URL: 'https://portal.test' });
   const result = await supervisors.createSupervisor({
     full_name: 'Test Supervisor', email: 'supervisor@example.test',
@@ -1834,7 +1896,11 @@ test('supervisor onboarding rolls back only the newly invited account when profi
   const supervisors = load('apps/web/src/services/supervisors.ts', {
     '@/src/lib/supabase/server': { createClient: async () => supabase },
     '@/src/lib/supabase/service': { getServiceClient: () => service },
-    '@/src/lib/department-scope': { async departmentScope() { return { error: null }; } },
+    '@/src/lib/actor': load('apps/web/src/lib/actor.ts', {
+      'server-only': {}, '@/src/lib/actor-access': load('apps/web/src/lib/actor-access.ts'),
+      '@/src/lib/trusted-actor': { async getTrustedActor() { return { supabase, user: { id: 'coordinator-1' }, profile: { role: 'Coordinator' } }; } },
+      '@/src/lib/department-scope': { async departmentScope() { return { error: null }; } },
+    }),
   }, { NEXT_PUBLIC_APP_URL: 'https://portal.test' });
   const result = await supervisors.createSupervisor({
     full_name: 'Test Supervisor', email: 'supervisor@example.test',
@@ -2043,10 +2109,7 @@ test('attendance rejects a date outside the student assignment range before writ
       getPhilippineClock: () => new Date('2026-10-19T09:00:00Z'),
       isWithinGeofence: () => ({ isWithin: true, distanceMeters: 0 }),
     },
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent() { return { actor: { user: { id: 'user' }, studentId: 'student' }, error: null }; },
-      mobileBffFailure(error) { return Response.json({ error: error.code }, { status: error.status }); },
-    },
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'user' }, studentId: 'student' }),
     '@/src/lib/supabase/service': { getServiceClient: () => service },
     '@/src/services/auth/internal': { async authActionLimit() { return null; } },
     '@/src/lib/uploadValidation': { validateUploadedBytes() { return { data: true, error: null }; } },
@@ -2068,10 +2131,7 @@ test('attendance rejects future-dated Time In and Time Out against the server cl
       ...load('shared/attendanceDate.ts'),
       isWithinGeofence: () => ({ isWithin: true, distanceMeters: 0 }),
     },
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent() { return { actor: { user: { id: 'user' }, studentId: 'student' }, error: null }; },
-      mobileBffFailure(error) { return Response.json({ error: error.code }, { status: error.status }); },
-    },
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'user' }, studentId: 'student' }),
     '@/src/lib/supabase/service': { getServiceClient: () => ({
       from() { throw new Error('future attendance must not reach the database'); },
       storage: { from() { throw new Error('future attendance must not reach storage'); } },
@@ -2090,7 +2150,7 @@ test('attendance rejects future-dated Time In and Time Out against the server cl
   ]) {
     const response = await post(body);
     assert.equal(response.status, 400, body.action);
-    assert.equal((await response.json()).error, 'VALIDATION_FAILURE');
+    assert.equal((await response.json()).error.code, 'VALIDATION_FAILURE');
   }
 });
 
@@ -2124,12 +2184,9 @@ test('only a pending automatic Time Out can be replaced with captured offline ev
     async download() { return { data: { type: 'image/jpeg', async arrayBuffer() { return new ArrayBuffer(1); } }, error: null }; },
   }; } } };
   const route = load('apps/web/app/api/mobile/attendance/route.ts', {
-    '@ojt/shared': { AUTO_TIME_OUT_REASON: reason, getAttendanceDate: () => '2026-10-26',
+    '@ojt/shared': { AUTO_TIME_OUT_REASON: reason, isReplaceableAutoTimeOut: load('shared/attendanceDate.ts').isReplaceableAutoTimeOut, getAttendanceDate: () => '2026-10-26',
       getPhilippineClock: date => date, isWithinGeofence: () => ({ isWithin: true, distanceMeters: 0 }) },
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent() { return { actor: { user: { id: 'user' }, studentId: 'student', supabase: client }, error: null }; },
-      mobileBffFailure(error) { return Response.json({ error: error.code }, { status: error.status }); },
-    },
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'user' }, studentId: 'student', supabase: client }),
     '@/src/lib/supabase/service': { getServiceClient: () => client },
     '@/src/services/auth/internal': { async authActionLimit() { return null; } },
     '@/src/lib/uploadValidation': { validateUploadedBytes() { return { data: true, error: null }; } },
@@ -2152,8 +2209,8 @@ test('offline attendance from a closed assignment syncs within its placement dat
   const rows = {
     student_assignments: [{ assignment_id: 'assignment', student_id: 'student', company_id: 'company', branch_id: 'branch', assignment_status: 'completed', start_date: '2026-10-01', end_date: '2026-10-19' }],
     company_branches: [{ company_id: 'company', branch_id: 'branch', status: 'inactive', latitude: 14, longitude: 121, geofence_radius_meters: 150, geofence_enabled: true }],
-    practicum_schedules: [{ student_id: 'student', company_id: 'company', branch_id: 'branch', status: 'approved', start_date: '2026-10-01', end_date: '2026-10-19', work_modality: 'on_site' }],
-    attendance: [], work_schedules: [],
+    practicum_schedules: [{ student_id: 'student', company_id: 'company', branch_id: 'branch', status: 'approved', start_date: '2026-10-01', end_date: '2026-10-19', work_modality: 'on_site', time_in: '08:00:00', work_days: [1, 2, 3, 4, 5] }],
+    attendance: [],
   };
   let inserted = null;
   const client = { from(table) {
@@ -2184,10 +2241,7 @@ test('offline attendance from a closed assignment syncs within its placement dat
       getPhilippineClock: () => new Date('2026-10-19T09:00:00Z'),
       isWithinGeofence: () => ({ isWithin: true, distanceMeters: 0 }),
     },
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent() { return { actor: { user: { id: 'user' }, studentId: 'student', supabase: client }, error: null }; },
-      mobileBffFailure(error) { return Response.json({ error: error.code }, { status: error.status }); },
-    },
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'user' }, studentId: 'student', supabase: client }),
     '@/src/lib/supabase/service': { getServiceClient: () => ({ ...client, storage: { from: () => ({
       async info() { return { data: { size: 1, contentType: 'image/jpeg' }, error: null }; },
       async download() { return { data: { type: 'image/jpeg', async arrayBuffer() { return new ArrayBuffer(1); } }, error: null }; },
@@ -2206,20 +2260,14 @@ test('offline attendance from a closed assignment syncs within its placement dat
   assert.equal(inserted.time_in, capturedAt);
   assert.equal(inserted.verification_status, 'pending');
   assert.ok(inserted.time_in_received_at, 'server receipt time is recorded separately');
+  assert.equal(inserted.late_status, 'late', 'judged against the approved schedule start, not a company cutoff');
 });
 
 test('student resubmission requires the rejected-student BFF and bounds streamed JSON', async () => {
   let submitted = null;
   const route = load('apps/web/app/api/mobile/registration/resubmit/route.ts', {
-    '@/src/lib/mobile-bff': {
-      async authenticateMobileStudent(_request, status) {
-        assert.equal(status, 'rejected');
-        return { actor: { user: { id: 'student-user' }, studentId: 'student-row' }, error: null };
-      },
-      mobileBffFailure(error) {
-        return Response.json({ data: null, error: { code: error.code } }, { status: error.status });
-      },
-    },
+    // Only a rejected-status account passes the real preamble, so this also pins the required status.
+    '@/src/lib/mobile-bff': mobileBffMock({ user: { id: 'student-user' }, studentId: 'student-row', status: 'rejected' }),
     '@/src/lib/supabase/service': { getServiceClient() { throw new Error('POST must not read registration data directly'); } },
     '@/src/services/auth/registration': {
       async resubmitStudentRegistration(userId, input) {
@@ -2303,6 +2351,24 @@ test('HTE geofence radius is limited to 30-50 m for companies and branches', asy
   }
   // Omitted radius falls back to the 50 m default, which is valid.
   assert.equal((await companies.createCompanyBranch(branch)).error.code, 'FORBIDDEN');
+});
+
+test('createCompanyBranch explains an RLS refusal instead of a generic failure', async () => {
+  const run = async dbError => {
+    const supabase = { from: table => table === 'companies'
+      ? { select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { company_id: 'company' } }) }) }) }) }
+      : { insert: () => ({ select: () => ({ single: async () => ({ data: null, error: dbError }) }) }) } };
+    const companies = load('apps/web/src/services/companies.ts', {
+      '@/src/lib/actor': { getCoordinator: async () => ({ supabase, user: { id: 'coordinator' }, authorized: true }) },
+      '@/src/lib/audit': { recordAuditEvent: async () => {} },
+    });
+    return (await companies.createCompanyBranch({ company_id: 'company', branch_name: 'NVIDIA CDM', address: '1 Road', latitude: 14.7, longitude: 121.1 })).error;
+  };
+  const denied = await run({ code: '42501' });
+  assert.equal(denied.code, 'FORBIDDEN');
+  assert.match(denied.message, /pending practicum schedule/);
+  assert.equal((await run({ code: '23505' })).code, 'DUPLICATE_REQUEST');
+  assert.equal((await run({ code: 'XX000' })).code, 'SERVER_FAILURE');
 });
 
 // Batch A: database security migrations. supabase/migrations is the single source of truth.
@@ -2445,4 +2511,15 @@ test('Super Admin user list shows each account\'s department and filters by it',
   const ibe = await admin.listAllUsers(1, 20, 'all', 'all', '', 'IBE');
   assert.equal(ibe.error, null);
   assert.deepEqual(ibe.data.users.map(row => row.user_id).sort(), ['co-ibe', 'stu-ibe']);
+});
+
+test('unknown or empty courses have no department and are never treated as IBE', () => {
+  const departments = load('apps/web/src/lib/departments.ts');
+  for (const course of ['BS Nursing', '', null]) {
+    assert.equal(departments.getDepartmentByCourse(course), null);
+    assert.equal(departments.isIBECourse(course), false);
+    assert.equal(departments.getDepartmentFullName(course ?? ''), 'Unknown department');
+  }
+  assert.equal(departments.getDepartmentByCourse('BSCPE'), 'ICS');
+  assert.equal(departments.getDepartmentByCourse('BSA'), 'IBE');
 });

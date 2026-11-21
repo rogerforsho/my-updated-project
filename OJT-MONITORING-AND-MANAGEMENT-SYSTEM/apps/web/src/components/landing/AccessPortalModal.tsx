@@ -53,7 +53,7 @@ export default function AccessPortalModal({ isOpen, onClose }: AccessPortalModal
     {
       role: 'Company Supervisor',
       badge: 'Host Training Establishment',
-      description: 'Review attendance and daily reports for assigned students, and submit midterm and final evaluations.',
+      description: 'Review attendance and daily reports for assigned students, and submit the final evaluation once a trainee completes their hours.',
       href: '/auth/sign-in?role=supervisor',
       icon: Building2,
       color: 'border-emerald-500/40 hover:border-emerald-500 bg-emerald-50/40',
@@ -86,8 +86,8 @@ export default function AccessPortalModal({ isOpen, onClose }: AccessPortalModal
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#E4DBC4]">Institutional Access</span>
-                <span className="text-[10px] text-emerald-300 font-mono flex items-center gap-1">
+                <span className="text-xs font-bold text-[#E4DBC4]">Institutional Access</span>
+                <span className="text-xs text-emerald-300 flex items-center gap-1">
                   <Shield className="w-3 h-3" /> Secure Gateway
                 </span>
               </div>
@@ -127,7 +127,7 @@ export default function AccessPortalModal({ isOpen, onClose }: AccessPortalModal
                         <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-900 transition-colors">
                           {g.role}
                         </h3>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${g.badgeColor}`}>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${g.badgeColor}`}>
                           {g.badge}
                         </span>
                       </div>

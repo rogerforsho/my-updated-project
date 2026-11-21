@@ -46,7 +46,7 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F4F6F2', paddingHorizontal: 24 },
   title: { fontSize: 22, fontWeight: '700', color: '#0A3824', marginBottom: 8 },
   body: { fontSize: 14, color: '#475569', marginBottom: 20 },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 12, padding: 14, marginBottom: 12, fontSize: 15 },
+  input: { backgroundColor: '#FFFEFB', borderWidth: 1, borderColor: '#DCE5DB', borderRadius: 12, padding: 14, marginBottom: 12, fontSize: 15 },
   error: { color: '#B91C1C', marginBottom: 12, fontSize: 13 },
   button: { backgroundColor: '#0A3824', borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 16 },
   buttonText: { color: '#fff', fontWeight: '700', fontSize: 15 },

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import type { VerificationStatus } from '@ojt/shared';
+import { daysPendingReview, isOverdueReview, OVERDUE_REVIEW_DAYS, type VerificationStatus } from '@ojt/shared';
 import Alert from '@/src/components/ui/Alert';
 import Badge from '@/src/components/ui/Badge';
 import Button from '@/src/components/ui/Button';
@@ -10,8 +10,10 @@ import Modal from '@/src/components/ui/Modal';
 import { coordinatorOverrideVerifyAttendance, getSelfieUrl, listAttendanceForCoordinator, type AttendanceWithStudent } from '@/src/services/attendance';
 
 const PAGE_SIZE = 20;
-const FILTERS: { label: string; value: VerificationStatus | undefined }[] = [
+type Filter = VerificationStatus | 'overdue' | undefined;
+const FILTERS: { label: string; value: Filter }[] = [
   { label: 'Pending review', value: 'pending' },
+  { label: `Overdue (${OVERDUE_REVIEW_DAYS}+ days)`, value: 'overdue' },
   { label: 'Verified', value: 'verified' },
   { label: 'Rejected', value: 'rejected' },
   { label: 'All records', value: undefined },
@@ -22,7 +24,7 @@ export function ExceptionReview() {
   const [records, setRecords] = useState<AttendanceWithStudent[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [filter, setFilter] = useState<VerificationStatus | undefined>('pending');
+  const [filter, setFilter] = useState<Filter>('pending');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -91,7 +93,7 @@ export function ExceptionReview() {
               <td className="p-4 whitespace-nowrap">{record.attendance_date}</td>
               <td className="p-4 text-xs"><div>In: {timestamp(record.time_in)}</div><div>Out: {timestamp(record.time_out)}</div></td>
               <td className="p-4 text-xs"><div>In: {timestamp(record.time_in_received_at)}</div><div>Out: {timestamp(record.time_out_received_at)}</div></td>
-              <td className="p-4"><Badge status={record.verification_status} />{record.time_in_flag_reason && <p className="mt-1 max-w-56 text-xs text-amber-800">{record.time_in_flag_reason}</p>}</td>
+              <td className="p-4"><Badge status={record.verification_status} />{isOverdueReview(record) && <p className="mt-1 text-xs font-semibold text-amber-800">Pending {daysPendingReview(record)} days</p>}{(record.time_in_flag_reason || record.time_out_flag_reason) && <p className="mt-1 max-w-56 text-xs text-amber-800">{record.time_in_flag_reason || record.time_out_flag_reason}</p>}</td>
               <td className="p-4 text-right"><Button size="sm" variant="outline" onClick={() => void openRecord(record)}>{record.verification_status === 'pending' ? 'Review' : 'View'}</Button></td>
             </tr>)}</tbody>
           </table>

@@ -112,6 +112,9 @@ function mobileFixture() {
         return { data: { path: filename }, error: null };
       },
     },
+    // auth.ts cancels phone reminders on sign-out; expo-notifications cannot load under node.
+    [path.join(root, 'apps/mobile/src/lib/attendanceReminders.ts')]: { async cancelAttendanceReminders() {} },
+    [path.join(root, 'apps/mobile/src/lib/pinAuth.ts')]: { async clearPin() {} },
     'expo-secure-store': secureStore,
     'expo-network': { async getNetworkStateAsync() {
       return { isConnected: state.online, isInternetReachable: state.online };
@@ -163,7 +166,7 @@ test('shared schedule policy normalizes lunch input and enforces the same-day ca
   const validateSchedulePolicy = loader({})('shared/schedulePolicy.ts').validateSchedulePolicy;
   const base = {
     work_days: [1, 2, 3, 4, 5], time_in: '08:00', time_out: '17:00',
-    lunch_break_minutes: 60, lunch_break_start: '12:00', start_date: '2026-10-12',
+    lunch_break_minutes: 60, lunch_break_start: '12:00', start_date: '2026-10-12', end_date: '2027-02-12',
   };
   assert.deepEqual(JSON.parse(JSON.stringify(validateSchedulePolicy(base))), {
     ok: true,
@@ -176,7 +179,9 @@ test('shared schedule policy normalizes lunch input and enforces the same-day ca
   assert.equal(validateSchedulePolicy({ ...base, work_days: [1, 1] }).ok, false);
   assert.equal(validateSchedulePolicy({ ...base, time_out: '07:59' }).ok, false);
   assert.equal(validateSchedulePolicy({ ...base, time_out: '16:00', work_days: [1, 2, 3, 4], lunch_break_minutes: 0, lunch_break_start: '' }).ok, true);
-  assert.equal(validateSchedulePolicy({ ...base, work_modality: 'remote' }).ok, false);
+  assert.equal(validateSchedulePolicy({ ...base, end_date: undefined }).ok, true, 'an end date is optional for every modality');
+  assert.equal(validateSchedulePolicy({ ...base, end_date: '2027-03-13' }).ok, false, 'longer than 5 months');
+  assert.equal(validateSchedulePolicy({ ...base, work_modality: 'remote', end_date: undefined }).ok, true);
   assert.equal(validateSchedulePolicy({ ...base, work_modality: 'hybrid', end_date: '2026-10-11' }).ok, false);
   assert.equal(validateSchedulePolicy({ ...base, work_modality: 'remote', end_date: '2026-10-31' }).ok, true);
   assert.equal(validateSchedulePolicy({ ...base, start_date: '2026-02-29' }).ok, false);
@@ -227,7 +232,7 @@ test('mobile schedule proposal sends policy-normalized lunch interval to the BFF
   const schedule = f.load('apps/mobile/src/services/schedule.ts');
   const result = await schedule.submitScheduleProposal({
     work_days: [1, 2, 3, 4, 5], time_in: '08:00', time_out: '17:00',
-    lunch_break_minutes: undefined, lunch_break_start: '12:00', start_date: '2026-10-12',
+    lunch_break_minutes: undefined, lunch_break_start: '12:00', start_date: '2026-10-12', end_date: '2027-02-12',
     work_modality: 'onsite',
   });
   assert.equal(result.error, null);
@@ -613,7 +618,8 @@ test('desktop IPC hides to tray and transitions between valid widget/window size
     setMinimumSize: (w, h) => calls.push(['minimum', w, h]),
     setSize: (w, h) => calls.push(['size', w, h]),
     setAlwaysOnTop() {}, setMenuBarVisibility() {}, loadFile: () => Promise.resolve(), loadURL: () => Promise.resolve(), on() {},
-    webContents: { on() {}, send() {}, setWindowOpenHandler() {}, mainFrame: { url: 'https://ojt-monitoring-and-management-syste.vercel.app/dashboard' } },
+    // shortcut: origin copied from the main.js productionUrl fallback, change both together; derive it if it drifts again
+    webContents: { on() {}, send() {}, setWindowOpenHandler() {}, mainFrame: { url: 'https://my-updated-project-git-loop-integration-ojt-project.vercel.app/dashboard' } },
   };
   const electron = {
     app: { isPackaged: true, requestSingleInstanceLock: () => true, on() {},
@@ -706,7 +712,40 @@ test('Supervisor bulk verify only includes clean logs, never flagged entries', (
   assert.match(page, /r\.time_out_flag_reason/);
 });
 
+test('student identity: one set of failure shapes for signed-out and missing-profile', async () => {
+  const f = mobileFixture();
+  const { requireStudent } = f.load('apps/mobile/src/lib/studentIdentity.ts');
+  assert.deepEqual(JSON.parse(JSON.stringify(await requireStudent())), { data: { user_id: 'user-a', student_id: 'student-a' }, error: null });
+  f.state.studentLookup = async () => ({ data: null, error: null });
+  assert.deepEqual(JSON.parse(JSON.stringify((await requireStudent()).error)), { code: 'NOT_FOUND', message: 'Student profile not found.' });
+  f.state.userId = null;
+  assert.deepEqual(JSON.parse(JSON.stringify((await requireStudent('Sign in again.')).error)), { code: 'UNAUTHORIZED', message: 'Sign in again.' });
+  assert.equal((await requireStudent()).error.message, 'Not authenticated.');
+});
+
+test('services keep their sign-in and missing-student errors on the identity module', async () => {
+  const f = mobileFixture();
+  const evaluations = f.load('apps/mobile/src/services/evaluations.ts');
+  const reports = f.load('apps/mobile/src/services/reports.ts');
+  const schedule = f.load('apps/mobile/src/services/schedule.ts');
+  f.state.studentLookup = async () => ({ data: null, error: null });
+  assert.equal((await reports.listStudentReports()).error.message, 'Student profile not found.');
+  assert.equal((await schedule.fetchStudentScheduleProposal()).error.message, 'Student not found.');
+  f.state.userId = null;
+  assert.equal((await evaluations.listOwnEvaluations()).error.message, 'Sign in again to view evaluations.');
+  assert.equal((await reports.listStudentReports()).error.message, 'Not authenticated.');
+  assert.equal((await schedule.fetchStudentScheduleProposal()).error.message, 'Not logged in.');
+});
+
 test('Vercel traces from the Git root so the builder finds apps/web (MODULE_NOT_FOUND noop.js)', () => {
   const config = fs.readFileSync(path.join(root, 'apps/web/next.config.ts'), 'utf8');
   assert.match(config, /outputFileTracingRoot: path\.resolve\(__dirname, process\.env\.VERCEL \? '\.\.\/\.\.\/\.\.' : '\.\.\/\.\.'\)/);
+});
+
+test('student email confirmation lands on the public email-confirmed page, not sign-in', () => {
+  const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
+  assert.match(read('apps/web/src/services/auth/registration.ts'), /emailRedirectTo: new URL\('\/auth\/email-confirmed'/);
+  const middleware = read('apps/web/middleware.ts');
+  assert.equal(middleware.split("'/auth/email-confirmed'").length - 1, 2, 'listed in PUBLIC_PATHS and KNOWN_PATHS');
+  assert.ok(fs.existsSync(path.join(root, 'apps/web/app/auth/email-confirmed/page.tsx')));
 });

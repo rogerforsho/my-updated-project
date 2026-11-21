@@ -38,7 +38,7 @@ export function expectedEndDate(input: ExpectedEndInput): string | null {
   return null;
 }
 
-/** Required practicum hours when a student has none set. */
+/** Last resort for legacy rows whose course maps to no program. Use resolveRequiredHours() from courses.ts. */
 export const DEFAULT_REQUIRED_HOURS = 486;
 
 export interface NonWorkingDayRow {

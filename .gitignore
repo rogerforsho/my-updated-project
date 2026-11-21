@@ -28,3 +28,5 @@ OJT-MONITORING-AND-MANAGEMENT-SYSTEM/output/vercel-build-fix/
 OJT-MONITORING-AND-MANAGEMENT-SYSTEM/OJT-CDM/
 OJT-MONITORING-AND-MANAGEMENT-SYSTEM/.expo/
 OJT-MONITORING-AND-MANAGEMENT-SYSTEM/.obsidian/
+# Playwright CLI output (may contain credentials)
+.playwright-cli/

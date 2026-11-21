@@ -22,9 +22,8 @@
     "android": {
       "package": "ph.edu.cdm.ojtmonitoring",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#F4F6F2",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
@@ -48,6 +47,13 @@
     },
     "plugins": [
       "expo-secure-store",
+      ["expo-local-authentication", { "faceIDPermission": "Use Face ID to unlock your student account for attendance." }],
+      [
+        "expo-notifications",
+        {
+          "color": "#0A3824"
+        }
+      ],
       [
         "expo-location",
         {

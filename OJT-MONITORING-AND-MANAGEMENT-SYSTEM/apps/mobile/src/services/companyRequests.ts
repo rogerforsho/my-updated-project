@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { requireUser, requireStudent } from '../lib/studentIdentity';
 import { postWebBff } from '../lib/webBff';
 import { uploadReportToStorage } from '../lib/storage';
 import type { AppResult, DbCompanyRequest } from '@ojt/shared';
@@ -18,8 +19,8 @@ export interface CompanyRequestInput {
 }
 
 export async function listMyCompanyRequests(): Promise<AppResult<DbCompanyRequest[]>> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { data: null, error: { code: 'UNAUTHORIZED', message: 'Sign in again to view HTE requests.' } };
+  const me = await requireUser('Sign in again to view HTE requests.');
+  if (!me.data) return { data: null, error: me.error };
   const { data, error } = await supabase.from('company_requests')
     .select('request_id, student_id, requested_company_name, company_address, contact_person, contact_email, contact_number, requested_branch_name, branch_address, branch_latitude, branch_longitude, business_permit_path, moa_path, status, feedback, company_id, branch_id, created_at')
     .order('created_at', { ascending: false }).limit(20);
@@ -28,10 +29,10 @@ export async function listMyCompanyRequests(): Promise<AppResult<DbCompanyReques
 }
 
 export async function submitCompanyRequest(input: CompanyRequestInput): Promise<AppResult<unknown>> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { data: null, error: { code: 'UNAUTHORIZED', message: 'Sign in again before submitting an HTE request.' } };
-  const { data: student, error } = await supabase.from('students').select('student_id').eq('user_id', user.id).single();
-  if (error || !student) return { data: null, error: { code: 'NOT_FOUND', message: 'Student profile not found.' } };
+  const who = await requireStudent('Sign in again before submitting an HTE request.');
+  if (!who.data) return { data: null, error: who.error };
+  const student = who.data;
+  const user = { id: student.user_id };
 
   let business_permit_path: string | null = null;
   let moa_path: string | null = null;

@@ -1,9 +1,57 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZES, pageItems, rangeText } from '@/src/lib/paging';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZES, outOfRangePage, pageItems, rangeText } from '@/src/lib/paging';
 
 const SIZE_KEY = 'ojt-rows-per-page';
+
+type PagedResult<T> = { data?: { items: T[]; total: number } | null; error?: { message: string } | null };
+
+/** Server-paged list: owns page, size, loading, error, stale-response dropping and the step-back when the page empties. */
+export function usePagedList<T>(
+  load: (page: number, size: number) => Promise<PagedResult<T>>,
+  deps: unknown[],
+  resetKey: unknown,
+  failMessage: string,
+) {
+  const [items, setItems] = useState<T[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, changePageSize] = usePageSize();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => { setPage(1); }, [resetKey]);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    load(page, pageSize).then((res) => {
+      if (!active) return;
+      if (res.error) setError(res.error.message);
+      else {
+        const t = res.data?.total ?? 0;
+        const back = outOfRangePage(page, pageSize, t);
+        if (back) { setPage(back); return; }
+        setItems(res.data?.items ?? []); setTotal(t);
+      }
+      setLoading(false);
+    }).catch(() => {
+      if (!active) return;
+      setError(failMessage);
+      setLoading(false);
+    });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pageSize, ...deps]);
+
+  return {
+    items, total, page, setPage, pageSize, loading, error,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    setPageSize: (n: number) => { changePageSize(n); setPage(1); },
+  };
+}
 
 /** Rows-per-page choice, remembered across pages and sessions. */
 export function usePageSize(): [number, (n: number) => void] {

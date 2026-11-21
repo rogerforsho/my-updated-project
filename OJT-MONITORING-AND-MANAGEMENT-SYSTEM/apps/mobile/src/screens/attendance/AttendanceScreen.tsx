@@ -8,8 +8,9 @@ import {
 } from 'react-native';
 import { FaceCamera, useCameraPermissions, useFaceCamera, useFaceValidation, type FaceRequirements } from '@rbayuokt/expo-face-vision';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, type CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import {
   recordTimeIn,
@@ -25,12 +26,14 @@ import { getCurrentCoordinates } from '../../services/location';
 import { syncPendingOfflineAttendance, isNetworkAvailable } from '../../lib/syncEngine';
 import { getOfflineQueue } from '../../lib/offlineQueue';
 import { optimizeSelfie } from '../../lib/imageOptimizer';
-import { isWithinGeofence } from '@ojt/shared';
+import { GATEWAY_DOCUMENT_SPECS, getGatewayStatus, isBundleType, isWithinGeofence, matchesDoc } from '@ojt/shared';
 import NetworkToast from '../../components/NetworkToast';
 import ScheduleProposalModal from '../../components/ScheduleProposalModal';
 import { fetchStudentScheduleProposal } from '../../services/schedule';
+import { refreshAttendanceReminders } from '../../lib/attendanceReminders';
+import { punctuality } from '../../lib/punctuality';
 import type { DbAttendance, DbPracticumSchedule } from '@ojt/shared';
-import type { StudentTabParamList } from '../../navigation/types';
+import type { StudentStackParamList, StudentTabParamList } from '../../navigation/types';
 
 type Step = 'idle' | 'selfie' | 'submitting';
 type SubTab = 'check_in' | 'history';
@@ -66,7 +69,10 @@ const FACE_HINTS: Record<string, string> = {
 
 export default function AttendanceScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<BottomTabNavigationProp<StudentTabParamList>>();
+  const navigation = useNavigation<CompositeNavigationProp<
+    BottomTabNavigationProp<StudentTabParamList>,
+    NativeStackNavigationProp<StudentStackParamList>
+  >>();
   const [activeTab, setActiveTab] = useState<SubTab>('check_in');
   const [permission, requestPermission] = useCameraPermissions();
   const [step, setStep] = useState<Step>('idle');
@@ -90,6 +96,7 @@ export default function AttendanceScreen() {
   const [isGatewayCleared, setIsGatewayCleared] = useState(false);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [scheduleProposal, setScheduleProposal] = useState<DbPracticumSchedule | null>(null);
+  const scheduleTimeIn = scheduleProposal?.status === 'approved' ? scheduleProposal.time_in : null;
   const capturingSelfie = useRef(false);
 
   const { width: winW, height: winH } = useWindowDimensions();
@@ -146,14 +153,26 @@ export default function AttendanceScreen() {
     }
   }
 
+  // The spinner must always clear, even when a read throws, or the tab is stuck until the app restarts.
   async function loadState() {
     setLoading(true);
+    try {
+      await readState();
+    } catch {
+      setError('Could not load attendance. Pull down to try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function readState() {
     const assign = await getActiveAssignment();
     setActiveAssignment(assign);
 
     const identity = await getCachedAttendanceIdentity();
     const eligibilityKey = identity ? `cdm_ojt_attendance_eligibility_${identity.user.user_id}` : null;
     const online = await isNetworkAvailable();
+    let reminderSchedule: DbPracticumSchedule | null = null;
     // Cache only the existing attendance prerequisites, scoped to this account.
     if (!online) {
       setIsGatewayCleared(false);
@@ -166,33 +185,31 @@ export default function AttendanceScreen() {
           setIsGatewayCleared(cached.cleared === true);
           setGatewayDocs(cached.progress || []);
           setScheduleProposal(cached.schedule || null);
+          reminderSchedule = cached.schedule || null;
         }
       } catch { /* Remain blocked until prerequisites can be checked online. */ }
     } else try {
       const repRes = await listStudentReports(1, 50);
       const reports = repRes.data?.reports || [];
-      const GATEWAY_SPECS = [
-        { id: 'orientation', title: 'Pre-OJT Orientation Certificate' },
-        { id: 'endorsement', title: 'Endorsement Letter' },
-      ];
-
-      const progress = GATEWAY_SPECS.map(spec => {
-        const found = reports.find(r => {
-          const a = (r.report_type || '').toLowerCase();
-          const b = spec.title.toLowerCase();
-          return a.includes(b) || b.includes(a) ||
-            (spec.id === 'orientation' && a.includes('orientation')) ||
-            (spec.id === 'endorsement' && (a.includes('endorsement') || a.includes('acceptance') || a.includes('moa')));
-        });
+      // Students already placed are exempt from newly added documents.
+      // One combined requirements file stands in for all four documents (approved one wins, else latest).
+      const bundles = reports.filter(r => isBundleType(r.report_type));
+      const bundle = bundles.find(r => r.status === 'approved') ?? bundles[0];
+      const progress = GATEWAY_DOCUMENT_SPECS.map(spec => {
+        // An approved submission wins: the same document type can be submitted more than once.
+        const found = bundle
+          ?? reports.find(r => matchesDoc(r.report_type, spec.name) && r.status === 'approved')
+          ?? reports.find(r => matchesDoc(r.report_type, spec.name));
         return {
           id: spec.id,
-          title: spec.title,
+          title: spec.name,
           submitted: Boolean(found),
           status: found ? found.status : 'missing',
         };
       });
       setGatewayDocs(progress);
-      const cleared = progress.length === 2 && progress.every(p => p.status === 'approved');
+      // Same call and same approved-only filter as the server (schedule-proposals route, schedule.ts).
+      const cleared = Boolean(assign) || getGatewayStatus(reports.filter(r => r.status === 'approved')).isCleared;
       setIsGatewayCleared(cleared);
 
       let cachedSchedule: DbPracticumSchedule | null = null;
@@ -203,6 +220,7 @@ export default function AttendanceScreen() {
           if (schedRes.data) {
             setScheduleProposal(schedRes.data);
             cachedSchedule = schedRes.data;
+            reminderSchedule = schedRes.data;
           }
         } catch {
           // Ignore if offline
@@ -217,10 +235,11 @@ export default function AttendanceScreen() {
 
     const record = await getTodayAttendance();
     setTodayRecord(record);
+    // Only with a known schedule: a failed fetch must not wipe reminders that are already set.
+    if (reminderSchedule) void refreshAttendanceReminders(reminderSchedule, record, online);
     const queue = await getOfflineQueue();
     const queueIdentity = await getCachedAttendanceIdentity();
     applyQueue(queue, queueIdentity?.student_id);
-    setLoading(false);
   }
 
   const loadHistory = useCallback(async () => {
@@ -702,6 +721,16 @@ export default function AttendanceScreen() {
             </View>
           )}
 
+          {/* shortcut: a failed assignment lookup also reads as "none", so pull-to-refresh corrects it; split the error case if students report false notices */}
+          {!isOffline && isGatewayCleared && !activeAssignment && (
+            <View style={s.alertSuccess}>
+              <Ionicons name="information-circle" size={18} color="#0A3824" />
+              <Text style={s.alertSuccessText}>
+                No company assigned yet. Time In with selfie unlocks once your coordinator assigns you to a company and supervisor.
+              </Text>
+            </View>
+          )}
+
           {/* Pre-Deployment Gateway Notice or Normal Today Status */}
           {(!activeAssignment || !isGatewayCleared) ? (
             <View style={s.gatewayCard}>
@@ -713,7 +742,9 @@ export default function AttendanceScreen() {
                   <Text style={s.gatewayTitle}>Attendance Locked</Text>
                   <Text style={s.gatewaySubtitle}>
                     {!isGatewayCleared
-                      ? `Pre-Deployment Gateway Incomplete (${gatewayDocs.filter(d => d.status === 'approved').length}/2 Approved)`
+                      ? `Pre-Deployment Gateway Incomplete (${gatewayDocs.filter(d => d.status === 'approved').length}/${GATEWAY_DOCUMENT_SPECS.length} Approved)`
+                      : scheduleProposal
+                      ? 'Gateway Cleared! Waiting for Company Assignment'
                       : 'Gateway Cleared! Set Up Practicum Work Schedule'}
                   </Text>
                 </View>
@@ -721,7 +752,7 @@ export default function AttendanceScreen() {
 
               <Text style={s.gatewayDesc}>
                 {!isGatewayCleared
-                  ? 'Under Colegio de Montalban practicum rules, daily check-in is unlocked only after your 2 mandatory gateway documents are submitted and verified by your OJT Coordinator.'
+                  ? 'Under Colegio de Montalban practicum rules, daily check-in is unlocked only after your Pre-deployment Requirements are verified by your OJT Coordinator. Submit ONE PDF or DOCX file that contains all four: consent waiver, medical certificate, orientation certificate and endorsement letter.'
                   : 'All mandatory credentials have been verified! Please submit your proposed Practicum Work Schedule so your OJT Coordinator can deploy you.'}
               </Text>
 
@@ -729,16 +760,13 @@ export default function AttendanceScreen() {
               <View style={s.gatewayProgressRow}>
                 <Text style={s.gatewayProgressLabel}>Gateway Progress</Text>
                 <Text style={s.gatewayProgressCount}>
-                  {gatewayDocs.filter(d => d.submitted).length} of {gatewayDocs.length || 2} Submitted
+                  {gatewayDocs.filter(d => d.submitted).length} of {GATEWAY_DOCUMENT_SPECS.length} Submitted
                 </Text>
               </View>
 
               {/* Checklist Items */}
               <View style={s.gatewayList}>
-                {(gatewayDocs.length > 0 ? gatewayDocs : [
-                  { id: '1', title: 'Pre-OJT Orientation Certificate', submitted: false },
-                  { id: '2', title: 'Endorsement Letter', submitted: false },
-                ]).map((doc) => (
+                {(gatewayDocs.length > 0 ? gatewayDocs : GATEWAY_DOCUMENT_SPECS.map(spec => ({ id: spec.id, title: spec.name, submitted: false, status: undefined as string | undefined }))).map((doc) => (
                   <View key={doc.id} style={s.gatewayItem}>
                     <Ionicons
                       name={doc.submitted ? "checkmark-circle" : "ellipse-outline"}
@@ -753,7 +781,7 @@ export default function AttendanceScreen() {
                       doc.submitted ? (doc.status === 'approved' ? s.badgeGreen : s.badgeAmber) : s.badgeGray
                     ]}>
                       <Text style={s.gatewayStatusBadgeText}>
-                        {doc.submitted ? (doc.status === 'approved' ? 'Approved' : 'Submitted') : 'Required'}
+                        {doc.submitted ? (doc.status === 'approved' ? 'Approved' : doc.status === 'rejected' ? 'Returned' : 'Submitted') : 'Required'}
                       </Text>
                     </View>
                   </View>
@@ -854,11 +882,8 @@ export default function AttendanceScreen() {
                     </View>
                     <View style={s.statusRow}>
                       <Text style={s.statusLabel}>Punctuality</Text>
-                      <Text style={[
-                        s.statusValue,
-                        todayRecord.late_status === 'late' ? { color: '#dc2626' } : { color: '#0A3824' }
-                      ]}>
-                        {todayRecord.late_status.replace('_', ' ').toUpperCase()}
+                      <Text style={[s.statusValue, { color: punctuality(todayRecord, scheduleTimeIn).color }]}>
+                        {punctuality(todayRecord, scheduleTimeIn).text}
                       </Text>
                     </View>
                     <View style={s.statusRow}>
@@ -1063,8 +1088,8 @@ export default function AttendanceScreen() {
                 </View>
                 <View style={s.timeCol}>
                   <Text style={s.timeLabel}>Punctuality</Text>
-                  <Text style={[s.timeValue, item.late_status === 'late' ? { color: '#dc2626' } : { color: '#0A3824' }]}>
-                    {item.late_status.replace('_', ' ')}
+                  <Text style={[s.timeValue, { color: punctuality(item).color }]}>
+                    {punctuality(item).text}
                   </Text>
                 </View>
               </View>

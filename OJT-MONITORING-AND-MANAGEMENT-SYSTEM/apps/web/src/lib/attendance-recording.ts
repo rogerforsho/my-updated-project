@@ -1,4 +1,4 @@
-import { AUTO_TIME_OUT_REASON, getPhilippineClock, isWithinGeofence } from '@ojt/shared';
+import { getPhilippineClock, isReplaceableAutoTimeOut, isWithinGeofence } from '@ojt/shared';
 
 // Pure attendance-recording decisions for /api/mobile/attendance. No I/O, so node --test can load it.
 
@@ -10,7 +10,11 @@ export type AttendancePolicy = {
   latitude: number | null;
   longitude: number | null;
   radiusMeters: number;
+  /** The student's approved practicum schedule covering the date; null when there is none. */
+  schedule: AttendanceSchedule | null;
 };
+export type AttendanceSchedule = { timeIn: string; workDays: number[] };
+export type LateStatus = 'on_time' | 'late' | 'not_work_day' | 'no_schedule';
 export type Failure = { status: number; code: string; message: string };
 
 // Small allowance for device/server clock drift; anything later is a future-dated entry.
@@ -39,14 +43,14 @@ export function deriveLocationEvidence(
   return { latitude, longitude, distanceMeters: null, status: 'verified', flagReason: null };
 }
 
-/** Late status from the company's cutoff ("HH:MM[:SS]") for the Philippine weekday of timeIn. */
-export function lateStatusFor(timeIn: string, cutoff: string | null | undefined): 'on_time' | 'late' | 'unknown' {
+/** Punctuality against the student's approved schedule ("HH:MM[:SS]" start, work_days 1=Mon..6=Sat) in Philippine time. */
+export function lateStatusFor(timeIn: string, schedule: AttendanceSchedule | null): LateStatus {
+  if (!schedule) return 'no_schedule';
   const localTime = getPhilippineClock(new Date(timeIn));
-  const dayOfWeek = localTime.getUTCDay();
-  if (dayOfWeek === 0 || dayOfWeek === 6 || !cutoff) return 'unknown';
-  const [cutoffHour, cutoffMinute] = String(cutoff).split(':').map(Number);
+  if (!schedule.workDays.includes(localTime.getUTCDay())) return 'not_work_day';
+  const [startHour, startMinute] = String(schedule.timeIn).split(':').map(Number);
   const seconds = localTime.getUTCHours() * 3600 + localTime.getUTCMinutes() * 60 + localTime.getUTCSeconds();
-  return seconds > cutoffHour * 3600 + cutoffMinute * 60 ? 'late' : 'on_time';
+  return seconds > startHour * 3600 + startMinute * 60 ? 'late' : 'on_time';
 }
 
 /** Future-dated entries are always refused; time-in is also weekday-only. */
@@ -63,8 +67,7 @@ export function timeOutDecision(
   record: { time_in: string; time_out?: string | null; verification_status?: string | null; time_out_flag_reason?: string | null },
   capturedAt: string,
 ): { failure: Failure } | { replacingAutoTimeOut: boolean } {
-  const replacingAutoTimeOut = Boolean(record.time_out && record.verification_status === 'pending' &&
-    record.time_out_flag_reason === AUTO_TIME_OUT_REASON);
+  const replacingAutoTimeOut = isReplaceableAutoTimeOut(record);
   if (record.time_out && !replacingAutoTimeOut)
     return { failure: { status: 409, code: 'DUPLICATE_REQUEST', message: 'Time Out has already been recorded for today.' } };
   if (new Date(capturedAt).getTime() < new Date(record.time_in).getTime())

@@ -1,14 +1,16 @@
 'use client';
 
+import { RowsLoading } from '@/src/components/ui/RowsLoading';
 import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
 import { useEffect, useState, useCallback } from 'react';
 import Button from '@/src/components/ui/Button';
 import Alert from '@/src/components/ui/Alert';
 import Modal from '@/src/components/ui/Modal';
 import { Badge } from '@/src/components/ui/Badge';
+import { Star } from '@/src/components/ui/Icons';
 import {
   createEvaluation, listAssignedStudentsForEvaluation, listEvaluationsForSupervisor,
-  type EvaluationRubricCriteria
+  type EvaluationRubricCriteria, type EvaluationCandidate
 } from '@/src/services/evaluations';
 
 
@@ -37,19 +39,21 @@ export default function SupervisorEvaluationsPage() {
   const [total, setTotal] = useState(0);
   const [searchText, setSearchText] = useState('');
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [pageSize, changePageSize] = usePageSize();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [studentId, setStudentId] = useState('');
-  const [evaluationType, setEvaluationType] = useState<'midterm' | 'final'>('midterm');
   const [feedback, setFeedback] = useState('');
   const [criteria, setCriteria] = useState<EvaluationRubricCriteria>(DEFAULT_CRITERIA);
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [students, setStudents] = useState<{ student_id: string; full_name: string; student_number: string; course: string }[]>([]);
+  const [students, setStudents] = useState<EvaluationCandidate[]>([]);
+  const hoursLeft = (s: EvaluationCandidate) => Math.max(0, Math.round((s.required_hours - s.completed_hours) * 100) / 100);
+  const isEligible = (s: EvaluationCandidate) => hoursLeft(s) === 0 && !s.already_evaluated;
+  const eligibleCount = students.filter(isEligible).length;
+  const picked = students.find(s => s.student_id === studentId);
 
   const computedTotalScore = RUBRIC.reduce((sum, { key, weight }) => sum + (weight * criteria[key]) / 5, 0);
   const commentRequired = RUBRIC.some(({ key }) => criteria[key] < 3);
@@ -57,12 +61,12 @@ export default function SupervisorEvaluationsPage() {
   const load = useCallback(async (p: number) => {
     setLoading(true);
     setError('');
-    const result = await listEvaluationsForSupervisor(p, pageSize, { search, type: typeFilter });
+    const result = await listEvaluationsForSupervisor(p, pageSize, { search });
     setLoading(false);
     if (result.error) { setError(result.error.message); return; }
     setEvaluations(result.data!.evaluations);
     setTotal(result.data!.total);
-  }, [search, typeFilter, pageSize]);
+  }, [search, pageSize]);
 
   useEffect(() => {
     const t = setTimeout(() => { setSearch(searchText.trim()); setPage(1); }, 300);
@@ -94,7 +98,6 @@ export default function SupervisorEvaluationsPage() {
         const parsed = JSON.parse(saved);
         if (parsed.feedback) setFeedback(parsed.feedback);
         if (isValidRatings(parsed.criteria)) setCriteria(parsed.criteria);
-        if (parsed.evaluationType) setEvaluationType(parsed.evaluationType);
         setDraftRestored(true);
       }
     } catch {}
@@ -106,7 +109,6 @@ export default function SupervisorEvaluationsPage() {
     const timer = setTimeout(() => {
       try {
         localStorage.setItem(`ojt_eval_draft_${studentId}`, JSON.stringify({
-          evaluationType,
           feedback,
           criteria,
           timestamp: new Date().toISOString(),
@@ -114,7 +116,7 @@ export default function SupervisorEvaluationsPage() {
       } catch {}
     }, 1000);
     return () => clearTimeout(timer);
-  }, [studentId, evaluationType, feedback, criteria, modalOpen]);
+  }, [studentId, feedback, criteria, modalOpen]);
 
   async function handleSave() {
     setFormError('');
@@ -130,7 +132,6 @@ export default function SupervisorEvaluationsPage() {
     setSaving(true);
     const result = await createEvaluation({
       student_id: studentId,
-      evaluation_type: evaluationType,
       performance_score: computedTotalScore,
       feedback: feedback.trim(),
       criteria,
@@ -149,6 +150,8 @@ export default function SupervisorEvaluationsPage() {
     setCriteria(DEFAULT_CRITERIA);
     setDraftRestored(false);
     load(page);
+    const refreshed = await listAssignedStudentsForEvaluation();
+    if (refreshed.data) setStudents(refreshed.data);
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -166,7 +169,7 @@ export default function SupervisorEvaluationsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Trainee Performance Evaluations</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Rate each competency on a 5-point scale. A comment is required for any rating below 3.</p>
+          <p className="text-sm text-slate-500 mt-0.5">One final evaluation per trainee, once they have finished their required practicum hours. Rate each competency on a 5-point scale; a comment is required for any rating below 3.</p>
         </div>
         <Button
           onClick={async () => {
@@ -195,25 +198,15 @@ export default function SupervisorEvaluationsPage() {
           placeholder="Search trainee name or ID..."
           className="w-full sm:w-72 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-teal-500"
         />
-        <select
-          aria-label="Filter by evaluation stage"
-          value={typeFilter}
-          onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
-          className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm"
-        >
-          <option value="all">All stages</option>
-          <option value="midterm">Midterm</option>
-          <option value="final">Final</option>
-        </select>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-slate-400 text-sm">Loading evaluations...</div>
+          <RowsLoading label="Loading evaluations" />
         ) : evaluations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-            <span className="text-4xl mb-3">⭐</span>
-            <p className="text-sm font-semibold text-slate-700">{search || typeFilter !== 'all' ? 'No evaluations match your filters' : 'No evaluations submitted yet'}</p>
+            <Star className="mb-3 w-9 h-9 text-slate-300" aria-hidden="true" />
+            <p className="text-sm font-semibold text-slate-700">{search ? 'No evaluations match your search' : 'No evaluations submitted yet'}</p>
             <p className="text-xs text-slate-400 mt-1">Submit competency ratings for your assigned interns.</p>
           </div>
         ) : (
@@ -233,15 +226,15 @@ export default function SupervisorEvaluationsPage() {
                 <tr key={e.evaluation_id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-5 py-4">
                     <p className="font-bold text-slate-900">{e.students?.users?.full_name}</p>
-                    <p className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">{e.students?.student_number} • {e.students?.course}</p>
+                    <p className="text-xs text-slate-500 font-mono tabular-nums mt-0.5">{e.students?.student_number} • {e.students?.course}</p>
                   </td>
                   <td className="px-5 py-4">
-                    <Badge className={`text-[10px] font-extrabold uppercase ${
+                    <Badge className={`text-xs font-extrabold ${
                       e.evaluation_type === 'midterm'
                         ? 'bg-amber-50 text-amber-800 border-amber-200'
                         : 'bg-[#0A3824]/10 text-[#0A3824] border-[#0A3824]/30'
                     }`}>
-                      {e.evaluation_type === 'midterm' ? 'Midterm (243h)' : 'Final (486h)'}
+                      {e.evaluation_type === 'midterm' ? 'Midterm (legacy)' : 'Final'}
                     </Badge>
                   </td>
                   <td className="px-5 py-4">
@@ -282,7 +275,7 @@ export default function SupervisorEvaluationsPage() {
               <Button
                 onClick={handleSave}
                 loading={saving}
-                disabled={students.length === 0 || !studentId}
+                disabled={!picked || !isEligible(picked)}
                 className="bg-[#0A3824] hover:bg-[#092E1D] text-[var(--cdm-sand)] font-bold shadow-md px-5"
               >
                 Submit Official Evaluation
@@ -292,53 +285,9 @@ export default function SupervisorEvaluationsPage() {
         }
       >
         <div className="space-y-4">
-          {/* Evaluation Stage Selector */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Practicum Evaluation Milestone Stage <span className="text-rose-500">*</span>
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setEvaluationType('midterm')}
-                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                  evaluationType === 'midterm'
-                    ? 'border-[#0A3824] bg-emerald-50/70 ring-2 ring-[#0A3824]'
-                    : 'border-slate-200 bg-white hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-slate-900">Midterm Evaluation</span>
-                  <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
-                    243h Target
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-1">Midway progress checkpoint (50% completion)</p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setEvaluationType('final')}
-                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                  evaluationType === 'final'
-                    ? 'border-[#0A3824] bg-emerald-50/70 ring-2 ring-[#0A3824]'
-                    : 'border-slate-200 bg-white hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-slate-900">Final Exit Appraisal</span>
-                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-                    486h Clearance
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-1">Final exit appraisal for degree clearance</p>
-              </button>
-            </div>
-          </div>
-
           {/* Trainee Selection */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-700">
               Assigned Trainee <span className="text-rose-500">*</span>
             </label>
             {students.length === 0 ? (
@@ -357,13 +306,30 @@ export default function SupervisorEvaluationsPage() {
                 onChange={e => handleStudentSelect(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-[#0A3824] shadow-xs"
               >
-                <option value="">Select assigned trainee ({students.length} available)</option>
+                <option value="">Select trainee ({eligibleCount} ready for final evaluation)</option>
                 {students.map(s => (
-                  <option key={s.student_id} value={s.student_id}>
-                    {s.full_name} — {s.student_number} ({s.course})
+                  <option key={s.student_id} value={s.student_id} disabled={!isEligible(s)}>
+                    {s.full_name} — {s.completed_hours} / {s.required_hours} h
+                    {s.already_evaluated ? ' · Already evaluated' : hoursLeft(s) > 0 ? ` · ${hoursLeft(s)} h left` : ''}
                   </option>
                 ))}
               </select>
+            )}
+            {students.length > 0 && eligibleCount === 0 && (
+              <p className="text-xs text-amber-800">
+                None of your trainees can be evaluated yet. A trainee is evaluated once their Credited Hours reach the required hours.
+              </p>
+            )}
+            {picked && (
+              <div className="text-xs text-slate-500">
+                <div className="flex justify-between">
+                  <span>{picked.completed_hours} / {picked.required_hours} Credited Hours</span>
+                  <span>{hoursLeft(picked) === 0 ? 'Hours complete' : `${hoursLeft(picked)} h left`}</span>
+                </div>
+                <div className="mt-1 h-2 rounded-full bg-slate-100">
+                  <div className="h-2 rounded-full bg-teal-600" style={{ width: `${Math.min(100, Math.round((picked.completed_hours / picked.required_hours) * 100))}%` }} />
+                </div>
+              </div>
             )}
 
             {draftRestored && (
@@ -388,10 +354,10 @@ export default function SupervisorEvaluationsPage() {
           {/* Rubric Dimension Sliders / Inputs */}
           <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 border border-slate-200/90 space-y-3.5 shadow-inner">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-              <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+              <h4 className="text-xs font-black text-slate-900">
                 CHED Practicum Competency Rubric
               </h4>
-              <span className="text-[11px] font-bold text-[#0A3824] bg-emerald-100/80 px-2.5 py-0.5 rounded-full border border-emerald-300">
+              <span className="text-xs font-bold text-[#0A3824] bg-emerald-100/80 px-2.5 py-0.5 rounded-full border border-emerald-300">
                 5-Point Scale
               </span>
             </div>
@@ -401,7 +367,7 @@ export default function SupervisorEvaluationsPage() {
                 <div key={key} className="space-y-1 p-3 bg-white rounded-xl border border-slate-200/70 shadow-2xs">
                   <label htmlFor={`rating-${key}`} className="flex justify-between items-center gap-2 text-xs font-semibold text-slate-800">
                     <span className="truncate">{label}</span>
-                    <span className="text-[10px] text-slate-400 shrink-0">{weight}% weight</span>
+                    <span className="text-xs text-slate-400 shrink-0">{weight}% weight</span>
                   </label>
                   <select
                     id={`rating-${key}`}
@@ -411,7 +377,7 @@ export default function SupervisorEvaluationsPage() {
                   >
                     {[5, 4, 3, 2, 1].map(r => <option key={r} value={r}>{r} - {RATING_LABELS[r]}</option>)}
                   </select>
-                  <p className="text-[10px] text-slate-400">{hint}</p>
+                  <p className="text-xs text-slate-400">{hint}</p>
                 </div>
               ))}
             </div>
@@ -420,7 +386,7 @@ export default function SupervisorEvaluationsPage() {
             <div className="p-3.5 rounded-xl bg-white border border-[#0A3824]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
               <div>
                 <span className="text-xs font-bold text-slate-800">Overall Calculated Competency Rating:</span>
-                <p className="text-[11px] text-slate-500">Auto-aggregated composite across all 5 dimensions</p>
+                <p className="text-xs text-slate-500">Auto-aggregated composite across all 5 dimensions</p>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-2xl font-black font-mono text-[#0A3824]">{computedTotalScore}%</span>
@@ -440,10 +406,10 @@ export default function SupervisorEvaluationsPage() {
 
           {/* Qualitative Feedback */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+            <label className="text-xs font-bold text-slate-700">
               Qualitative Feedback & Mentor Remarks {commentRequired && <span className="text-rose-500">*</span>}
             </label>
-            <p className={`text-[11px] ${commentRequired ? 'text-red-700 font-semibold' : 'text-slate-500'}`}>
+            <p className={`text-xs ${commentRequired ? 'text-red-700 font-semibold' : 'text-slate-500'}`}>
               {commentRequired ? 'Required: at least one rating is below 3. Explain the low rating.' : 'Optional when every rating is 3 or higher. Required for any rating below 3.'}
             </p>
             <textarea

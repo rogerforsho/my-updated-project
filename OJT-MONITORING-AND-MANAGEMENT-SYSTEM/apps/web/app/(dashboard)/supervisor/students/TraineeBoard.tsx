@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useSearchPaging, SearchBox, PagerBar } from '@/src/components/ui/ListControls';
 import { getDepartmentFullName } from '@/src/lib/departments';
 import { getSignedDocumentUrl } from '@/src/services/storage';
+import { describeReportType } from '@ojt/shared';
 import {
   exportTraineeAttendanceCsv, listTraineeReports, setMyCompanyIntake,
   type CompanyIntake, type SupervisedTrainee,
@@ -122,7 +123,7 @@ function TraineeDetails({ t, onPack, busy }: { t: SupervisedTrainee; onPack: () 
         <ul className="space-y-1">
           {reports.map((r) => (
             <li key={r.report_id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2">
-              <span>{r.report_type} · {new Date(r.submission_date).toLocaleDateString()} · {r.status}</span>
+              <span>{describeReportType(r.report_type).label} ·{new Date(r.submission_date).toLocaleDateString()} · {r.status}</span>
               <button type="button" onClick={() => openReport(r.file_path)} className="font-bold text-teal-700 underline">Download</button>
             </li>
           ))}
@@ -171,7 +172,7 @@ export function TraineeBoard({ trainees, intake }: { trainees: SupervisedTrainee
       {intake && <IntakeCard intake={intake} />}
       <p className="text-sm text-slate-600"><strong>{graduated}</strong> of your {trainees.length} trainees have graduated (completed placement with the required hours).</p>
       <div className="flex flex-wrap gap-2">
-        <SearchBox value={list.search} onChange={list.setSearch} placeholder="Search name, ID, course, department or status..." />
+        <SearchBox value={list.search} onChange={list.setSearch} placeholder="Search trainees" />
         <select aria-label="Filter trainees by status" value={filter} onChange={(e) => { setFilter(e.target.value as Filter); list.setPage(1); }}
           className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm">
           {FILTERS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -218,10 +219,10 @@ export function TraineeBoard({ trainees, intake }: { trainees: SupervisedTrainee
                   </span>
                 </label>
                 <div className="flex flex-wrap gap-1.5">
-                  {t.department && <span title={getDepartmentFullName(t.department)} className="rounded-full bg-teal-50 px-2.5 py-0.5 text-[11px] font-bold text-teal-800">{t.department}</span>}
-                  <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-700">{STATUS_LABEL[t.placement.assignment_status] ?? t.placement.assignment_status}</span>
-                  {t.graduated && <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">Graduated</span>}
-                  {t.no_recent_attendance && <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">No attendance in 7 days</span>}
+                  {t.department && <span title={getDepartmentFullName(t.department)} className="rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-bold text-teal-800">{t.department}</span>}
+                  <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700">{STATUS_LABEL[t.placement.assignment_status] ?? t.placement.assignment_status}</span>
+                  {t.graduated && <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-800">Graduated</span>}
+                  {t.no_recent_attendance && <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-800">No attendance in 7 days</span>}
                 </div>
               </div>
               <dl className="mt-3 grid grid-cols-1 gap-3 text-xs sm:grid-cols-3">
@@ -231,7 +232,13 @@ export function TraineeBoard({ trainees, intake }: { trainees: SupervisedTrainee
               </dl>
               <div className="mt-3">
                 <div className="flex justify-between text-xs text-slate-500">
-                  <span>{t.completed_hours} / {t.required_hours} hours ({pct}%)</span>
+                  <span>
+                    {t.completed_hours} / {t.required_hours} Credited Hours ({pct}%)
+                    {' · '}
+                    {t.completed_hours >= t.required_hours
+                      ? <a href="/supervisor/evaluations" className="font-bold text-teal-700 underline">Hours complete · ready for final evaluation</a>
+                      : `${Math.round((t.required_hours - t.completed_hours) * 100) / 100} h left`}
+                  </span>
                   <span>{t.expected_end ? `Expected end ${t.expected_end}` : 'Expected end: not available'}</span>
                 </div>
                 <div className="mt-1 h-2 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-teal-600" style={{ width: `${pct}%` }} /></div>

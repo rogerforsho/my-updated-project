@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OJT practicum: from registration to certificate</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;
+      --color-ink:     #2d3142;
+      --color-muted:   #4f5d75;
+      --color-accent:  #bf4520;
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+    body { font-family: var(--font-sans); background: var(--color-paper); color: var(--color-ink); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 3rem 2rem; }
+    .frame { max-width: 1240px; width: 100%; min-width: 0; }
+    .diagram-container { width: 100%; overflow-x: auto; }
+    .eyebrow { font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-muted); margin-bottom: 0.5rem; }
+    h1 { font-family: var(--font-serif); font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem); font-weight: 400; letter-spacing: -0.02em; line-height: 1.15; color: var(--color-ink); margin-bottom: 1.5rem; }
+    svg { width: 100%; min-width: 1000px; display: block; }
+    table { border-collapse: collapse; width: 100%; margin-top: 2rem; font-size: 0.82rem; background: #fff; border: 1px solid rgba(45,49,66,0.12); border-radius: 6px; }
+    th, td { text-align: left; padding: 0.55rem 0.8rem; border-bottom: 1px solid rgba(45,49,66,0.08); vertical-align: top; }
+    th { font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-muted); font-weight: 500; }
+    td:first-child, td:nth-child(2) { white-space: nowrap; font-weight: 600; }
+    @media print { .diagram-container { overflow-x: visible; } svg { min-width: 0; } }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Flowchart · OJT Monitoring and Management System</p>
+    <h1>OJT practicum: from registration to certificate</h1>
+    <div class="diagram-container">
+<svg viewBox="0 0 1000 880" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="system-flowchart-title system-flowchart-desc">
+<title id="system-flowchart-title">OJT practicum: from registration to certificate</title>
+<desc id="system-flowchart-desc">Flowchart of the student practicum from mobile registration and coordinator approval through placement, attendance, supervisor review and evaluation to clearance and certificate.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker><marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bf4520"/></marker><marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker></defs>
+<rect width="100%" height="100%" fill="#f5f5f5"/>
+<path d="M460,88 L460,120" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M460,208 L460,240" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M460,288 L460,320" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M460,368 L460,400" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M460,488 L460,520" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M460,568 L460,600" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M460,688 L460,720" fill="none" stroke="#bf4520" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+<path d="M360,164 L220,164" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M140,140 L140,72 Q140,64 148,64 L360,64" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M560,444 L752,444 Q760,444 760,436 L760,360 Q760,352 752,352 L560,352" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M560,644 L792,644 Q800,644 800,636 L800,344 Q800,336 792,336 L560,336" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="280" y="146" width="20" height="12" rx="2" fill="#f5f5f5"/><text x="290" y="155" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">NO</text>
+<rect x="468" y="218" width="25" height="12" rx="2" fill="#f5f5f5"/><text x="480.5" y="227" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">YES</text>
+<rect x="468" y="498" width="25" height="12" rx="2" fill="#f5f5f5"/><text x="480.5" y="507" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">YES</text>
+<rect x="468" y="698" width="25" height="12" rx="2" fill="#f5f5f5"/><text x="480.5" y="707" fill="#bf4520" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">YES</text>
+<rect x="638.5" y="426" width="43" height="12" rx="2" fill="#f5f5f5"/><text x="660" y="435" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">REVISE</text>
+<rect x="655.5" y="626" width="49" height="12" rx="2" fill="#f5f5f5"/><text x="680" y="635" fill="#5a6580" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.08em">NOT MET</text>
+<rect x="360" y="40" width="200" height="48" rx="20" fill="#f5f5f5"/><rect x="360" y="40" width="200" height="48" rx="20" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/><text x="460" y="60" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Student registers</text><text x="460" y="75" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">mobile app · ID photos</text>
+<polygon points="460,120 560.0,164.0 460,208 360.0,164.0" fill="#f5f5f5"/><polygon points="460,120 560.0,164.0 460,208 360.0,164.0" fill="#ffffff" stroke="#2d3142" stroke-width="1"/><text x="460" y="162" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Coordinator</text><text x="460" y="176" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">approves?</text>
+<rect x="60" y="140" width="160" height="48" rx="6" fill="#f5f5f5"/><rect x="60" y="140" width="160" height="48" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/><text x="140" y="162" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Student resubmits</text><text x="140" y="180" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">fix ID or details</text>
+<rect x="360" y="240" width="200" height="48" rx="6" fill="#f5f5f5"/><rect x="360" y="240" width="200" height="48" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/><text x="460" y="260" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Coordinator places student</text><text x="460" y="278" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">company · branch · supervisor</text>
+<rect x="360" y="320" width="200" height="48" rx="6" fill="#f5f5f5"/><rect x="360" y="320" width="200" height="48" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/><text x="460" y="340" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Student records work</text><text x="460" y="358" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">attendance · GPS · report</text>
+<polygon points="460,400 560.0,444.0 460,488 360.0,444.0" fill="#f5f5f5"/><polygon points="460,400 560.0,444.0 460,488 360.0,444.0" fill="#ffffff" stroke="#2d3142" stroke-width="1"/><text x="460" y="442" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Supervisor</text><text x="460" y="456" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">approves?</text>
+<rect x="360" y="520" width="200" height="48" rx="6" fill="#f5f5f5"/><rect x="360" y="520" width="200" height="48" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/><text x="460" y="540" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Supervisor evaluates</text><text x="460" y="558" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">midterm · final rating</text>
+<polygon points="460,600 560.0,644.0 460,688 360.0,644.0" fill="#f5f5f5"/><polygon points="460,600 560.0,644.0 460,688 360.0,644.0" fill="#ffffff" stroke="#2d3142" stroke-width="1"/><text x="460" y="642" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Clearance</text><text x="460" y="656" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">met?</text>
+<rect x="360" y="720" width="200" height="56" rx="20" fill="#f5f5f5"/><rect x="360" y="720" width="200" height="56" rx="20" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1"/><text x="460" y="740" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Certificate issued</text><text x="460" y="755" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">final grade · verify code</text>
+<text x="340" y="632" fill="#2d3142" font-size="14" font-style="italic" font-family="'Instrument Serif', serif" text-anchor="end">Credited hours, an approved</text><text x="340" y="650" fill="#2d3142" font-size="14" font-style="italic" font-family="'Instrument Serif', serif" text-anchor="end">final report, a passing final</text><text x="340" y="668" fill="#2d3142" font-size="14" font-style="italic" font-family="'Instrument Serif', serif" text-anchor="end">evaluation, then the final grade</text>
+<line x1="40" y1="812" x2="960" y2="812" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+<text x="40" y="828" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.18em">LEGEND · SHAPE CARRIES TYPE</text>
+<rect x="40" y="840" width="24" height="12" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+<text x="72" y="850" fill="#4f5d75" font-size="9" font-family="'Geist', system-ui, sans-serif">Start / end (oval)</text>
+<rect x="193" y="840" width="24" height="12" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="225" y="850" fill="#4f5d75" font-size="9" font-family="'Geist', system-ui, sans-serif">Step (rectangle)</text>
+<polygon points="336,846 348,840 360,846 348,852" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="368" y="850" fill="#4f5d75" font-size="9" font-family="'Geist', system-ui, sans-serif">Decision (diamond)</text>
+<line x1="489" y1="846" x2="513" y2="846" stroke="#bf4520" stroke-width="1.2" marker-end="url(#arrow-accent)"/>
+<text x="521" y="850" fill="#4f5d75" font-size="9" font-family="'Geist', system-ui, sans-serif">Happy path to completion</text>
+<line x1="673" y1="846" x2="697" y2="846" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<text x="705" y="850" fill="#4f5d75" font-size="9" font-family="'Geist', system-ui, sans-serif">Branch / loop back</text>
+</svg>
+    </div>
+
+  </div>
+</body>
+</html>

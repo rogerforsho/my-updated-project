@@ -1,5 +1,6 @@
 'use client';
 
+import { Skeleton } from '@/src/components/ui/Skeleton';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Alert from '@/src/components/ui/Alert';
 import Button from '@/src/components/ui/Button';
@@ -8,6 +9,7 @@ import Modal from '@/src/components/ui/Modal';
 import { PagerBar, usePageSize } from '@/src/components/ui/ListControls';
 import { listPendingStudents, updateStudentAccountStatus } from '@/src/services/auth';
 import { COURSE_DEPARTMENT, STUDENT_REGISTRATION_COURSES } from '@ojt/shared';
+import { FileText, GraduationCap } from '@/src/components/ui/Icons';
 
 const MIN_REJECTION_REASON = 10;
 
@@ -223,12 +225,23 @@ export default function CoordinatorApprovalsPage() {
 
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-slate-400 text-sm">Loading pending students...</div>
+          <div className="divide-y divide-slate-100" aria-busy="true" aria-label="Loading pending students">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-4 p-4">
+                <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-3.5 w-1/3 rounded" />
+                  <Skeleton className="h-3 w-1/2 rounded" />
+                </div>
+                <Skeleton className="h-8 w-24 rounded-xl" />
+              </div>
+            ))}
+          </div>
         ) : error ? (
           <div className="p-8 text-center"><Button variant="outline" onClick={() => load(page)}>Retry loading registrations</Button></div>
         ) : filteredStudents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-            <span className="text-4xl mb-3">🎓</span>
+            <GraduationCap className="mb-3 w-9 h-9 text-slate-300" aria-hidden="true" />
             <p className="text-sm font-medium text-slate-600">No pending registrations match this view.</p>
             <p className="text-xs text-slate-400 mt-1">Try another degree program or page.</p>
           </div>
@@ -269,7 +282,7 @@ export default function CoordinatorApprovalsPage() {
                       </td>
                       <td className="px-5 py-4">
                         <p className="font-semibold text-slate-900">{student.full_name}</p>
-                        <p className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">{student.student_number}</p>
+                        <p className="text-xs text-slate-500 font-mono tabular-nums mt-0.5">{student.student_number}</p>
                       </td>
                       <td className="px-5 py-4 text-slate-600 font-mono text-xs">{student.email}</td>
                       <td className="px-5 py-4">
@@ -292,7 +305,7 @@ export default function CoordinatorApprovalsPage() {
                             })}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
                           >
-                            <span>🪪</span> Inspect ID
+                            <FileText className="w-4 h-4 shrink-0" aria-hidden="true" /> Inspect ID
                           </button>
                         ) : (
                           <span className="text-xs text-slate-400 italic">Not attached</span>
@@ -383,13 +396,13 @@ export default function CoordinatorApprovalsPage() {
               <p className="text-rose-700">
                 {rejectTarget.student_number} • {rejectTarget.course} • {yearLabel(rejectTarget.year_level)}
               </p>
-              <p className="text-rose-600 text-[11px] pt-1">
+              <p className="text-rose-600 text-xs pt-1">
                 Rejecting this registration will notify the student at <strong className="font-semibold">{rejectTarget.email}</strong>.
               </p>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="rejection-reason" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              <label htmlFor="rejection-reason" className="text-xs font-bold text-slate-700">
                 Reason for Rejection / Correction Instructions
               </label>
               <textarea

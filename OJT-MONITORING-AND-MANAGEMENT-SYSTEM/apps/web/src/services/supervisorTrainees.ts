@@ -5,7 +5,7 @@ import { resolveSupervisor, supervisorOwnsStudent } from '@/src/lib/supervisor-a
 import { getServiceClient } from '@/src/lib/supabase/service';
 import { toCsv } from '@/src/lib/csv';
 import { courseDepartment } from '@/src/lib/departments';
-import { DEFAULT_REQUIRED_HOURS, expectedEndDate, nonWorkingDatesFor, type AppResult, type NonWorkingDayRow } from '@ojt/shared';
+import { resolveRequiredHours, expectedEndDate, nonWorkingDatesFor, type AppResult, type NonWorkingDayRow } from '@ojt/shared';
 
 export interface PlacementEntry {
   assignment_id: string;
@@ -109,7 +109,7 @@ export async function listSupervisedTrainees(): Promise<AppResult<SupervisedTrai
     const current = entries.find((e) => e.entry.assignment_status === 'active') ?? entries[0];
     const student = one(current.row.students as unknown as { student_number: string; course: string; required_hours: number | null; users: unknown } | null);
     const user = one(student?.users as { full_name: string } | { full_name: string }[] | null);
-    const required = student?.required_hours ?? DEFAULT_REQUIRED_HOURS;
+    const required = resolveRequiredHours(student?.required_hours, student?.course);
     const done = hours.get(student_id) ?? 0;
     const active = current.entry.assignment_status === 'active';
     const dept = courseDepartment(student?.course);
@@ -150,15 +150,15 @@ export async function getMyCompanyIntake(): Promise<AppResult<CompanyIntake>> {
   if (company.error || !company.data) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not load company settings.' } };
 
   const { data: done } = await db.from('student_assignments')
-    .select('student_id, students(required_hours)').eq('company_id', sup.company_id).eq('assignment_status', 'completed').limit(2000);
+    .select('student_id, students(required_hours, course)').eq('company_id', sup.company_id).eq('assignment_status', 'completed').limit(2000);
   const doneIds = [...new Set((done ?? []).map((d) => d.student_id as string))];
   const { data: prog } = doneIds.length
     ? await db.from('internship_progress').select('student_id, completed_hours').in('student_id', doneIds)
     : { data: [] as { student_id: string; completed_hours: number }[] };
   const hrs = new Map((prog ?? []).map((p) => [p.student_id as string, Number(p.completed_hours) || 0]));
   const graduated = new Set((done ?? []).filter((d) => {
-    const st = one(d.students as unknown as { required_hours: number | null } | null);
-    return (hrs.get(d.student_id as string) ?? 0) >= (st?.required_hours ?? DEFAULT_REQUIRED_HOURS);
+    const st = one(d.students as unknown as { required_hours: number | null; course: string | null } | null);
+    return (hrs.get(d.student_id as string) ?? 0) >= resolveRequiredHours(st?.required_hours, st?.course);
   }).map((d) => d.student_id as string));
 
   return { data: { ...company.data, active_interns: active.count ?? 0, is_open: open.data === true, company_graduated: graduated.size } as CompanyIntake, error: null };

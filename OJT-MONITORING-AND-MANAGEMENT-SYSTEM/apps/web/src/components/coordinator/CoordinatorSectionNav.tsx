@@ -15,6 +15,7 @@ const sections: Record<Section, { href: string; label: string }[]> = {
   evaluations: [
     { href: '/coordinator/supervisor-evaluations', label: 'Evaluations' },
     { href: '/coordinator/evaluations', label: 'Appeals' },
+    { href: '/coordinator/hte-evaluations', label: 'HTE feedback' },
   ],
   progress: [
     { href: '/coordinator/progress', label: 'Progress' },
@@ -33,7 +34,7 @@ export default function CoordinatorSectionNav({ section }: { section: Section })
             key={item.href}
             href={item.href}
             aria-current={current ? 'page' : undefined}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${current ? 'bg-[var(--cdm-green)] text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
+            className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${current ? 'bg-[var(--cdm-green)] text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
           >
             {item.label}
           </Link>

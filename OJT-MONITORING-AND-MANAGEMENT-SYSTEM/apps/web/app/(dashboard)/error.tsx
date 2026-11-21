@@ -32,7 +32,7 @@ export default function DashboardError({
         </p>
 
         {error.digest && (
-          <p className="mt-2 font-mono text-[10px] text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+          <p className="mt-2 font-mono text-xs text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
             Reference ID: {error.digest}
           </p>
         )}

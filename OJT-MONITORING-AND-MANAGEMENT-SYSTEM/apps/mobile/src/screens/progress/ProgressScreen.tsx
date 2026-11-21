@@ -97,7 +97,7 @@ export default function ProgressScreen() {
             </View>
             <View>
               <Text style={s.statLabel}>Target</Text>
-              <Text style={s.statVal}>{progress?.required_hours || 486} hrs</Text>
+              <Text style={s.statVal}>{progress?.required_hours ?? 0} hrs</Text>
             </View>
           </View>
         </View>
@@ -138,7 +138,7 @@ export default function ProgressScreen() {
         <View style={s.infoBanner}>
           <Ionicons name="school-outline" size={26} color="#0A3824" />
           <View style={{ flex: 1 }}>
-            <Text style={s.infoBannerTitle}>486.0 Hours Target</Text>
+            <Text style={s.infoBannerTitle}>{progress ? `${progress.required_hours}.0 Hours Target` : 'Hours Target'}</Text>
             <Text style={s.infoBannerSub}>
               Ensure all daily time records are signed off by your company supervisor to count toward final clearance.
             </Text>
@@ -190,10 +190,10 @@ const s = StyleSheet.create({
   progressBarTrack: { height: 10, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 5, overflow: 'hidden', marginBottom: 18 },
   progressBarFill: { height: '100%', backgroundColor: '#E4DBC4', borderRadius: 5 },
   hoursGrid: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.12)', paddingTop: 14 },
-  statLabel: { fontSize: 11, color: '#879687', fontWeight: '600' },
+  statLabel: { fontSize: 11, color: '#DCE5DB', fontWeight: '600' },
   statVal: { fontSize: 16, fontWeight: '800', color: '#ffffff', marginTop: 2 },
   profileCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFEFB',
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
@@ -205,7 +205,7 @@ const s = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
-  profileHeading: { fontSize: 10, fontWeight: '800', color: '#879687', letterSpacing: 0.8, marginBottom: 12 },
+  profileHeading: { fontSize: 10, fontWeight: '800', color: '#5A6A5E', letterSpacing: 0.8, marginBottom: 12 },
   profileList: { gap: 10 },
   profileRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   pLabel: { fontSize: 13, color: '#526257', fontWeight: '500' },

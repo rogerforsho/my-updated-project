@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
+import { AppState } from 'react-native';
+import { fetchWithTimeout } from './fetchWithTimeout';
 
 const ExpoSecureStoreAdapter = {
   getItem: (key: string) => SecureStore.getItemAsync(key),
@@ -35,5 +37,15 @@ export const supabase = createClient(
       persistSession: true,
       detectSessionInUrl: false,
     },
+    // A stalled request must fail, not spin forever. Uploads get longer, matching UPLOAD_TIMEOUT_MS in storage.ts.
+    global: {
+      fetch: (url, init) => fetchWithTimeout(url, init, String(url).includes('/storage/v1/') ? 90000 : 30000),
+    },
   }
 );
+
+// Pause token refresh while backgrounded (camera, location prompt) so a half-finished refresh is not left behind.
+AppState.addEventListener('change', (state) => {
+  if (state === 'active') void supabase.auth.startAutoRefresh();
+  else void supabase.auth.stopAutoRefresh();
+});

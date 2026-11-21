@@ -8,7 +8,7 @@ import { getServiceClient } from '@/src/lib/supabase/service';
 import { recordAuditEvent } from '@/src/lib/audit';
 import { validateUploadedBytes } from '@/src/lib/uploadValidation';
 import { authActionLimit } from '@/src/services/auth/internal';
-import { GATEWAY_DOCUMENT_SPECS, getGatewayStatus, isCoordinatorReviewType, STUDENT_REPORT_TYPES, SUPERVISOR_REVIEW_REPORT_TYPES, matchesDoc } from '@ojt/shared';
+import { BUNDLE_EXTENSIONS, BUNDLE_MAX_BYTES, WEEKLY_JOURNAL_MAX_BYTES, WEEKLY_JOURNAL_TYPE, GATEWAY_DOCUMENT_SPECS, getGatewayStatus, isBundleType, isCoordinatorReviewType, STUDENT_REPORT_TYPES, SUPERVISOR_REVIEW_REPORT_TYPES, matchesDoc } from '@ojt/shared';
 import type { AppResult, DbReport } from '@ojt/shared';
 
 
@@ -62,7 +62,7 @@ export async function submitReport(input: ReportInput): Promise<AppResult<null>>
   if (limitError) return { data: null, error: limitError };
 
   const filePath = input.file_path.trim();
-  const ownedUploadPath = new RegExp(`^${user.id}/reports/[0-9a-f-]{36}\\.(pdf|docx|doc|jpg|jpeg|png)$`, 'i');
+  const ownedUploadPath = new RegExp(`^${user.id}/reports/[0-9a-f-]{36}\\.pdf$`, 'i');
   if (!ownedUploadPath.test(filePath))
     return { data: null, error: { code: 'FORBIDDEN', message: 'Uploaded document path is invalid.' } };
 
@@ -71,16 +71,17 @@ export async function submitReport(input: ReportInput): Promise<AppResult<null>>
   const { data: uploadedFile, error: downloadError } = await storage.download(filePath);
   if (downloadError || !uploadedFile)
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Upload the document again before submitting it.' } };
-  if (uploadedFile.size > 10 * 1024 * 1024) {
+  const maxBytes = input.report_type.trim() === WEEKLY_JOURNAL_TYPE ? WEEKLY_JOURNAL_MAX_BYTES : BUNDLE_MAX_BYTES;
+  if (uploadedFile.size > maxBytes) {
     await removeUpload();
-    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Document exceeds the 10 MB limit.' } };
+    return { data: null, error: { code: 'VALIDATION_FAILURE', message: `PDF exceeds the ${maxBytes / (1024 * 1024)} MB limit for this document.` } };
   }
   const checked = validateUploadedBytes(
     new Uint8Array(await uploadedFile.arrayBuffer()),
     filePath.split('/').at(-1) || '',
     uploadedFile.type,
-    ['.pdf', '.docx', '.doc', '.jpg', '.jpeg', '.png'],
-    10 * 1024 * 1024
+    BUNDLE_EXTENSIONS,
+    maxBytes
   );
   if (checked.error || !checked.data) {
     await removeUpload();
@@ -136,6 +137,24 @@ export async function listReportsForCoordinator(page = 1, pageSize = 20, status?
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load reports.' } };
 
   return { data: { reports: (data ?? []) as ReportWithStudent[], total: count ?? 0 }, error: null };
+}
+
+// One row per workflow status with its true report count, so folded groups need no row load.
+// shortcut: counts in JS from one column, fine for a department-sized feed; move to a SQL group-by past ~1000 reports.
+export async function listReportGroups(): Promise<AppResult<{ groups: Array<{ status: string; count: number }> }>> {
+  const { supabase, profile } = await getTrustedActor();
+  if (!profile || profile.role !== 'Coordinator' || profile.account_status !== 'active')
+    return { data: null, error: { code: 'FORBIDDEN', message: 'Access denied.' } };
+
+  const { data, error } = await supabase.from('reports').select('status').limit(5000);
+  if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load report groups.' } };
+
+  const counts = new Map<string, number>();
+  for (const row of data ?? []) counts.set(row.status, (counts.get(row.status) ?? 0) + 1);
+  // 'submitted' (waiting for review) always comes first.
+  const groups = [...counts].map(([status, count]) => ({ status, count }))
+    .sort((a, b) => (a.status === 'submitted' ? -1 : b.status === 'submitted' ? 1 : a.status.localeCompare(b.status)));
+  return { data: { groups }, error: null };
 }
 
 export async function reviewReport(
@@ -239,8 +258,8 @@ export async function endorseReportBySupervisor(
     .select('student_id, report_type').eq('report_id', report_id).maybeSingle();
   if (lookupError) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load report.' } };
   if (!report) return { data: null, error: { code: 'NOT_FOUND', message: 'Report not found or access denied.' } };
-  if (!['daily journal', 'accomplishment report'].includes(report.report_type.trim().toLowerCase()))
-    return { data: null, error: { code: 'FORBIDDEN', message: 'Supervisors can decide daily accomplishment reports only.' } };
+  if (!SUPERVISOR_REVIEW_REPORT_TYPES.some(type => type.toLowerCase() === report.report_type.trim().toLowerCase()))
+    return { data: null, error: { code: 'FORBIDDEN', message: 'Supervisors can decide weekly journals only.' } };
 
   const decidedAt = new Date().toISOString();
   const { data: updated, error } = await supabase.from('reports').update({
@@ -285,6 +304,8 @@ export interface StudentGatewayStatus {
   approved_documents: string[];
   compliance_state: 'not_started' | 'in_progress' | 'ready_for_review' | 'ready_for_placement' | 'deployed';
   assigned_company: string | null;
+  /** The student's single combined requirements file, if they submitted one. */
+  bundle: { report_id: string; status: 'submitted' | 'approved' | 'rejected'; file_path: string; submission_date: string; remarks: string | null } | null;
   documents: {
     spec_id: string;
     spec_name: string;
@@ -379,8 +400,12 @@ export async function getGatewayComplianceSummary(): Promise<AppResult<GatewayCo
     const pendingDocs: string[] = [];
     const approvedDocs: string[] = [];
 
+    // A combined file stands in for all four documents: prefer an approved one, else the latest.
+    const bundleRows = userReports.filter(r => isBundleType(r.report_type));
+    const bundle = bundleRows.find(r => r.status === 'approved') ?? bundleRows[0];
+
     const documents = GATEWAY_DOCUMENT_SPECS.map(spec => {
-      const match = userReports.find(r => matchesDoc(r.report_type, spec.name));
+      const match = bundle ?? userReports.find(r => matchesDoc(r.report_type, spec.name));
       if (!match) {
         missingDocs.push(spec.name);
         return {
@@ -439,6 +464,13 @@ export async function getGatewayComplianceSummary(): Promise<AppResult<GatewayCo
       compliance_state: complianceState,
       assigned_company: assignedCompany,
       documents,
+      bundle: bundle ? {
+        report_id: bundle.report_id,
+        status: bundle.status as 'submitted' | 'approved' | 'rejected',
+        file_path: bundle.file_path,
+        submission_date: bundle.submission_date,
+        remarks: bundle.remarks,
+      } : null,
     };
   });
 
@@ -465,7 +497,7 @@ export async function sendRequirementReminder(studentUserId: string, missingDocs
 
   const service = getServiceClient();
   const docsText = missingDocs.join(', ');
-  const message = `Coordinator Notice: You have pending pre-deployment requirements (${docsText}). Please upload these via your mobile app to unlock company assignment and daily attendance.`;
+  const message = `Coordinator Notice: Please upload ONE PDF or DOCX file that contains all your pre-deployment requirements (${docsText}) via your mobile app, under "Pre-deployment Requirements", to unlock company assignment and daily attendance.`;
 
   const { error } = await service.from('notifications').insert({
     receiver_user_id: studentUserId,
