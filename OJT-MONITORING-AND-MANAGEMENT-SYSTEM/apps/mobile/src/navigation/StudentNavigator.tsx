@@ -49,7 +49,7 @@ function StudentTabs() {
           backgroundColor: colors.surface,
           borderTopWidth: 0,
           elevation: 8,
-          shadowColor: '#0A3824',
+          shadowColor: colors.ink,
           shadowOpacity: 0.08,
           shadowRadius: 10,
           shadowOffset: { width: 0, height: -2 },
@@ -80,8 +80,8 @@ function StudentTabs() {
 
 const pushedHeader = {
   headerShown: true,
-  headerTintColor: '#0A3824',
-  headerStyle: { backgroundColor: '#FFFEFB' },
+  headerTintColor: colors.ink,
+  headerStyle: { backgroundColor: colors.surface },
   headerShadowVisible: false,
   headerTitleStyle: { fontWeight: '700' as const },
 };

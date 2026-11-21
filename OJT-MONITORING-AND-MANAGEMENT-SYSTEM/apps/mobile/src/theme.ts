@@ -1,12 +1,12 @@
 // Shared look for the student app: one set of colors and header text styles so screens read as one app.
 export const colors = {
   ink: '#0A3824',
-  bg: '#F6F8F5',
+  bg: '#F4F6F2',
   surface: '#FFFEFB',
   line: '#DCE5DB',
-  muted: '#7A887D',
-  tint: '#E6EFE7',
-  text: '#1F2A22',
+  muted: '#5A6A5E',
+  tint: '#EDF2EB',
+  text: '#18271D',
 };
 
 export const type = {

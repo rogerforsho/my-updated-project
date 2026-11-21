@@ -41,7 +41,7 @@ export default function MoreScreen() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F4F6F2', paddingHorizontal: 20 },
   title: { ...type.title, paddingTop: 16, paddingBottom: 16 },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 20, borderWidth: 1, borderColor: '#DCE5DB', overflow: 'hidden' },
+  card: { backgroundColor: '#FFFEFB', borderRadius: 20, borderWidth: 1, borderColor: '#DCE5DB', overflow: 'hidden' },
   row: { minHeight: 60, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18 },
   rowDivider: { borderTopWidth: 1, borderTopColor: '#EEF2ED' },
   label: { flex: 1, fontSize: 16, fontWeight: '600', color: '#0A3824' },

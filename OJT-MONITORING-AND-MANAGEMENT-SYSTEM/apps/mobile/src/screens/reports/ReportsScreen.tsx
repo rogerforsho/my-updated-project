@@ -623,7 +623,7 @@ const s = StyleSheet.create({
   typePill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#F4F6F2', borderWidth: 1, borderColor: '#DCE5DB' },
   typePillActive: { backgroundColor: '#0A3824', borderColor: '#0A3824' },
   typePillText: { fontSize: 11, fontWeight: '600', color: '#37483C' },
-  typePillTextActive: { color: '#E4DBC4', fontWeight: '800' },
+  typePillTextActive: { color: '#ffffff', fontWeight: '800' },
   btnAttachFile: {
     flexDirection: 'row',
     alignItems: 'center',

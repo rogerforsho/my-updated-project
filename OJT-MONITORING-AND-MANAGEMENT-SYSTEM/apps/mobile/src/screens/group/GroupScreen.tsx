@@ -199,8 +199,8 @@ export default function GroupScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F6F8F5' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F6F8F5' },
+  root: { flex: 1, backgroundColor: colors.bg },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
   header: { paddingHorizontal: 20, paddingBottom: 8 },
   kicker: { ...type.kicker, marginTop: 8 },
   title: type.title,
@@ -219,7 +219,7 @@ const s = StyleSheet.create({
   bubbleOther: { backgroundColor: '#FFFEFB', borderWidth: 1, borderColor: '#DCE5DB' },
   sender: { fontSize: 11, fontWeight: '800', color: '#0A3824', marginBottom: 2 },
   body: { fontSize: 14, color: '#1F2A22' },
-  time: { fontSize: 10, color: '#7A887D', marginTop: 3 },
+  time: { fontSize: 10, color: colors.muted, marginTop: 3 },
   composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#DCE5DB', backgroundColor: '#FFFEFB' },
   input: { flex: 1, maxHeight: 110, minHeight: 42, borderWidth: 1, borderColor: '#DCE5DB', borderRadius: 21, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, backgroundColor: '#fff' },
   sendBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0A3824' },

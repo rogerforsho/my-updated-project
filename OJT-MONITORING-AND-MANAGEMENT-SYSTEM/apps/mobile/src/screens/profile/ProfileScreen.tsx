@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { signOut, changeUserPassword } from '../../services/auth';
+import { biometricsAvailable, getPin, setBiometrics, setPin, validPin, verifyPin } from '../../lib/pinAuth';
 
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<any>(null);
@@ -31,6 +32,14 @@ export default function ProfileScreen() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [pwdLoading, setPwdLoading] = useState(false);
   const [pwdMsg, setPwdMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [oldPin, setOldPin] = useState('');
+  const [pinPassword, setPinPassword] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [pinBusy, setPinBusy] = useState(false);
+  const [pinMessage, setPinMessage] = useState('');
+  const [bioEnabled, setBioEnabled] = useState(false);
+  const [bioAvailable, setBioAvailable] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -63,6 +72,9 @@ export default function ProfileScreen() {
       }
 
       setProfile({ user, student, assignment });
+      const record = await getPin(user.id);
+      setBioEnabled(!!record?.biometrics);
+      setBioAvailable(await biometricsAvailable());
     } catch (e) {
       console.error(e);
     } finally {
@@ -124,6 +136,38 @@ export default function ProfileScreen() {
         },
       ]
     );
+  }
+
+  async function handlePinChange() {
+    const user = profile?.user;
+    if (!user?.id || pinBusy) return;
+    if (!validPin(newPin) || newPin !== confirmPin) { setPinMessage('Choose a strong 4-digit PIN and confirm it.'); return; }
+    if (!oldPin && !pinPassword) { setPinMessage('Enter your current PIN or account password.'); return; }
+    setPinBusy(true); setPinMessage('');
+    try {
+      if (oldPin) {
+        const result = await verifyPin(user.id, oldPin);
+        if (result === 'locked') { await signOut(); return; }
+        if (result !== 'ok') { setPinMessage('Current PIN is incorrect.'); return; }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: pinPassword });
+        if (error) { setPinMessage('Account password is incorrect.'); return; }
+      }
+      await setPin(user.id, newPin);
+      setBioEnabled(false);
+      setOldPin(''); setPinPassword(''); setNewPin(''); setConfirmPin('');
+      setPinMessage('Quick-login PIN updated.');
+    } catch { setPinMessage('Could not update PIN. Try again.'); }
+    finally { setPinBusy(false); }
+  }
+
+  async function toggleBiometrics() {
+    const userId = profile?.user?.id;
+    if (!userId || pinBusy) return;
+    try {
+      await setBiometrics(userId, !bioEnabled);
+      setBioEnabled(!bioEnabled);
+    } catch { setPinMessage('Could not change biometric preference.'); }
   }
 
   if (loading) {
@@ -305,6 +349,17 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        <View style={s.card}>
+          <Text style={s.cardTitle}>Quick-Login PIN</Text>
+          <TextInput style={s.passwordInput} placeholder="Current PIN (or use password below)" value={oldPin} onChangeText={setOldPin} secureTextEntry keyboardType="number-pad" maxLength={4} accessibilityLabel="Current PIN" />
+          <TextInput style={s.passwordInput} placeholder="Current account password" value={pinPassword} onChangeText={setPinPassword} secureTextEntry accessibilityLabel="Current account password for PIN change" />
+          <TextInput style={s.passwordInput} placeholder="New 4-digit PIN" value={newPin} onChangeText={setNewPin} secureTextEntry keyboardType="number-pad" maxLength={4} accessibilityLabel="New PIN" />
+          <TextInput style={s.passwordInput} placeholder="Confirm new PIN" value={confirmPin} onChangeText={setConfirmPin} secureTextEntry keyboardType="number-pad" maxLength={4} accessibilityLabel="Confirm new PIN" />
+          {!!pinMessage && <Text accessibilityRole="alert" style={s.label}>{pinMessage}</Text>}
+          <TouchableOpacity style={s.savePwdBtn} onPress={() => void handlePinChange()} disabled={pinBusy}><Text style={s.savePwdBtnText}>Change PIN</Text></TouchableOpacity>
+          {bioAvailable && <TouchableOpacity onPress={() => void toggleBiometrics()} disabled={pinBusy} style={{ paddingTop: 14 }} accessibilityRole="switch" accessibilityState={{ checked: bioEnabled }}><Text style={s.label}>{bioEnabled ? '☑' : '□'} Biometric unlock</Text></TouchableOpacity>}
+        </View>
+
         {/* System Status Notice */}
         <View style={s.infoCard}>
           <Ionicons name="shield-checkmark-outline" size={16} color="#0A3824" />
@@ -348,16 +403,14 @@ const s = StyleSheet.create({
   logoContainer: {
     width: 72,
     height: 72,
-    borderRadius: 36,
-    backgroundColor: '#ffffff',
-    padding: 3,
-    borderWidth: 2.5,
-    borderColor: '#E4DBC4',
+    borderRadius: 18,
+    backgroundColor: '#FFFEFB',
+    padding: 5,
     marginBottom: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logo: { width: '100%', height: '100%', borderRadius: 32 },
+  logo: { width: '100%', height: '100%' },
   name: { fontSize: 18, fontWeight: '800', color: '#ffffff', textAlign: 'center', marginBottom: 2 },
   email: { fontSize: 12, color: '#879687', textAlign: 'center', marginBottom: 12 },
   badge: {
@@ -370,7 +423,7 @@ const s = StyleSheet.create({
   },
   badgeText: { fontSize: 11, fontWeight: '800', color: '#E4DBC4', textTransform: 'uppercase', letterSpacing: 0.5 },
   card: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFEFB',
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
