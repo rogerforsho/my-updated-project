@@ -77,7 +77,8 @@ export default function App() {
               try {
                 const { error } = await supabase.auth.refreshSession();
                 if (error) {
-                  if (error.name === 'AuthRetryableFetchError') throw error;
+                  // Offline: the PIN already proved who this is, so open with the stored session; it refreshes once online.
+                  if (error.name === 'AuthRetryableFetchError') { setGate('open'); return; }
                   await signOut(); return;
                 }
                 const profile = await getAuthUser();
