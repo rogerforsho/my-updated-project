@@ -1,6 +1,6 @@
 # ADR 0010: One Combined File for the Pre-deployment Requirements
 
-**Status:** Accepted, 2026-11-16. Refines ADR 0009 decision 2.
+**Status:** Accepted, 2026-11-16. Refines ADR 0009 decision 2. Narrowed by ADR 0011: the combined file is now PDF only (DOCX is no longer accepted).
 
 ## Context
 

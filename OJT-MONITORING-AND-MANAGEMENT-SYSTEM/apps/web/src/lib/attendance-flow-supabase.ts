@@ -1,5 +1,4 @@
 import { AUTO_TIME_OUT_REASON } from '@ojt/shared';
-import type { MobileSupabaseClient } from '@/src/lib/mobile-bff';
 import type { getServiceClient } from '@/src/lib/supabase/service';
 import { validateUploadedBytes } from '@/src/lib/uploadValidation';
 import type { AttendanceAdapter, AttendanceRow } from './attendance-flow';
@@ -8,8 +7,8 @@ import type { AttendancePolicy } from './attendance-recording';
 const MAX_SELFIE_SIZE = 5 * 1024 * 1024;
 type Service = ReturnType<typeof getServiceClient>;
 
-/** Supabase + storage implementation of AttendanceAdapter. `user` is the signed-in student's client (RLS-scoped work_schedules read). */
-export function supabaseAttendanceAdapter(service: Service, user: MobileSupabaseClient): AttendanceAdapter {
+/** Supabase + storage implementation of AttendanceAdapter. */
+export function supabaseAttendanceAdapter(service: Service): AttendanceAdapter {
   return {
     async hasValidSelfie(path) {
       const storage = service.storage.from('attendance-selfies');
@@ -37,7 +36,7 @@ export function supabaseAttendanceAdapter(service: Service, user: MobileSupabase
       if (!company) return null;
 
       const { data: schedule, error: scheduleError } = await service.from('practicum_schedules')
-        .select('work_modality')
+        .select('work_modality, time_in, work_days')
         .eq('student_id', studentId)
         .eq('company_id', assignment.company_id)
         .eq('branch_id', assignment.branch_id)
@@ -59,6 +58,7 @@ export function supabaseAttendanceAdapter(service: Service, user: MobileSupabase
         latitude: Number.isFinite(latitude) ? latitude : null,
         longitude: Number.isFinite(longitude) ? longitude : null,
         radiusMeters: Number(company.geofence_radius_meters) || 150,
+        schedule: schedule ? { timeIn: schedule.time_in, workDays: schedule.work_days } : null,
       };
     },
 
@@ -67,12 +67,6 @@ export function supabaseAttendanceAdapter(service: Service, user: MobileSupabase
         .eq('student_id', studentId).eq('attendance_date', attendanceDate).maybeSingle();
       if (error) throw error;
       return data;
-    },
-
-    async lateCutoff(companyId, dayOfWeek) {
-      const { data, error } = await user.from('work_schedules').select('time_in_cutoff')
-        .eq('company_id', companyId).eq('day_of_week', dayOfWeek).maybeSingle();
-      return error ? null : data?.time_in_cutoff ?? null;
     },
 
     async insertTimeIn(row) {

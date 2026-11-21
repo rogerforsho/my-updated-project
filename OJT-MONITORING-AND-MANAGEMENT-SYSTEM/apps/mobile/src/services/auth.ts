@@ -5,6 +5,9 @@ import type { AppResult, RegisterStudentInput, ResubmitStudentRegistrationInput,
 import { isStudentRegistrationCourse } from '@ojt/shared';
 import { getWebPortalUrl } from '../lib/webPortal';
 import { getWebBff, postWebBff } from '../lib/webBff';
+import { cancelAttendanceReminders } from '../lib/attendanceReminders';
+import { clearPin } from '../lib/pinAuth';
+import * as SecureStore from 'expo-secure-store';
 
 export async function registerStudent(input: RegisterStudentInput): Promise<AppResult<null>> {
   // Validation
@@ -124,8 +127,12 @@ export async function requestStudentPasswordReset(email: string): Promise<AppRes
 }
 
 export async function signOut(): Promise<void> {
+  await cancelAttendanceReminders(); // the next student on this phone must not get this account's reminders
   await clearAttendanceIdentity();
-  await supabase.auth.signOut();
+  try { await clearPin(); } finally {
+    try { await SecureStore.deleteItemAsync('ojt_mobile_remembered_profile'); }
+    finally { await supabase.auth.signOut({ scope: 'local' }); }
+  }
 }
 
 export async function changeUserPassword(
@@ -169,6 +176,8 @@ export async function changeUserPassword(
       error: { code: 'SERVER_FAILURE', message: updateErr.message || 'Failed to update password.' },
     };
   }
+
+  await clearPin();
 
   return { data: null, error: null };
 }

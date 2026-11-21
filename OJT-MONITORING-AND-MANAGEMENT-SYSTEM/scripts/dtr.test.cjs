@@ -71,6 +71,6 @@ test('the DTR data path is coordinator-only', () => {
 
 test('every timecard row has its own DTR button, no student filter needed', () => {
   const page = fs.readFileSync(path.join(__dirname, '../apps/web/app/(dashboard)/coordinator/attendance/page.tsx'), 'utf8');
-  assert.match(page, /onClick=\{\(\) => setDtrStudentId\(r\.student_id\)\}/);
+  assert.match(page, /e\.stopPropagation\(\); setDtrStudentId\(g\.student_id\)/);
   assert.doesNotMatch(page, /showDtr && student/);
 });

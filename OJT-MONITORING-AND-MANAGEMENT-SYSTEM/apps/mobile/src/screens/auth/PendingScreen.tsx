@@ -45,7 +45,7 @@ export default function PendingScreen({ navigation }: Props) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#092E1D', justifyContent: 'center', paddingHorizontal: 22, paddingVertical: 40 },
   card: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFEFB',
     borderRadius: 24,
     padding: 24,
     alignItems: 'center',

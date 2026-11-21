@@ -121,7 +121,7 @@ export async function registerStudent(
     email: input.email.trim(),
     password: input.password,
     options: {
-      emailRedirectTo: new URL('/auth/callback', appUrl).toString(),
+      emailRedirectTo: new URL('/auth/email-confirmed', appUrl).toString(),
       data: {
         full_name: input.full_name.trim(),
         role: 'Student',

@@ -3,10 +3,11 @@ import {
   View, Text, TouchableOpacity, FlatList, RefreshControl,
   ActivityIndicator, ScrollView, StyleSheet,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { listStudentFeed, markNotificationRead, markAllNotificationsRead, archiveNotification, type MobileFeedItem } from '../../services/notifications';
 import SwipeToArchive from '../../components/SwipeToArchive';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { type } from '../../theme';
 
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
@@ -105,13 +106,13 @@ export default function NotificationsScreen() {
   }
 
   return (
-    <View style={[s.root, { paddingTop: insets.top }]}>
+    <View style={s.root}>
       {/* Header */}
-      <View style={s.header}>
+      <View style={[s.header, { paddingTop: insets.top + 8 }]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View>
             <Text style={s.headerKicker}>Colegio de Montalban OJT</Text>
-            <Text style={s.title}>Notices & Alerts</Text>
+            <Text style={s.title}>Notifications</Text>
           </View>
           {hasUnread && (
             <TouchableOpacity onPress={handleMarkAllRead} accessibilityRole="button" accessibilityLabel="Mark all as read" style={s.markAllBtn} activeOpacity={0.8}>
@@ -260,20 +261,20 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F4F6F2' },
   center: { flex: 1, backgroundColor: '#F4F6F2', alignItems: 'center', justifyContent: 'center' },
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 14 },
-  headerKicker: { fontSize: 11, fontWeight: '800', color: '#0A3824', textTransform: 'uppercase', letterSpacing: 0.5 },
-  title: { fontSize: 24, fontWeight: '900', color: '#092E1D' },
+  headerKicker: type.kicker,
+  title: type.title,
   subtitle: { fontSize: 12, color: '#526257', marginTop: 2 },
   markAllBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: 'rgba(10,56,36,0.08)' },
   markAllText: { fontSize: 11, fontWeight: '700', color: '#0A3824' },
   filterRow: { flexDirection: 'row', gap: 8 },
-  filterPill: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: '#ffffff', borderWidth: 1.5, borderColor: '#DCE5DB' },
+  filterPill: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: '#FFFEFB', borderWidth: 1.5, borderColor: '#DCE5DB' },
   filterPillActive: { backgroundColor: '#0A3824', borderColor: '#0A3824' },
   filterText: { fontSize: 12, fontWeight: '700', color: '#37483C' },
-  filterTextActive: { color: '#E4DBC4' },
+  filterTextActive: { color: '#ffffff' },
   alertError: { marginHorizontal: 20, backgroundColor: '#fbf2f2', borderWidth: 1, borderColor: '#f1cdcd', borderRadius: 12, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
   alertErrorText: { color: '#7f1d1d', fontSize: 13, fontWeight: '600', flex: 1 },
   listContent: { paddingHorizontal: 20, paddingBottom: 32, gap: 12 },
-  feedCard: { backgroundColor: '#ffffff', borderRadius: 18, borderWidth: 1, borderColor: '#DCE5DB', padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
+  feedCard: { backgroundColor: '#FFFEFB', borderRadius: 18, borderWidth: 1, borderColor: '#DCE5DB', padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
   feedCardUnread: { backgroundColor: '#F5F7F6', borderColor: '#0A3824' }, // opaque: SwipeToArchive's action layer sits behind the card
   archiveBtn: { marginLeft: 10 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },

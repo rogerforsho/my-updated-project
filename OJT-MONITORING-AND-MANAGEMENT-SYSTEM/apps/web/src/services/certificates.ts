@@ -21,6 +21,7 @@ export interface ClearanceCheckResult {
   required_hours: number;
   hours_met: boolean;
   final_report_approved: boolean;
+  hte_evaluation_submitted: boolean;
   evaluation_passed: boolean;
   evaluation_appeal_pending: boolean;
   evaluation_score: number | null;
@@ -85,6 +86,11 @@ export async function checkClearanceStatus(student_id: string): Promise<AppResul
 
   const finalReportApproved = !!finalReport;
 
+  const { data: hteEvaluation, error: hteError } = await supabase
+    .from('hte_evaluations').select('hte_evaluation_id').eq('student_id', student_id).maybeSingle();
+  if (hteError) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not check the HTE evaluation.' } };
+  const hteEvaluationSubmitted = !!hteEvaluation;
+
   // 4. Fetch supervisor evaluations (both midterm and final)
   const { data: evaluations } = await supabase
     .from('evaluations')
@@ -115,9 +121,7 @@ export async function checkClearanceStatus(student_id: string): Promise<AppResul
     : null;
 
   const evalScore = finalScore !== null ? finalScore : midtermScore;
-  const evaluationPassed = !evaluationAppealPending
-    && midtermScore !== null && midtermScore >= 75
-    && finalScore !== null && finalScore >= 75;
+  const evaluationPassed = !evaluationAppealPending && finalScore !== null && finalScore >= 75;
 
   // 5. Read the Coordinator-entered grade and any finalized certificate.
   const { data: grade, error: gradeError } = await supabase.from('ojt_final_grades')
@@ -142,6 +146,7 @@ export async function checkClearanceStatus(student_id: string): Promise<AppResul
       required_hours: requiredHours,
       hours_met: hoursMet,
       final_report_approved: finalReportApproved,
+      hte_evaluation_submitted: hteEvaluationSubmitted,
       evaluation_passed: evaluationPassed,
       evaluation_appeal_pending: evaluationAppealPending,
       evaluation_score: evalScore,
@@ -149,7 +154,7 @@ export async function checkClearanceStatus(student_id: string): Promise<AppResul
       final_score: finalScore,
       final_grade: grade ? Number(grade.final_grade) : null,
       grade_recorded_at: grade?.recorded_at ?? null,
-      can_issue: hoursMet && finalReportApproved && evaluationPassed && !cert,
+      can_issue: hoursMet && finalReportApproved && hteEvaluationSubmitted && evaluationPassed && !cert,
       certificate: cert || null,
     },
     error: null,
@@ -179,7 +184,7 @@ export async function recordFinalOjtGrade(student_id: string, final_grade: numbe
   if (clearance.data.certificate) {
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'This OJT record is already finalized.' } };
   }
-  if (!clearance.data.hours_met || !clearance.data.final_report_approved || !clearance.data.evaluation_passed) {
+  if (!clearance.data.hours_met || !clearance.data.final_report_approved || !clearance.data.hte_evaluation_submitted || !clearance.data.evaluation_passed) {
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'The student has not met all academic clearance requirements.' } };
   }
 

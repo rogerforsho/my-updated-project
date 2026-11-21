@@ -95,7 +95,7 @@ flowchart LR
     p6 -->|rendered hours| student
 
     %% 7.0 Evaluation
-    sup -->|midterm and final ratings| p7
+    sup -->|final rating| p7
     p7 -->|evaluation record| d8
     p7 -->|evaluation result| student
 

@@ -76,13 +76,13 @@ const COHORT = [
 
   // Stage 2 - ongoing. Combined file approved, schedule approved, assignment active.
   { slug: 'ojt-mid', name: 'Nicole V. Bautista', number: '23-90003', course: 'BSIT', stage: 'ongoing',
-    days: 17, journals: 3, pendingDay: true, undecidedJournal: true, midterm: rubric(4, 5, 5, 4, 4),
-    note: 'About a third through 486 hours, midterm submitted, one attendance day and one journal awaiting the Supervisor.' },
+    days: 17, journals: 3, pendingDay: true, undecidedJournal: true,
+    note: 'About a third through 486 hours, not yet evaluable, one attendance day and one journal awaiting the Supervisor.' },
 
   // Stage 3 - finished. Cleared by the database's own clearance rule, then certificated.
   { slug: 'done-bsit', name: 'Mark Anthony L. Cruz', number: '23-90004', course: 'BSIT', stage: 'finished',
-    days: 61, journals: 5, midterm: rubric(5, 4, 4, 4, 4), final: rubric(5, 4, 5, 4, 4), grade: 1.50,
-    note: 'Completed 486 hours, both evaluations passed, certificate issued.' },
+    days: 61, journals: 5, final: rubric(5, 4, 5, 4, 4), grade: 1.50,
+    note: 'Completed 486 hours, final evaluation passed, certificate issued.' },
 ].map((s) => ({ ...s, email: `${COHORT_TAG}-${s.slug}@${EMAIL_DOMAIN}` }));
 
 // ---------------------------------------------------------------- undo
@@ -446,17 +446,14 @@ try {
     }
 
     // -------- evaluations
-    for (const [type, criteria] of [['midterm', s.midterm], ['final', s.final]]) {
-      if (!criteria) continue;
-      const { points, score } = scoreOf(criteria);
-      const when = s.dates[Math.min(s.dates.length - 1, type === 'midterm' ? Math.floor(s.dates.length / 2) : s.dates.length - 1)];
-      ok(`Insert ${type} evaluation for ${s.slug}`, await db.from('evaluations').insert({
+    // Only the final evaluation exists, and the database accepts it only once the required hours are finished.
+    if (s.final) {
+      const { points, score } = scoreOf(s.final);
+      ok(`Insert final evaluation for ${s.slug}`, await db.from('evaluations').insert({
         student_id: s.studentId, supervisor_id: supervisor.supervisor_id,
-        evaluation_type: type, performance_score: score, rubric_scores: points,
-        evaluation_date: when,
-        feedback: type === 'midterm'
-          ? 'Dependable and quick to pick up the internal tools. Needs to speak up earlier when a task is blocked.'
-          : 'Finished every assigned deliverable on time and documented the handover well. Recommended for hire.',
+        evaluation_type: 'final', performance_score: score, rubric_scores: points,
+        evaluation_date: s.dates[s.dates.length - 1],
+        feedback: 'Finished every assigned deliverable on time and documented the handover well. Recommended for hire.',
       }));
     }
 

@@ -8,8 +8,9 @@ import {
 } from 'react-native';
 import { FaceCamera, useCameraPermissions, useFaceCamera, useFaceValidation, type FaceRequirements } from '@rbayuokt/expo-face-vision';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, type CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import {
   recordTimeIn,
@@ -29,8 +30,10 @@ import { GATEWAY_DOCUMENT_SPECS, getGatewayStatus, isBundleType, isWithinGeofenc
 import NetworkToast from '../../components/NetworkToast';
 import ScheduleProposalModal from '../../components/ScheduleProposalModal';
 import { fetchStudentScheduleProposal } from '../../services/schedule';
+import { refreshAttendanceReminders } from '../../lib/attendanceReminders';
+import { punctuality } from '../../lib/punctuality';
 import type { DbAttendance, DbPracticumSchedule } from '@ojt/shared';
-import type { StudentTabParamList } from '../../navigation/types';
+import type { StudentStackParamList, StudentTabParamList } from '../../navigation/types';
 
 type Step = 'idle' | 'selfie' | 'submitting';
 type SubTab = 'check_in' | 'history';
@@ -66,7 +69,10 @@ const FACE_HINTS: Record<string, string> = {
 
 export default function AttendanceScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<BottomTabNavigationProp<StudentTabParamList>>();
+  const navigation = useNavigation<CompositeNavigationProp<
+    BottomTabNavigationProp<StudentTabParamList>,
+    NativeStackNavigationProp<StudentStackParamList>
+  >>();
   const [activeTab, setActiveTab] = useState<SubTab>('check_in');
   const [permission, requestPermission] = useCameraPermissions();
   const [step, setStep] = useState<Step>('idle');
@@ -90,6 +96,7 @@ export default function AttendanceScreen() {
   const [isGatewayCleared, setIsGatewayCleared] = useState(false);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [scheduleProposal, setScheduleProposal] = useState<DbPracticumSchedule | null>(null);
+  const scheduleTimeIn = scheduleProposal?.status === 'approved' ? scheduleProposal.time_in : null;
   const capturingSelfie = useRef(false);
 
   const { width: winW, height: winH } = useWindowDimensions();
@@ -165,6 +172,7 @@ export default function AttendanceScreen() {
     const identity = await getCachedAttendanceIdentity();
     const eligibilityKey = identity ? `cdm_ojt_attendance_eligibility_${identity.user.user_id}` : null;
     const online = await isNetworkAvailable();
+    let reminderSchedule: DbPracticumSchedule | null = null;
     // Cache only the existing attendance prerequisites, scoped to this account.
     if (!online) {
       setIsGatewayCleared(false);
@@ -177,6 +185,7 @@ export default function AttendanceScreen() {
           setIsGatewayCleared(cached.cleared === true);
           setGatewayDocs(cached.progress || []);
           setScheduleProposal(cached.schedule || null);
+          reminderSchedule = cached.schedule || null;
         }
       } catch { /* Remain blocked until prerequisites can be checked online. */ }
     } else try {
@@ -211,6 +220,7 @@ export default function AttendanceScreen() {
           if (schedRes.data) {
             setScheduleProposal(schedRes.data);
             cachedSchedule = schedRes.data;
+            reminderSchedule = schedRes.data;
           }
         } catch {
           // Ignore if offline
@@ -225,6 +235,8 @@ export default function AttendanceScreen() {
 
     const record = await getTodayAttendance();
     setTodayRecord(record);
+    // Only with a known schedule: a failed fetch must not wipe reminders that are already set.
+    if (reminderSchedule) void refreshAttendanceReminders(reminderSchedule, record, online);
     const queue = await getOfflineQueue();
     const queueIdentity = await getCachedAttendanceIdentity();
     applyQueue(queue, queueIdentity?.student_id);
@@ -870,11 +882,8 @@ export default function AttendanceScreen() {
                     </View>
                     <View style={s.statusRow}>
                       <Text style={s.statusLabel}>Punctuality</Text>
-                      <Text style={[
-                        s.statusValue,
-                        todayRecord.late_status === 'late' ? { color: '#dc2626' } : { color: '#0A3824' }
-                      ]}>
-                        {todayRecord.late_status.replace('_', ' ').toUpperCase()}
+                      <Text style={[s.statusValue, { color: punctuality(todayRecord, scheduleTimeIn).color }]}>
+                        {punctuality(todayRecord, scheduleTimeIn).text}
                       </Text>
                     </View>
                     <View style={s.statusRow}>
@@ -1079,8 +1088,8 @@ export default function AttendanceScreen() {
                 </View>
                 <View style={s.timeCol}>
                   <Text style={s.timeLabel}>Punctuality</Text>
-                  <Text style={[s.timeValue, item.late_status === 'late' ? { color: '#dc2626' } : { color: '#0A3824' }]}>
-                    {item.late_status.replace('_', ' ')}
+                  <Text style={[s.timeValue, { color: punctuality(item).color }]}>
+                    {punctuality(item).text}
                   </Text>
                 </View>
               </View>

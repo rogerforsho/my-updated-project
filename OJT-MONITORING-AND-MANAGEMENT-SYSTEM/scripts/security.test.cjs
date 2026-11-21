@@ -203,6 +203,7 @@ function workflowFixture(role = 'Admin', options = {}) {
     return modules[name] ||= load(`apps/web/src/services/${name}.ts`, {
       '@/src/lib/supabase/server': { createClient: async () => client },
       '@/src/lib/trusted-actor': trustedActor,
+      '@/src/services/supervisorTrainees': { listSupervisedTrainees: async () => ({ data: options.trainees ?? [], error: null }) },
       '@/src/lib/actor': load('apps/web/src/lib/actor.ts', {
         'server-only': {}, '@/src/lib/trusted-actor': trustedActor,
         '@/src/lib/department-scope': departmentScopeModule,
@@ -457,6 +458,7 @@ test('failing grade is recorded without completion; passing grade finalizes and 
     internship_progress: [{ student_id: 'student', completed_hours: 486 }],
     reports: [{ student_id: 'student', report_type: 'final_report', status: 'approved' }],
     evaluations: [{ evaluation_id: 'midterm', student_id: 'student', evaluation_type: 'midterm', performance_score: 90 }, { evaluation_id: 'final', student_id: 'student', evaluation_type: 'final', performance_score: 90 }],
+    hte_evaluations: [{ student_id: 'student' }],
     evaluation_appeals: [], certificates: [], ojt_final_grades: [],
   } });
   const service = fixture.module('certificates');
@@ -486,6 +488,7 @@ test('completion requires both passing Supervisor evaluations and no pending app
     internship_progress: [{ student_id: 'student', completed_hours: 486 }],
     reports: [{ student_id: 'student', report_type: 'final_report', status: 'approved' }],
     evaluations: [{ evaluation_id: 'midterm', student_id: 'student', evaluation_type: 'midterm', performance_score: 90 }, { evaluation_id: 'final', student_id: 'student', evaluation_type: 'final', performance_score: 90 }],
+    hte_evaluations: [{ student_id: 'student' }],
     evaluation_appeals: [],
     certificates: [],
   } });
@@ -499,6 +502,9 @@ test('completion requires both passing Supervisor evaluations and no pending app
   assert.equal((await service.checkClearanceStatus('student')).data.can_issue, false);
   fixture.tables.evaluation_appeals[0].status = 'upheld';
   assert.equal((await service.checkClearanceStatus('student')).data.can_issue, true);
+  const hte = fixture.tables.hte_evaluations.pop();
+  assert.equal((await service.checkClearanceStatus('student')).data.can_issue, false, 'the student HTE evaluation is a clearance gateway');
+  fixture.tables.hte_evaluations.push(hte);
 });
 
 test('department report loads the complete cohort and rejects incomplete results instead of exporting a partial report', async () => {
@@ -681,26 +687,39 @@ test('evaluation uses a 5-point rating per criterion and requires a comment for 
   const fixture = workflowFixture('Supervisor', { tables: {
     supervisors: [{ user_id: 'actor', supervisor_id: 'supervisor' }],
     student_assignments: [{ student_id: 'student', supervisor_id: 'supervisor', assignment_id: 'assignment', assignment_status: 'active' }],
-  } });
+  }, trainees: [{ student_id: 'student', completed_hours: 486, required_hours: 486 }] });
   const evaluations = fixture.module('evaluations');
   const ratings = { technical_competence: 5, productivity_dependability: 4, attendance_punctuality: 4, communication_skills: 3, work_ethics_professionalism: 5 };
   for (const bad of [0, 6, 2.5, '4', NaN])
-    assert.equal((await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'midterm', performance_score: null, feedback: 'Fine', criteria: { ...ratings, communication_skills: bad } })).error.code, 'VALIDATION_FAILURE');
-  assert.equal((await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'midterm', performance_score: 99, feedback: 'No rubric' })).error.code, 'VALIDATION_FAILURE');
+    assert.equal((await evaluations.createEvaluation({ student_id: 'student', performance_score: null, feedback: 'Fine', criteria: { ...ratings, communication_skills: bad } })).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await evaluations.createEvaluation({ student_id: 'student', performance_score: 99, feedback: 'No rubric' })).error.code, 'VALIDATION_FAILURE');
   const low = { ...ratings, attendance_punctuality: 2 };
-  const missing = await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'midterm', performance_score: null, feedback: '   ', criteria: low });
+  const missing = await evaluations.createEvaluation({ student_id: 'student', performance_score: null, feedback: '   ', criteria: low });
   assert.equal(missing.error.code, 'VALIDATION_FAILURE');
   assert.match(missing.error.message, /below 3/);
   assert.equal(fixture.writes.length, 0);
 
-  assert.equal((await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'midterm', performance_score: null, feedback: '', criteria: ratings })).error, null);
-  assert.equal((await evaluations.createEvaluation({ student_id: 'student', evaluation_type: 'final', performance_score: null, feedback: 'Often late in week 3.', criteria: low })).error, null);
+  assert.equal((await evaluations.createEvaluation({ student_id: 'student', performance_score: null, feedback: '', criteria: ratings })).error, null);
+  assert.equal((await evaluations.createEvaluation({ student_id: 'student', performance_score: null, feedback: 'Often late in week 3.', criteria: low })).error, null);
   const [midterm, final] = fixture.tables.evaluations;
+  assert.deepEqual(fixture.tables.evaluations.map(e => e.evaluation_type), ['final', 'final']);
   // stored as weighted points (25/20/20/15/20) so summaries, grades and appeals keep the 100-point scale
   assert.deepEqual({ ...midterm.rubric_scores }, { technical_competence: 25, productivity_dependability: 16, attendance_punctuality: 16, communication_skills: 9, work_ethics_professionalism: 20 });
   assert.equal(midterm.performance_score, 86);
   assert.equal(midterm.feedback, '');
   assert.equal(final.performance_score, 78);
+});
+
+test('a trainee who has not finished the required hours cannot be evaluated', async () => {
+  const fixture = workflowFixture('Supervisor', { tables: {
+    supervisors: [{ user_id: 'actor', supervisor_id: 'supervisor' }],
+    student_assignments: [{ student_id: 'student', supervisor_id: 'supervisor', assignment_id: 'assignment', assignment_status: 'active' }],
+  }, trainees: [{ student_id: 'student', completed_hours: 312, required_hours: 486 }] });
+  const ratings = { technical_competence: 5, productivity_dependability: 4, attendance_punctuality: 4, communication_skills: 3, work_ethics_professionalism: 5 };
+  const result = await fixture.module('evaluations').createEvaluation({ student_id: 'student', performance_score: null, feedback: '', criteria: ratings });
+  assert.equal(result.error.code, 'VALIDATION_FAILURE');
+  assert.match(result.error.message, /312 of 486 hours \(174 left\)/);
+  assert.equal(fixture.writes.length, 0);
 });
 
 test('modal traps keyboard focus, closes on Escape, and restores focus and scroll state', () => {
@@ -1467,6 +1486,30 @@ test('Supervisors decide daily reports once and Coordinators cannot double-revie
   assert.equal(coordinator.tables.reports[0].status, 'submitted');
 });
 
+// Regression: the service once allowed only Daily Journal and Accomplishment Report, so a Weekly
+// Journal showed in the Supervisor's list but approving it failed with FORBIDDEN.
+test('Supervisors can decide a Weekly Journal but not a Coordinator-reviewed type', async () => {
+  const supervisor = workflowFixture('Supervisor', { tables: {
+    reports: [
+      { report_id: 'weekly-1', student_id: 'student-1', report_type: 'Weekly Journal', status: 'submitted', supervisor_decision: null },
+      { report_id: 'final-1', student_id: 'student-1', report_type: 'final_report', status: 'submitted', supervisor_decision: null },
+    ],
+    supervisors: [{ user_id: 'actor', supervisor_id: 'supervisor-1' }],
+    student_assignments: [{ student_id: 'student-1', supervisor_id: 'supervisor-1', assignment_status: 'active' }],
+  } });
+  assert.equal((await supervisor.module('reports').endorseReportBySupervisor('weekly-1', 'approved', 'Good week.')).error, null);
+  assert.equal(supervisor.tables.reports[0].supervisor_decision, 'approved');
+  assert.equal((await supervisor.module('reports').endorseReportBySupervisor('final-1', 'approved', 'Nope.')).error.code, 'FORBIDDEN');
+});
+
+test('students can no longer submit a Daily Journal, and only PDF paths are accepted', async () => {
+  const student = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }] } });
+  const reports = student.module('reports');
+  assert.equal((await reports.submitReport({ report_type: 'Daily Journal', file_path: 'actor/reports/00000000-0000-4000-8000-000000000001.pdf' })).error.code, 'VALIDATION_FAILURE');
+  assert.equal((await reports.submitReport({ report_type: 'Weekly Journal', file_path: 'actor/reports/00000000-0000-4000-8000-000000000001.docx' })).error.code, 'FORBIDDEN');
+  assert.equal(student.tables.reports?.length ?? 0, 0);
+});
+
 test('students can submit a final report and the OJT Coordinator can approve it', async () => {
   const student = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }] } });
   assert.equal((await student.module('reports').submitReport({ report_type: 'final_report', file_path: 'actor/reports/00000000-0000-4000-8000-000000000001.pdf' })).error, null);
@@ -1482,7 +1525,7 @@ test('students can submit a final report and the OJT Coordinator can approve it'
 
 test('core student, OJT Coordinator, and supervisor service paths return useful results', async () => {
   const student = workflowFixture('Student', { tables: { students: [{ student_id: 'student', user_id: 'actor' }] } });
-  assert.equal((await student.module('reports').submitReport({ report_type: 'Weekly Progress', file_path: 'actor/reports/00000000-0000-4000-8000-000000000001.pdf' })).error, null);
+  assert.equal((await student.module('reports').submitReport({ report_type: 'Weekly Journal', file_path: 'actor/reports/00000000-0000-4000-8000-000000000001.pdf' })).error, null);
   assert.equal(student.tables.reports[0].student_id, 'student');
 
   const coordinator = workflowFixture('Coordinator', { tables: {
@@ -1496,8 +1539,8 @@ test('core student, OJT Coordinator, and supervisor service paths return useful 
   const supervisor = workflowFixture('Supervisor', { tables: {
     supervisors: [{ user_id: 'actor', supervisor_id: 'supervisor' }],
     student_assignments: [{ student_id: 'student', supervisor_id: 'supervisor', assignment_id: 'assignment', assignment_status: 'active' }],
-  } });
-  assert.equal((await supervisor.module('evaluations').createEvaluation({ student_id: 'student', performance_score: null, feedback: 'Good progress.', evaluation_type: 'midterm', criteria: { technical_competence: 5, productivity_dependability: 4, attendance_punctuality: 4, communication_skills: 4, work_ethics_professionalism: 4 } })).error, null);
+  }, trainees: [{ student_id: 'student', completed_hours: 486, required_hours: 486 }] });
+  assert.equal((await supervisor.module('evaluations').createEvaluation({ student_id: 'student', performance_score: null, feedback: 'Good progress.', criteria: { technical_competence: 5, productivity_dependability: 4, attendance_punctuality: 4, communication_skills: 4, work_ethics_professionalism: 4 } })).error, null);
   assert.equal(supervisor.tables.evaluations[0].performance_score, 85);
 
   const head = workflowFixture('Coordinator', { tables: { students: [{ student_id: 'student', course: 'BSIT', users: { account_status: 'active' }, internship_progress: { completed_hours: 120, progress_status: 'in_progress' } }] } });
@@ -2166,8 +2209,8 @@ test('offline attendance from a closed assignment syncs within its placement dat
   const rows = {
     student_assignments: [{ assignment_id: 'assignment', student_id: 'student', company_id: 'company', branch_id: 'branch', assignment_status: 'completed', start_date: '2026-10-01', end_date: '2026-10-19' }],
     company_branches: [{ company_id: 'company', branch_id: 'branch', status: 'inactive', latitude: 14, longitude: 121, geofence_radius_meters: 150, geofence_enabled: true }],
-    practicum_schedules: [{ student_id: 'student', company_id: 'company', branch_id: 'branch', status: 'approved', start_date: '2026-10-01', end_date: '2026-10-19', work_modality: 'on_site' }],
-    attendance: [], work_schedules: [],
+    practicum_schedules: [{ student_id: 'student', company_id: 'company', branch_id: 'branch', status: 'approved', start_date: '2026-10-01', end_date: '2026-10-19', work_modality: 'on_site', time_in: '08:00:00', work_days: [1, 2, 3, 4, 5] }],
+    attendance: [],
   };
   let inserted = null;
   const client = { from(table) {
@@ -2217,6 +2260,7 @@ test('offline attendance from a closed assignment syncs within its placement dat
   assert.equal(inserted.time_in, capturedAt);
   assert.equal(inserted.verification_status, 'pending');
   assert.ok(inserted.time_in_received_at, 'server receipt time is recorded separately');
+  assert.equal(inserted.late_status, 'late', 'judged against the approved schedule start, not a company cutoff');
 });
 
 test('student resubmission requires the rejected-student BFF and bounds streamed JSON', async () => {
@@ -2307,6 +2351,24 @@ test('HTE geofence radius is limited to 30-50 m for companies and branches', asy
   }
   // Omitted radius falls back to the 50 m default, which is valid.
   assert.equal((await companies.createCompanyBranch(branch)).error.code, 'FORBIDDEN');
+});
+
+test('createCompanyBranch explains an RLS refusal instead of a generic failure', async () => {
+  const run = async dbError => {
+    const supabase = { from: table => table === 'companies'
+      ? { select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { company_id: 'company' } }) }) }) }) }
+      : { insert: () => ({ select: () => ({ single: async () => ({ data: null, error: dbError }) }) }) } };
+    const companies = load('apps/web/src/services/companies.ts', {
+      '@/src/lib/actor': { getCoordinator: async () => ({ supabase, user: { id: 'coordinator' }, authorized: true }) },
+      '@/src/lib/audit': { recordAuditEvent: async () => {} },
+    });
+    return (await companies.createCompanyBranch({ company_id: 'company', branch_name: 'NVIDIA CDM', address: '1 Road', latitude: 14.7, longitude: 121.1 })).error;
+  };
+  const denied = await run({ code: '42501' });
+  assert.equal(denied.code, 'FORBIDDEN');
+  assert.match(denied.message, /pending practicum schedule/);
+  assert.equal((await run({ code: '23505' })).code, 'DUPLICATE_REQUEST');
+  assert.equal((await run({ code: 'XX000' })).code, 'SERVER_FAILURE');
 });
 
 // Batch A: database security migrations. supabase/migrations is the single source of truth.

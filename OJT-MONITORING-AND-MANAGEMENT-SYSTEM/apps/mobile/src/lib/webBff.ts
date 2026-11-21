@@ -22,7 +22,7 @@ async function callWebBff<T>(path: string, method: 'GET' | 'POST', payload?: unk
       return { data: null, error: result.error || { code: 'SERVER_FAILURE', message: 'The request could not be completed.' } };
     return { data: result.data as T, error: null };
   } catch {
-    return { data: null, error: { code: 'SERVER_FAILURE', message: `The service could not be reached (${process.env.EXPO_PUBLIC_WEB_URL ?? 'no web URL set'}). Check your connection and try again.` } };
+    return { data: null, error: { code: 'SERVER_FAILURE', message: 'No connection to the server. Check your signal and try again.' } };
   }
 }
 

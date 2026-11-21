@@ -21,7 +21,7 @@ There are four roles: OJT Student, Supervisor, OJT Coordinator, Super Admin. The
 - **Placement:** assign students to company, branch, supervisor, and dates; review student schedule proposals; reassign students; set status (verified for DROPPED/INC/TERMINATED-type changes).
 - **Monitoring:** department progress summary, attendance list, and submissions. Company and branch pages retain location and geofence setup.
 - **Attendance exceptions:** adjudicate or override attendance with an audited reason (atomic).
-- **Reports and evaluation:** review reports; view Supervisor evaluations; decide evaluation appeals as final arbiter; record the final OJT grade; clearance check (credited hours, approved final report, passing final evaluation); completion freezes attendance; issue certificates with public verification (`/verify-certificate`).
+- **Reports and evaluation:** review reports; view Supervisor evaluations; read students' HTE evaluations per company ("HTE feedback"); review Compiled Weekly Journals; decide evaluation appeals as final arbiter; record the final OJT grade; clearance check (credited hours, approved final report, passing final evaluation); completion freezes attendance; issue certificates with public verification (`/verify-certificate`).
 - **Messages:** chat with Supervisors, file attachments (PDF, DOCX, DOC, JPG, PNG, 10 MB) and tags for students of the shared placement; notifications.
 - **Incident reports:** receive confidential student concern reports, acknowledge them, and close them with a response the student can read.
 - Departmental reports page with export code (PDF/Excel output not fully verified).
@@ -31,7 +31,8 @@ There are four roles: OJT Student, Supervisor, OJT Coordinator, Super Admin. The
 - Registers with program details, privacy consent, and front/back ID images; waits for Coordinator approval; can resubmit; password recovery through the server.
 - Selects an existing company or requests a new one (modal); proposes a schedule.
 - **Attendance:** time-in/time-out with GPS and a selfie (native face detection, needs an Expo development build); out-of-bounds entries are flagged; a note can be added; offline queue with auto-sync, and synced items are marked pending verification; server receipt time is stored separately from device time; future-dated and out-of-assignment credit is blocked; lunch overlap handling; forgotten time-out is closed server-side and held for review.
-- **Reports:** daily accomplishment reports with uploads (PDF, JPG, PNG, DOCX, 10 MB, validated); supervisor feedback.
+- **Reports:** Pre-deployment Requirements, Weekly Journals, Incident Report and Final Report, PDF only (validated), each labelled with its reviewer (HTE Supervisor or OJT Coordinator). After Required Hours are complete, one tap merges all approved Weekly Journals into one PDF for the OJT Coordinator.
+- **HTE Evaluation:** a tab that unlocks after Required Hours; the student rates their Host Training Establishment (ICS form, 11 criteria) once. Only the OJT Coordinator can read it.
 - **Report a concern:** confidential incident report readable only by the department OJT Coordinator (not anonymous).
 - Progress and hours, evaluation results, appeals of evaluations (submission path not fully traced), notifications and announcements, profile/settings.
 - Certificate view on the web side after clearance.
@@ -40,8 +41,8 @@ There are four roles: OJT Student, Supervisor, OJT Coordinator, Super Admin. The
 
 - Dashboard of assigned students.
 - Attendance review: Verify or mark Disputed (stored as Rejected).
-- Daily reports: approve or return with required feedback.
-- Midterm and final evaluations on a 1–5 scale; a comment is required for scores below 3 (verified).
+- Weekly Journals: approve or return with required feedback (retired Daily Journals and Accomplishment Reports stay reviewable).
+- One final evaluation per trainee on a 1–5 scale, allowed only after the required hours are finished; a comment is required for scores below 3.
 - Text chat with the Coordinator, notifications.
 - Off-site/schedule dates are finite (migration `finite_offsite_schedule_dates`); the approval UI is only partly traced.
 

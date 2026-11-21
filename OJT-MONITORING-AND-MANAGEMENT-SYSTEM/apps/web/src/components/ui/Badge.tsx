@@ -1,6 +1,6 @@
 type BadgeVariant =
   | 'active' | 'inactive' | 'pending' | 'completed' | 'cancelled' | 'rejected'
-  | 'verified' | 'on_time' | 'late' | 'unknown'
+  | 'verified' | 'on_time' | 'late' | 'not_work_day' | 'no_schedule' | 'unknown'
   | 'synced' | 'pending_sync' | 'conflict'
   | 'valid' | 'invalid' | 'expired';
 
@@ -14,6 +14,8 @@ const styles: Record<BadgeVariant, { pill: string; dot: string }> = {
   pending:      { pill: 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/60', dot: 'bg-amber-500' },
   pending_sync: { pill: 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/60', dot: 'bg-amber-500' },
   unknown:      { pill: 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/60', dot: 'bg-amber-500' },
+  not_work_day: { pill: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700', dot: 'bg-slate-400' },
+  no_schedule:  { pill: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700', dot: 'bg-slate-400' },
   late:         { pill: 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200/80 dark:border-rose-800/60', dot: 'bg-rose-500' },
   rejected:     { pill: 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200/80 dark:border-rose-800/60', dot: 'bg-rose-500' },
   cancelled:    { pill: 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200/80 dark:border-rose-800/60', dot: 'bg-rose-500' },
@@ -25,6 +27,9 @@ const styles: Record<BadgeVariant, { pill: string; dot: string }> = {
 
 const labels: Partial<Record<BadgeVariant, string>> = {
   on_time:      'On Time',
+  not_work_day: 'Not a work day',
+  no_schedule:  'No approved schedule',
+  unknown:      'Not rated',
   pending_sync: 'Pending Sync',
   pending:      'Pending Review',
 };

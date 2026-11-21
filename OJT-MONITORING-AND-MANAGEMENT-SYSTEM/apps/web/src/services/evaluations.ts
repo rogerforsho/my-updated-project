@@ -4,6 +4,7 @@ import { getTrustedActor } from '@/src/lib/trusted-actor';
 
 import { canManageDepartmentRecord, canManageDepartmentStudent, departmentScope, restrictDepartment } from '@/src/lib/department-scope';
 import { recordAuditEvent } from '@/src/lib/audit';
+import { listSupervisedTrainees } from '@/src/services/supervisorTrainees';
 import type { AppResult, DbEvaluation, DbEvaluationAppeal, EvaluationAppealStatus } from '@ojt/shared';
 
 type EvaluationWithAppeal = DbEvaluation & {
@@ -35,7 +36,6 @@ const RUBRIC_WEIGHTS: Record<keyof EvaluationRubricCriteria, number> = {
 
 export interface EvaluationInput {
   student_id: string;
-  evaluation_type?: 'midterm' | 'final';
   performance_score: number | null;
   feedback: string;
   criteria?: EvaluationRubricCriteria;
@@ -44,7 +44,7 @@ export interface EvaluationInput {
 export async function listEvaluationsForSupervisor(
   page = 1,
   pageSize = 20,
-  opts: { search?: string; type?: string } = {}
+  opts: { search?: string } = {}
 ): Promise<AppResult<{ evaluations: EvaluationWithStudent[]; total: number }>> {
   const { supabase, user, profile } = await getTrustedActor();
   if (!user || profile?.role !== 'Supervisor' || profile?.account_status !== 'active')
@@ -66,7 +66,6 @@ export async function listEvaluationsForSupervisor(
     .eq('supervisor_id', supervisor.supervisor_id)
     .order('evaluation_date', { ascending: false })
     .range(from, to);
-  if (opts.type === 'midterm' || opts.type === 'final') query = query.eq('evaluation_type', opts.type);
   // one table per query: a student number has digits, otherwise match the name
   if (q) query = /\d/.test(q)
     ? query.ilike('students.student_number', `%${q}%`)
@@ -81,8 +80,6 @@ export async function listEvaluationsForSupervisor(
 
 export async function createEvaluation(input: EvaluationInput): Promise<AppResult<null>> {
   if (!input.student_id) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Student is required.' } };
-  if (input.evaluation_type && !['midterm', 'final'].includes(input.evaluation_type))
-    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Invalid evaluation type.' } };
   const keys = Object.keys(RUBRIC_WEIGHTS) as (keyof EvaluationRubricCriteria)[];
   const ratings = keys.map(key => input.criteria?.[key]);
   if (ratings.some(value => !Number.isInteger(value) || value! < 1 || value! > 5))
@@ -111,7 +108,14 @@ export async function createEvaluation(input: EvaluationInput): Promise<AppResul
   if (!assignment)
     return { data: null, error: { code: 'FORBIDDEN', message: 'You are not assigned to this student.' } };
 
-  const evalType = input.evaluation_type || 'final';
+  // Only the final evaluation exists, and only once the trainee has finished the required hours (the database enforces the same).
+  const evalType = 'final';
+  const trainees = await listSupervisedTrainees();
+  const trainee = trainees.data?.find(t => t.student_id === input.student_id);
+  if (trainee && trainee.completed_hours < trainee.required_hours) {
+    const left = Math.round((trainee.required_hours - trainee.completed_hours) * 100) / 100;
+    return { data: null, error: { code: 'VALIDATION_FAILURE', message: `This trainee has completed ${trainee.completed_hours} of ${trainee.required_hours} hours (${left} left). Evaluate them once the required hours are finished.` } };
+  }
 
   const points = Object.fromEntries(keys.map(key => [key, (RUBRIC_WEIGHTS[key] * input.criteria![key]) / 5]));
   const computedScore = Object.values(points).reduce((sum, value) => sum + value, 0);
@@ -127,6 +131,7 @@ export async function createEvaluation(input: EvaluationInput): Promise<AppResul
   }).select('evaluation_id').single();
 
   if (error?.code === '23505') return { data: null, error: { code: 'DUPLICATE_REQUEST', message: 'This evaluation stage was already submitted. Any concern must go through the student appeal process.' } };
+  if (error?.code === '23514') return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'This trainee has not finished the required practicum hours yet.' } };
   if (error || !evalRecord) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to create evaluation.' } };
 
   await recordAuditEvent({
@@ -228,18 +233,11 @@ export async function getStudentEvaluationSummary(student_id?: string): Promise<
     };
   };
   const midterm = withAppeal(evals.find(e => e.evaluation_type === 'midterm') || null);
-  const final = withAppeal(evals.find(e => e.evaluation_type === 'final') || (evals.length > 0 && !midterm ? evals[0] : null));
+  const final = withAppeal(evals.find(e => e.evaluation_type === 'final') || null);
 
-  let overallRating: number | null = null;
-  if (midterm?.performance_score != null && final?.performance_score != null) {
-    overallRating = Math.round((Number(midterm.performance_score) * 0.4 + Number(final.performance_score) * 0.6) * 10) / 10;
-  } else if (final?.performance_score != null) {
-    overallRating = Number(final.performance_score);
-  } else if (midterm?.performance_score != null) {
-    overallRating = Number(midterm.performance_score);
-  }
-
-  const hasPassed = (overallRating !== null && overallRating >= 75) || (final?.performance_score !== null && Number(final?.performance_score) >= 75);
+  // The final evaluation is the only one that counts; a legacy midterm is shown but not graded.
+  const overallRating = final?.performance_score != null ? Number(final.performance_score) : null;
+  const hasPassed = overallRating !== null && overallRating >= 75;
 
   const studentUser = Array.isArray(student.users) ? student.users[0] : student.users;
 
@@ -374,6 +372,22 @@ export async function listAssignedStudents(): Promise<AppResult<{ student_id: st
   };
 }
 
-export async function listAssignedStudentsForEvaluation() {
-  return listAssignedStudents();
+export interface EvaluationCandidate {
+  student_id: string; full_name: string; student_number: string; course: string;
+  completed_hours: number; required_hours: number; already_evaluated: boolean;
+}
+
+/** Active trainees with their hours, so the form can disable anyone who has not finished or was already evaluated. */
+export async function listAssignedStudentsForEvaluation(): Promise<AppResult<EvaluationCandidate[]>> {
+  const [trainees, evaluated] = await Promise.all([listSupervisedTrainees(), listEvaluationsForSupervisor(1, 1000)]);
+  if (trainees.error) return { data: null, error: trainees.error };
+  if (evaluated.error) return { data: null, error: evaluated.error };
+  const done = new Set(evaluated.data!.evaluations.filter(e => e.evaluation_type === 'final').map(e => e.student_id));
+  return {
+    data: trainees.data!.filter(t => t.placement.assignment_status === 'active').map(t => ({
+      student_id: t.student_id, full_name: t.full_name, student_number: t.student_number, course: t.course,
+      completed_hours: t.completed_hours, required_hours: t.required_hours, already_evaluated: done.has(t.student_id),
+    })),
+    error: null,
+  };
 }

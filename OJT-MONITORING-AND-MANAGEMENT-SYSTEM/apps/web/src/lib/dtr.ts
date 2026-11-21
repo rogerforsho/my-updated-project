@@ -1,14 +1,16 @@
 // Daily Time Record (Civil Service Form 48 layout) built from timecard rows. Pure: no I/O, Manila time.
 
 export interface DtrSchedule { dailyHours: number; lunchStart: string | null; lunchMinutes: number }
-export interface DtrInputRow { date: string; time_in: string | null; time_out: string | null; hours: number | null; late: 'on_time' | 'late' | 'unknown' | 'absent' }
+export interface DtrInputRow { date: string; time_in: string | null; time_out: string | null; hours: number | null; late: 'on_time' | 'late' | 'not_work_day' | 'no_schedule' | 'unknown' | 'absent' }
 export interface DtrDay {
   day: number; weekday: string; weekend: boolean;
   amIn: string; amOut: string; pmIn: string; pmOut: string;
   underMinutes: number | null; status: string; hours: number | null;
 }
 
-const STATUS = { on_time: 'On time', late: 'Late', unknown: '', absent: 'Absent' } as const;
+const STATUS = {
+  on_time: 'On time', late: 'Late', not_work_day: 'Not a work day', no_schedule: 'No schedule', unknown: '', absent: 'Absent',
+} as const;
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const manilaHm = (iso: string) =>

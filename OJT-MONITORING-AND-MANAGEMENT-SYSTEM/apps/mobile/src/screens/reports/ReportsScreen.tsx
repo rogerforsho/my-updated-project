@@ -2,15 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList, RefreshControl,
   Modal, TextInput, ActivityIndicator, StyleSheet, ScrollView,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import { listStudentReports, submitStudentReport } from '../../services/reports';
+import { compileWeeklyJournals, listStudentReports, submitFinalReportDraft, submitStudentReport } from '../../services/reports';
 import { isNetworkAvailable } from '../../lib/syncEngine';
 import NetworkToast from '../../components/NetworkToast';
-import { GATEWAY_DOCUMENT_SPECS, STUDENT_REPORT_TYPES, isBundleType, isCoordinatorReviewType, type DbReport } from '@ojt/shared';
+import { FINAL_REPORT_TYPE, GATEWAY_DOCUMENT_SPECS, STUDENT_REPORT_TYPES, WEEKLY_JOURNAL_TYPE, describeReportType, isBundleType, reviewerHint, type DbReport } from '@ojt/shared';
 import CompanyRequestModal from '../../components/CompanyRequestModal';
 import IncidentReportModal from '../../components/IncidentReportModal';
 
@@ -29,8 +29,7 @@ export default function ReportsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState('Daily Journal');
-  const [filePath, setFilePath] = useState('');
+  const [selectedType, setSelectedType] = useState(WEEKLY_JOURNAL_TYPE);
   const [attachedFile, setAttachedFile] = useState<{
     uri: string;
     name: string;
@@ -46,6 +45,10 @@ export default function ReportsScreen() {
   const [companyRequestOpen, setCompanyRequestOpen] = useState(false);
   const [incidentOpen, setIncidentOpen] = useState(false);
   const [isCompleted, setIsCompleted] = useState<boolean | null>(null);
+  const [hoursComplete, setHoursComplete] = useState(false);
+  const [compiling, setCompiling] = useState(false);
+  const [draft, setDraft] = useState<{ file_path: string; signedUrl: string | null } | null>(null);
+  const [sendingDraft, setSendingDraft] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
@@ -57,6 +60,7 @@ export default function ReportsScreen() {
     } else {
       setReports(result.data?.reports || []);
       setIsCompleted(result.data?.isCompleted ?? null);
+      setHoursComplete(result.data?.hoursComplete ?? false);
     }
     setLoading(false);
     setRefreshing(false);
@@ -73,8 +77,7 @@ export default function ReportsScreen() {
 
   const handleOpenModal = () => {
     setModalError('');
-    setSelectedType('Daily Journal');
-    setFilePath('');
+    setSelectedType(WEEKLY_JOURNAL_TYPE);
     setAttachedFile(null);
     setRemarks('');
     setModalOpen(true);
@@ -83,17 +86,16 @@ export default function ReportsScreen() {
   const handlePickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: [
-          'application/pdf',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          ...(isBundleType(selectedType) ? [] : ['image/*']),
-        ],
+        type: 'application/pdf',
         copyToCacheDirectory: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
+        if (!asset.name.toLowerCase().endsWith('.pdf') || (asset.mimeType && asset.mimeType !== 'application/pdf')) {
+          setModalError('Only PDF files are accepted. Save or export your document as a PDF first.');
+          return;
+        }
         setAttachedFile({
           uri: asset.uri,
           name: asset.name,
@@ -113,13 +115,8 @@ export default function ReportsScreen() {
 
   const handleSubmit = async () => {
     setModalError('');
-    if (!filePath.trim() && !attachedFile) {
-      setModalError('Please attach a document file or enter a valid file link / URL.');
-      return;
-    }
-
-    if (isBundleType(selectedType) && (!attachedFile || attachedFile.mimeType?.startsWith('image/'))) {
-      setModalError('Attach one PDF or DOCX file that contains all your requirements.');
+    if (!attachedFile) {
+      setModalError('Please attach a PDF file.');
       return;
     }
 
@@ -128,8 +125,7 @@ export default function ReportsScreen() {
     try {
       result = await submitStudentReport({
         report_type: selectedType,
-        file_path: filePath.trim() || undefined,
-        file_attachment: attachedFile || undefined,
+        file_attachment: attachedFile,
         remarks: remarks.trim() || undefined,
       });
     } catch {
@@ -144,10 +140,38 @@ export default function ReportsScreen() {
     }
 
     setModalOpen(false);
-    const routedTo = (isCoordinatorReviewType(selectedType) || selectedType === 'Incident Report')
-      ? 'OJT Coordinator follow-up'
-      : 'Supervisor review';
-    setSuccess(`Report submitted successfully for ${routedTo}.`);
+    const routedTo = describeReportType(selectedType).reviewer === 'Supervisor' ? 'your HTE Supervisor' : 'your OJT Coordinator';
+    setSuccess(`${describeReportType(selectedType).label} submitted. It was sent to ${routedTo} for review.`);
+    load();
+  };
+
+  const journals = reports.filter(r => describeReportType(r.report_type).label === WEEKLY_JOURNAL_TYPE);
+  const approvedJournals = journals.filter(r => r.supervisor_decision === 'approved').length;
+  const pendingJournals = journals.filter(r => !r.supervisor_decision).length;
+  const returnedJournals = journals.filter(r => r.supervisor_decision === 'returned').length;
+  // A rejected Final Report can be redone; anything else means the Coordinator already has one.
+  const finalSent = reports.some(r => r.report_type === FINAL_REPORT_TYPE && r.status !== 'rejected');
+
+  const handleBuildDraft = async () => {
+    setCompiling(true);
+    setError('');
+    const result = await compileWeeklyJournals();
+    setCompiling(false);
+    if (result.error || !result.data) { setError(result.error?.message ?? 'Could not build your Final Report.'); return; }
+    setDraft({ file_path: result.data.file_path, signedUrl: result.data.signedUrl });
+    const skipped = result.data.notIncluded.length;
+    setSuccess(`${result.data.included} journals were merged into one PDF. Open it to check, then submit it.${skipped ? ` ${skipped} could not be included (not a readable PDF).` : ''}`);
+  };
+
+  const handleSubmitDraft = async () => {
+    if (!draft) return;
+    setSendingDraft(true);
+    setError('');
+    const result = await submitFinalReportDraft(draft.file_path);
+    setSendingDraft(false);
+    if (result.error) { setError(result.error.message); return; }
+    setDraft(null);
+    setSuccess('Final Report submitted. It was sent to your OJT Coordinator for review.');
     load();
   };
 
@@ -166,7 +190,7 @@ export default function ReportsScreen() {
         <View>
           <Text style={s.headerKicker}>Colegio de Montalban OJT</Text>
           <Text style={s.title}>Practicum Reports</Text>
-          <Text style={s.subtitle}>Gateway documents, journals & incident reports</Text>
+          <Text style={s.subtitle}>Requirements, weekly journals & final report (PDF only)</Text>
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         <TouchableOpacity onPress={() => setIncidentOpen(true)} style={s.btnSubmitHeader} activeOpacity={0.85}
@@ -221,12 +245,47 @@ export default function ReportsScreen() {
         keyExtractor={(item) => item.report_id}
         contentContainerStyle={s.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0A3824']} />}
+        ListHeaderComponent={isCompleted === false ? (
+          <View style={[s.reportCard, { borderColor: '#0A3824' }]}>
+            <Text style={s.reportType}>Build my Final Report</Text>
+            <Text style={[s.dateText, { marginBottom: 8 }]}>
+              Merges all your Weekly Journals into one PDF. Check it, then submit it as your Final Report, or upload your own completed version with Submit.
+            </Text>
+            <Text style={s.remarksText}>{journals.length} journals · {approvedJournals} approved · {pendingJournals} waiting for Supervisor · {returnedJournals} returned</Text>
+            {finalSent ? (
+              <Text style={[s.remarksLabel, { marginTop: 10, color: '#0A3824' }]}>Your Final Report is with your OJT Coordinator.</Text>
+            ) : !hoursComplete ? (
+              <Text style={[s.remarksLabel, { marginTop: 10 }]}>Unlocks when you complete your Required Hours.</Text>
+            ) : draft ? (
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                {!!draft.signedUrl && (
+                  <TouchableOpacity onPress={() => Linking.openURL(draft.signedUrl!)} style={[s.btnSubmitModal, { flex: 0 }]} activeOpacity={0.85}>
+                    <Text style={s.btnSubmitModalText}>Open draft</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={handleSubmitDraft} disabled={sendingDraft}
+                  style={[s.btnSubmitModal, { flex: 0 }, sendingDraft && { opacity: 0.5 }]} activeOpacity={0.85}>
+                  {sendingDraft ? <ActivityIndicator color="#E4DBC4" /> : <Text style={s.btnSubmitModalText}>Submit as Final Report</Text>}
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={handleBuildDraft}
+                disabled={compiling || journals.length === 0}
+                style={[s.btnSubmitModal, { marginTop: 10, flex: 0 }, (compiling || journals.length === 0) && { opacity: 0.5 }]}
+                activeOpacity={0.85}
+              >
+                {compiling ? <ActivityIndicator color="#E4DBC4" /> : <Text style={s.btnSubmitModalText}>Build draft</Text>}
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : null}
         ListEmptyComponent={
           <View style={s.emptyBox}>
             <Ionicons name="document-text-outline" size={44} color="#879687" style={{ marginBottom: 8 }} />
             <Text style={s.emptyTitle}>No reports submitted yet</Text>
             <Text style={s.emptySub}>
-              {isCompleted ? 'Your completed OJT records are read-only.' : 'Tap the Submit button at the top to upload your daily or weekly practicum journal.'}
+              {isCompleted ? 'Your completed OJT records are read-only.' : 'Tap the Submit button at the top to upload your weekly journal as a PDF.'}
             </Text>
           </View>
         }
@@ -235,9 +294,10 @@ export default function ReportsScreen() {
             <View style={s.cardTopRow}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
                 <Ionicons name="document-attach-outline" size={18} color="#0A3824" />
-                <Text style={s.reportType}>
-                  {item.report_type}
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.reportType}>{describeReportType(item.report_type).label}</Text>
+                  <Text style={s.dateText}>{describeReportType(item.report_type).reviewer === 'Supervisor' ? 'HTE Supervisor review' : 'OJT Coordinator review'}</Text>
+                </View>
               </View>
 
               <View style={[
@@ -289,7 +349,7 @@ export default function ReportsScreen() {
             <View style={s.modalHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={s.modalTitle}>Submit Practicum Report</Text>
-                <Text style={s.modalSubtitle}>Upload requirements, journals & submissions</Text>
+                <Text style={s.modalSubtitle}>PDF files only. Each type shows who reviews it.</Text>
               </View>
               <TouchableOpacity
                 onPress={() => setModalOpen(false)}
@@ -321,21 +381,25 @@ export default function ReportsScreen() {
                 {REPORT_TYPES.map((type) => (
                   <TouchableOpacity
                     key={type}
-                    onPress={() => { setSelectedType(type); if (isBundleType(type)) setFilePath(''); }}
+                    onPress={() => setSelectedType(type)}
                     style={[s.typePill, selectedType === type && s.typePillActive]}
                     activeOpacity={0.8}
                   >
                     <Text style={[s.typePillText, selectedType === type && s.typePillTextActive]}>
-                      {type}
+                      {describeReportType(type).label}
                     </Text>
                   </TouchableOpacity>
                 ))}
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <Ionicons name="paper-plane-outline" size={14} color="#0A3824" />
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#0A3824', flex: 1 }}>{reviewerHint(selectedType)}</Text>
               </View>
 
               {isBundleType(selectedType) ? (
                 <View style={{ marginBottom: 12, padding: 12, borderRadius: 10, backgroundColor: '#F3F0E4' }}>
                   <Text style={{ fontSize: 13, fontWeight: '700', color: '#0A3824', marginBottom: 6 }}>
-                    Upload ONE PDF or DOCX that contains all of these (max 25 MB):
+                    Upload ONE PDF that contains all of these (max 25 MB):
                   </Text>
                   {GATEWAY_DOCUMENT_SPECS.map((spec, i) => (
                     <View key={spec.id} style={{ marginBottom: 4 }}>
@@ -344,7 +408,7 @@ export default function ReportsScreen() {
                     </View>
                   ))}
                   <Text style={{ fontSize: 11, color: '#526257', marginTop: 6 }}>
-                    Put each document on its own page, in this order. Photos and links are not accepted for this submission.
+                    Put each document on its own page, in this order. Combine scanned pages into a single PDF before uploading.
                   </Text>
                 </View>
               ) : null}
@@ -353,11 +417,7 @@ export default function ReportsScreen() {
               {attachedFile ? (
                 <View style={s.attachedCard}>
                   <View style={s.attachedIconWrap}>
-                    <Ionicons
-                      name={attachedFile.mimeType?.includes('image') ? 'image' : 'document-text'}
-                      size={22}
-                      color="#0A3824"
-                    />
+                    <Ionicons name="document-text" size={22} color="#0A3824" />
                   </View>
                   <View style={{ flex: 1, marginRight: 8 }}>
                     <Text style={s.attachedFileName} numberOfLines={1}>
@@ -382,33 +442,15 @@ export default function ReportsScreen() {
                   activeOpacity={0.8}
                 >
                   <Ionicons name="cloud-upload-outline" size={20} color="#0A3824" />
-                  <Text style={s.btnAttachFileText}>{isBundleType(selectedType) ? 'Choose PDF or DOCX' : 'Choose PDF, DOCX, or Image'}</Text>
+                  <Text style={s.btnAttachFileText}>Choose PDF</Text>
                 </TouchableOpacity>
               )}
-
-              {!isBundleType(selectedType) && (<>
-              <View style={s.orDivider}>
-                <View style={s.orLine} />
-                <Text style={s.orText}>OR PASTE LINK / URL</Text>
-                <View style={s.orLine} />
-              </View>
-
-              <Text style={s.fieldLabel}>File Link / Google Drive URL (Alternative)</Text>
-              <TextInput
-                value={filePath}
-                onChangeText={setFilePath}
-                placeholder="drive.google.com/... (optional if file attached)"
-                placeholderTextColor="#879687"
-                style={s.input}
-                autoCapitalize="none"
-              />
-              </>)}
 
               <Text style={s.fieldLabel}>Student Remarks (Optional)</Text>
               <TextInput
                 value={remarks}
                 onChangeText={setRemarks}
-                placeholder="Add any notes for your coordinator..."
+                placeholder="Add any notes for your reviewer..."
                 placeholderTextColor="#879687"
                 style={[s.input, { height: 68, textAlignVertical: 'top' }]}
                 multiline
@@ -581,7 +623,7 @@ const s = StyleSheet.create({
   typePill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#F4F6F2', borderWidth: 1, borderColor: '#DCE5DB' },
   typePillActive: { backgroundColor: '#0A3824', borderColor: '#0A3824' },
   typePillText: { fontSize: 11, fontWeight: '600', color: '#37483C' },
-  typePillTextActive: { color: '#E4DBC4', fontWeight: '800' },
+  typePillTextActive: { color: '#ffffff', fontWeight: '800' },
   btnAttachFile: {
     flexDirection: 'row',
     alignItems: 'center',

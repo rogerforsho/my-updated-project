@@ -112,6 +112,9 @@ function mobileFixture() {
         return { data: { path: filename }, error: null };
       },
     },
+    // auth.ts cancels phone reminders on sign-out; expo-notifications cannot load under node.
+    [path.join(root, 'apps/mobile/src/lib/attendanceReminders.ts')]: { async cancelAttendanceReminders() {} },
+    [path.join(root, 'apps/mobile/src/lib/pinAuth.ts')]: { async clearPin() {} },
     'expo-secure-store': secureStore,
     'expo-network': { async getNetworkStateAsync() {
       return { isConnected: state.online, isInternetReachable: state.online };
@@ -737,4 +740,12 @@ test('services keep their sign-in and missing-student errors on the identity mod
 test('Vercel traces from the Git root so the builder finds apps/web (MODULE_NOT_FOUND noop.js)', () => {
   const config = fs.readFileSync(path.join(root, 'apps/web/next.config.ts'), 'utf8');
   assert.match(config, /outputFileTracingRoot: path\.resolve\(__dirname, process\.env\.VERCEL \? '\.\.\/\.\.\/\.\.' : '\.\.\/\.\.'\)/);
+});
+
+test('student email confirmation lands on the public email-confirmed page, not sign-in', () => {
+  const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
+  assert.match(read('apps/web/src/services/auth/registration.ts'), /emailRedirectTo: new URL\('\/auth\/email-confirmed'/);
+  const middleware = read('apps/web/middleware.ts');
+  assert.equal(middleware.split("'/auth/email-confirmed'").length - 1, 2, 'listed in PUBLIC_PATHS and KNOWN_PATHS');
+  assert.ok(fs.existsSync(path.join(root, 'apps/web/app/auth/email-confirmed/page.tsx')));
 });

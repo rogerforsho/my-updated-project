@@ -10,7 +10,11 @@ export type AttendancePolicy = {
   latitude: number | null;
   longitude: number | null;
   radiusMeters: number;
+  /** The student's approved practicum schedule covering the date; null when there is none. */
+  schedule: AttendanceSchedule | null;
 };
+export type AttendanceSchedule = { timeIn: string; workDays: number[] };
+export type LateStatus = 'on_time' | 'late' | 'not_work_day' | 'no_schedule';
 export type Failure = { status: number; code: string; message: string };
 
 // Small allowance for device/server clock drift; anything later is a future-dated entry.
@@ -39,14 +43,14 @@ export function deriveLocationEvidence(
   return { latitude, longitude, distanceMeters: null, status: 'verified', flagReason: null };
 }
 
-/** Late status from the company's cutoff ("HH:MM[:SS]") for the Philippine weekday of timeIn. */
-export function lateStatusFor(timeIn: string, cutoff: string | null | undefined): 'on_time' | 'late' | 'unknown' {
+/** Punctuality against the student's approved schedule ("HH:MM[:SS]" start, work_days 1=Mon..6=Sat) in Philippine time. */
+export function lateStatusFor(timeIn: string, schedule: AttendanceSchedule | null): LateStatus {
+  if (!schedule) return 'no_schedule';
   const localTime = getPhilippineClock(new Date(timeIn));
-  const dayOfWeek = localTime.getUTCDay();
-  if (dayOfWeek === 0 || dayOfWeek === 6 || !cutoff) return 'unknown';
-  const [cutoffHour, cutoffMinute] = String(cutoff).split(':').map(Number);
+  if (!schedule.workDays.includes(localTime.getUTCDay())) return 'not_work_day';
+  const [startHour, startMinute] = String(schedule.timeIn).split(':').map(Number);
   const seconds = localTime.getUTCHours() * 3600 + localTime.getUTCMinutes() * 60 + localTime.getUTCSeconds();
-  return seconds > cutoffHour * 3600 + cutoffMinute * 60 ? 'late' : 'on_time';
+  return seconds > startHour * 3600 + startMinute * 60 ? 'late' : 'on_time';
 }
 
 /** Future-dated entries are always refused; time-in is also weekday-only. */

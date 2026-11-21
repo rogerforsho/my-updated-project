@@ -1,4 +1,4 @@
-import { getPhilippineClock, isReplaceableAutoTimeOut } from '@ojt/shared';
+import { isReplaceableAutoTimeOut } from '@ojt/shared';
 import {
   captureTimeFailure, deriveLocationEvidence, lateStatusFor, timeOutDecision,
   type AttendancePolicy, type Failure,
@@ -18,8 +18,6 @@ export interface AttendanceAdapter {
   /** null: no assignment covers the date. */
   loadPolicy(studentId: string, assignmentId: string, attendanceDate: string): Promise<AttendancePolicy | 'unavailable' | null>;
   findByDate(studentId: string, attendanceDate: string): Promise<{ attendance_id: string } | null>;
-  /** Cutoff "HH:MM[:SS]" for the company on that Philippine weekday; null when unknown. */
-  lateCutoff(companyId: string, dayOfWeek: number): Promise<string | null>;
   insertTimeIn(row: Record<string, unknown>): Promise<string | null>;
   findForTimeOut(studentId: string, attendanceDate: string, attendanceId: string | null): Promise<AttendanceRow | null>;
   /** Guarded write: applies only if the record is still open (or, when replacing, still the same replaceable auto time-out). */
@@ -51,7 +49,6 @@ export async function recordTimeIn(
   catch { return fail(503, 'SERVER_FAILURE', 'Could not check today\'s attendance.'); }
   if (existing) return fail(409, 'DUPLICATE_REQUEST', 'You already have an attendance record for today.');
 
-  const cutoff = await adapter.lateCutoff(policy.companyId, getPhilippineClock(new Date(input.capturedAt)).getUTCDay()).catch(() => null);
   const receivedAt = new Date().toISOString();
   let id: string | null = null;
   try {
@@ -62,7 +59,7 @@ export async function recordTimeIn(
       time_in: input.capturedAt,
       time_in_selfie_path: input.selfiePath,
       verification_status: 'pending',
-      late_status: lateStatusFor(input.capturedAt, cutoff),
+      late_status: lateStatusFor(input.capturedAt, policy.schedule),
       sync_status: 'synced',
       time_in_lat: evidence.latitude,
       time_in_lng: evidence.longitude,

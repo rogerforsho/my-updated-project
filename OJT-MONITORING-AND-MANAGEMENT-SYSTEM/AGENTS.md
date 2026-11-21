@@ -5,7 +5,7 @@
 ### Target Scope & Boundary
 - **Institution:** Colegio de Montalban
 - **Target Beneficiaries:** 4th-Year students under **Institute of Computing Studies (ICS)** and **Institute of Business and Entrepreneurship (IBE)**.
-- **Explicit Exclusions:** No 1st-3rd year students, no outside institutions, no job application/recruitment systems, no MOA transactions, no payroll, and no general HR. (Offline functionality is limited specifically to mobile attendance logging with GPS satellite verification and automatic sync upon internet reconnection; all other modules require an active internet connection).
+- **Explicit Exclusions:** No 1st-3rd year students, no outside institutions, no job application/recruitment systems, no MOA transactions, no payroll, and no general HR. (Offline functionality is limited specifically to mobile attendance logging with GPS satellite verification and automatic sync upon internet reconnection, plus Group Chat messages, which wait on the phone and send when the connection returns; all other modules require an active internet connection).
 
 ### Approved Technology Stack
 - **Web App:** Next.js (App Router) + TypeScript + Tailwind CSS

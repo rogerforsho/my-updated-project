@@ -37,7 +37,7 @@ test('one combined Pre-deployment Requirements file replaces the four uploads', 
   assert.equal(isBundleType(PRE_DEPLOYMENT_BUNDLE_TYPE), true);
   assert.equal(isBundleType('Medical Certificate'), false);
   assert.equal(BUNDLE_MAX_BYTES, 25 * 1024 * 1024);
-  assert.deepEqual(BUNDLE_EXTENSIONS, ['.pdf', '.docx', '.doc']);
+  assert.deepEqual(BUNDLE_EXTENSIONS, ['.pdf']);
 
   // Callers pass approved reports only, so one approved bundle clears the student.
   const cleared = getGatewayStatus([{ report_type: PRE_DEPLOYMENT_BUNDLE_TYPE }]);
@@ -51,4 +51,21 @@ test('one combined Pre-deployment Requirements file replaces the four uploads', 
   assert.equal(getGatewayStatus([
     { report_type: 'Parent/Guardian Consent Waiver' }, { report_type: 'Medical Certificate' }, { report_type: 'Endorsement Letter' },
   ]).isCleared, false);
+});
+
+test('students submit Weekly Journal, not Daily Journal; every type says who reviews it', async () => {
+  const { STUDENT_REPORT_TYPES, SUPERVISOR_REVIEW_REPORT_TYPES, COMPILED_JOURNALS_TYPE, describeReportType, isCoordinatorReviewType } = await import('../shared/gateway.ts');
+  assert.deepEqual(STUDENT_REPORT_TYPES, ['Pre-deployment Requirements', 'Weekly Journal', 'Incident Report', 'final_report']);
+  // Retired types stay reviewable so pending old rows are not stranded.
+  for (const legacy of ['Daily Journal', 'Accomplishment Report']) {
+    assert.ok(SUPERVISOR_REVIEW_REPORT_TYPES.includes(legacy));
+    assert.equal(describeReportType(legacy).legacy, true);
+  }
+  assert.equal(describeReportType('Weekly Journal').reviewer, 'Supervisor');
+  assert.equal(describeReportType('weekly progress').label, 'Weekly Journal');
+  assert.equal(describeReportType('final_report').label, 'Final Report');
+  assert.equal(describeReportType(COMPILED_JOURNALS_TYPE).reviewer, 'Coordinator');
+  assert.equal(isCoordinatorReviewType(COMPILED_JOURNALS_TYPE), true);
+  assert.equal(isCoordinatorReviewType('Weekly Journal'), false);
+  for (const type of STUDENT_REPORT_TYPES) assert.ok(describeReportType(type).label && !describeReportType(type).label.includes('_'));
 });

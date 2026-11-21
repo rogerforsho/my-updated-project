@@ -15,6 +15,7 @@ const sections: Record<Section, { href: string; label: string }[]> = {
   evaluations: [
     { href: '/coordinator/supervisor-evaluations', label: 'Evaluations' },
     { href: '/coordinator/evaluations', label: 'Appeals' },
+    { href: '/coordinator/hte-evaluations', label: 'HTE feedback' },
   ],
   progress: [
     { href: '/coordinator/progress', label: 'Progress' },
