@@ -5,8 +5,10 @@ import { Readable } from 'node:stream';
 
 export const dynamic = 'force-dynamic';
 
-const GITHUB_RELEASES_URL =
-  'https://github.com/rogerforsho/my-updated-project/releases';
+// Direct release asset: GitHub serves it as an attachment, so the browser downloads
+// the file instead of showing the releases page. Keep the tag in step with apps/desktop version.
+const INSTALLER_ASSET_URL =
+  'https://github.com/rogerforsho/my-updated-project/releases/download/v1.0.0/CdM-OJT-Portal-Setup-1.0.0.exe';
 
 export async function GET(
   _request: Request,
@@ -39,7 +41,7 @@ export async function GET(
       }
     }
 
-    return NextResponse.redirect(GITHUB_RELEASES_URL, 302);
+    return NextResponse.redirect(INSTALLER_ASSET_URL, 302);
   }
 
   return new NextResponse('File not found', { status: 404 });
