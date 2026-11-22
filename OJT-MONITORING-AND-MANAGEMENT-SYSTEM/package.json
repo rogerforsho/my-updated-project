@@ -30,7 +30,8 @@
     "build:desktop": "npm run build -w apps/desktop",
     "test": "node scripts/run-tests.mjs",
     "test:unit": "node scripts/run-tests.mjs unit",
-    "test:db": "node scripts/run-tests.mjs db"
+    "test:db": "node scripts/run-tests.mjs db",
+    "check:db-drift": "node scripts/check-db-drift.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",

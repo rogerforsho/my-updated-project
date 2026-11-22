@@ -7,6 +7,16 @@ export const colors = {
   muted: '#5A6A5E',
   tint: '#EDF2EB',
   text: '#18271D',
+  deep: '#092E1D',
+  sand: '#E4DBC4',
+  danger: '#B91C1C',
+};
+
+// Loaded in App.tsx; if loading fails React Native falls back to the system font.
+export const fonts = {
+  display: 'Outfit_800ExtraBold',
+  body: 'PlusJakartaSans_500Medium',
+  bold: 'PlusJakartaSans_700Bold',
 };
 
 export const type = {

@@ -126,11 +126,14 @@ export async function requestStudentPasswordReset(email: string): Promise<AppRes
   }
 }
 
-export async function signOut(): Promise<void> {
+// A normal sign-out ends the session but keeps the PIN and the remembered name, so the student signs back in with
+// their password and is never asked to create the PIN again. forgetDevice (Forgot PIN, Not you?, five wrong PINs)
+// also wipes the PIN and the remembered profile.
+export async function signOut(options: { forgetDevice?: boolean } = {}): Promise<void> {
   await cancelAttendanceReminders(); // the next student on this phone must not get this account's reminders
   await clearAttendanceIdentity();
-  try { await clearPin(); } finally {
-    try { await SecureStore.deleteItemAsync('ojt_mobile_remembered_profile'); }
+  try { if (options.forgetDevice) await clearPin(); } finally {
+    try { if (options.forgetDevice) await SecureStore.deleteItemAsync('ojt_mobile_remembered_profile'); }
     finally { await supabase.auth.signOut({ scope: 'local' }); }
   }
 }
