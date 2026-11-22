@@ -154,7 +154,7 @@ export async function registerStudent(
   }
 
   // 4. Upsert student profile (handles both trigger-created row and ensures all fields are cleanly stored)
-  // required_hours is left empty on purpose: the students_default_required_hours trigger sets it from the course (BSIT 486, BS-CPE 240, BSBA-HRM 300, BSENTREP 300)
+  // required_hours is left empty on purpose: the students_default_required_hours trigger sets it from the course, using the Target Hours the Coordinator set for that program
   const { error: studentError } = await service.from('students').upsert({
     user_id: authData.user.id,
     student_number: input.student_number.trim(),
