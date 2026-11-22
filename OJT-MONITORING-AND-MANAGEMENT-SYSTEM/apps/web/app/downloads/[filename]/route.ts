@@ -11,7 +11,11 @@ const REPO = 'rogerforsho/my-updated-project';
 // after a new release; fine for an outage, upgrade if outages are common.
 const FALLBACK_EXE_URL = `https://github.com/${REPO}/releases/download/v1.0.0/CdM-OJT-Portal-Setup-1.0.0.exe`;
 
-const SETUP_EXE = { match: /Setup.*\.exe$/, fallback: FALLBACK_EXE_URL };
+// The mobile APK lives in its own release (published with --latest=false so /releases/latest keeps
+// serving the desktop installer). shortcut: pinned tag, bump it when a new mobile build is released.
+const MOBILE_APK_URL = `https://github.com/${REPO}/releases/download/mobile-v1.1.0/CdM-OJT-Mobile.apk`;
+
+const SETUP_EXE ={ match: /Setup.*\.exe$/, fallback: FALLBACK_EXE_URL };
 
 // Public filename -> which asset of the latest release serves it. Links use the unversioned
 // names, so a new release needs no code change. The versioned names stay for old links.
@@ -43,6 +47,7 @@ export async function GET(
   { params }: { params: Promise<{ filename: string }> }
 ) {
   const { filename } = await params;
+  if (filename === 'CdM-OJT-Mobile.apk') return NextResponse.redirect(MOBILE_APK_URL, 302);
   const installer = Object.hasOwn(INSTALLERS, filename) ? INSTALLERS[filename] : null;
   if (!installer) return new NextResponse('File not found', { status: 404 });
 

@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import PublicFooter from '@/src/components/layout/PublicFooter';
+import MobileAppSection from '@/src/components/landing/MobileAppSection';
 
 const programs = [
   { code: 'ICS', title: 'Institute of Computing Studies', copy: 'For 4th-year students completing their OJT practicum. BSIT: 486 hours · BS-CPE: 240 hours.' },
@@ -20,7 +21,7 @@ const contact = [['OJT Office', '[TBD]'], ['Office hours', '[TBD]'], ['School em
 
 const resources = [
   { label: 'Desktop client', title: 'Windows Desktop Application', copy: 'Windows access for OJT Coordinator, admins, and supervisors, with system tray integration.', href: '/downloads/CdM-OJT-Portal-Setup.exe', action: 'Download client' },
-  { label: 'Student mobile app', title: 'Attendance Companion', copy: 'Log attendance with GPS verification, selfie submission, and offline sync.', href: '#capabilities', action: 'Explore attendance' },
+  { label: 'Student mobile app', title: 'Attendance Companion', copy: 'Log attendance with GPS verification, selfie submission, and offline sync.', href: '#app', action: 'Download the app' },
   { label: 'Certificate lookup', title: 'Verify a practicum certificate', copy: 'Search for a student certificate by its verification code.', href: '/verify-certificate/search', action: 'Open verification' },
 ];
 
@@ -51,6 +52,7 @@ export default function SoftForestLanding({
             {gettingStarted && <a href="#start" className="transition-colors hover:text-[var(--cdm-green)]">Get started</a>}
             <a href="#programs" className="transition-colors hover:text-[var(--cdm-green)]">Programs</a>
             <a href="#capabilities" className="transition-colors hover:text-[var(--cdm-green)]">Capabilities</a>
+            <a href="#app" className="transition-colors hover:text-[var(--cdm-green)]">Get the app</a>
             <a href="#resources" className="transition-colors hover:text-[var(--cdm-green)]">Resources</a>
           </nav>
           {onOpenAccessPortal ? <button type="button" onClick={onOpenAccessPortal} className="rounded-xl bg-[var(--cdm-green)] px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-[var(--cdm-green-light)] active:scale-[0.98]">Access Portal</button> : <Link href="/auth/sign-in" className="rounded-xl bg-[var(--cdm-green)] px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-[var(--cdm-green-light)] active:scale-[0.98]">Access Portal</Link>}
@@ -124,11 +126,13 @@ export default function SoftForestLanding({
           </div>
         </section>
 
+        <MobileAppSection />
+
         <section id="resources" className="border-b border-[var(--line)] bg-[var(--surface)] py-14 sm:py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <SectionLabel>Official tools and verification</SectionLabel><h2 className="mt-2 max-w-2xl text-2xl font-extrabold tracking-tight text-[var(--foreground)] sm:text-3xl">System resources</h2>
             <div className="mt-7 grid gap-4 md:grid-cols-3">
-              {resources.map((resource) => <article key={resource.title} className="flex flex-col rounded-2xl border border-[var(--line)] bg-[var(--surface-muted)] p-5"><p className="text-xs font-bold text-[var(--cdm-olive)]">{resource.label}</p><h3 className="mt-3 text-sm font-bold text-[var(--foreground)]">{resource.title}</h3><p className="mt-2 flex-1 text-xs leading-5 text-[var(--text-muted)]">{resource.copy}</p><Link href={gettingStarted && resource.label === 'Student mobile app' ? '#start' : resource.href} className="mt-5 inline-flex items-center justify-between border-t border-[var(--line)] pt-4 text-xs font-bold text-[var(--cdm-green)]">{gettingStarted && resource.label === 'Student mobile app' ? 'View installation guide' : resource.action}<span aria-hidden="true">→</span></Link></article>)}
+              {resources.map((resource) => <article key={resource.title} className="flex flex-col rounded-2xl border border-[var(--line)] bg-[var(--surface-muted)] p-5"><p className="text-xs font-bold text-[var(--cdm-olive)]">{resource.label}</p><h3 className="mt-3 text-sm font-bold text-[var(--foreground)]">{resource.title}</h3><p className="mt-2 flex-1 text-xs leading-5 text-[var(--text-muted)]">{resource.copy}</p><Link href={resource.href} className="mt-5 inline-flex items-center justify-between border-t border-[var(--line)] pt-4 text-xs font-bold text-[var(--cdm-green)]">{resource.action}<span aria-hidden="true">→</span></Link></article>)}
             </div>
           </div>
         </section>

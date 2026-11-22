@@ -680,6 +680,15 @@ test('installer downloads follow the latest release asset and fall back only whe
   assert.equal((await get('CdM-OJT-Portal.dmg', down)).status, 404);
 });
 
+test('mobile APK download redirects to the pinned mobile release without calling the GitHub API', async () => {
+  let apiCalls = 0;
+  const route = load('apps/web/app/downloads/[filename]/route.ts', { fs: { existsSync() { return false; } } }, {}, { fetch: async () => { apiCalls++; throw new Error('should not be called'); } });
+  const result = await route.GET(new Request('http://localhost/downloads/x'), { params: Promise.resolve({ filename: 'CdM-OJT-Mobile.apk' }) });
+  assert.equal(result.status, 302);
+  assert.equal(result.headers.get('location'), 'https://github.com/rogerforsho/my-updated-project/releases/download/mobile-v1.1.0/CdM-OJT-Mobile.apk');
+  assert.equal(apiCalls, 0);
+});
+
 test('clearance details require authentication and students can read only their own record', async () => {
   const anonymous = workflowFixture(null);
   assert.equal((await anonymous.module('certificates').checkClearanceStatus('student')).error.code, 'FORBIDDEN');
