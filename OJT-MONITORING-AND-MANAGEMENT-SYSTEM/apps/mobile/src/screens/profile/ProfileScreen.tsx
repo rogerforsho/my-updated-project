@@ -15,7 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { signOut, changeUserPassword } from '../../services/auth';
-import { biometricsAvailable, getPin, setBiometrics, setPin, validPin, verifyPin } from '../../lib/pinAuth';
+import { biometricsAvailable, getPin, lockApp, setBiometrics, setPin, validPin, verifyPin } from '../../lib/pinAuth';
 
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<any>(null);
@@ -123,17 +123,10 @@ export default function ProfileScreen() {
   function handleSignOut() {
     Alert.alert(
       'Sign Out',
-      'Are you sure you want to sign out of your Colegio de Montalban OJT account?',
+      "You'll need your PIN or biometrics to get back in. To use a different account, choose 'Forgot PIN / Switch Account' on the PIN screen.",
       [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            setLoggingOut(true);
-            await signOut();
-          },
-        },
+        { text: 'Sign Out', style: 'destructive', onPress: lockApp },
       ]
     );
   }

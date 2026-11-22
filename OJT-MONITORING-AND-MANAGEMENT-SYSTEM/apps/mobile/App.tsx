@@ -9,7 +9,7 @@ import StudentNavigator from './src/navigation/StudentNavigator';
 import ForcePasswordChangeScreen from './src/screens/auth/ForcePasswordChangeScreen';
 import { getAuthUser } from './src/services/auth';
 import { signOut } from './src/services/auth';
-import { getPin } from './src/lib/pinAuth';
+import { getPin, onLock } from './src/lib/pinAuth';
 import PinScreen from './src/screens/auth/PinScreen';
 import type { AuthUser } from '@ojt/shared';
 
@@ -60,7 +60,9 @@ export default function App() {
       }
     });
 
-    return () => { cancelled = true; subscription.unsubscribe(); };
+    const offLock = onLock(() => { unlocked.current = false; setGate('unlock'); });
+
+    return () => { cancelled = true; subscription.unsubscribe(); offLock(); };
   }, [reloadKey]);
 
   return (

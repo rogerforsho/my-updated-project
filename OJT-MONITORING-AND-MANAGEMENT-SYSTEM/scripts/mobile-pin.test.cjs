@@ -50,3 +50,17 @@ test('correct PIN resets failed attempts', async () => {
   assert.equal(await pin.verifyPin('student-a', '8052'), 'ok');
   assert.equal(await pin.verifyPin('student-a', '1111'), 'wrong');
 });
+
+test('Profile Sign Out locks to the PIN screen instead of wiping the PIN', async () => {
+  const { pin } = fixture();
+  let locks = 0;
+  const off = pin.onLock(() => { locks++; });
+  pin.lockApp();
+  off();
+  pin.lockApp();
+  assert.equal(locks, 1);
+  const profile = fs.readFileSync(path.join(__dirname, '../apps/mobile/src/screens/profile/ProfileScreen.tsx'), 'utf8');
+  const handler = profile.slice(profile.indexOf('function handleSignOut'), profile.indexOf('async function handlePinChange'));
+  assert.match(handler, /onPress: lockApp/);
+  assert.doesNotMatch(handler, /signOut\(/);
+});

@@ -58,6 +58,14 @@ export function verifyPin(userId: string, pin: string): Promise<'ok' | 'wrong' |
   });
 }
 
+// Profile "Sign Out" locks to the PIN screen instead of ending the session; App.tsx listens.
+let lockListener: (() => void) | null = null;
+export function onLock(listener: () => void): () => void {
+  lockListener = listener;
+  return () => { if (lockListener === listener) lockListener = null; };
+}
+export function lockApp(): void { lockListener?.(); }
+
 export function clearPin(): Promise<void> { return serialized(() => SecureStore.deleteItemAsync(KEY)); }
 export function setBiometrics(userId: string, enabled: boolean): Promise<void> {
   return serialized(async () => {
