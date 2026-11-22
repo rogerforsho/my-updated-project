@@ -2,7 +2,8 @@
 // Role/department policy stays in each workflow (ADR 0001 #3); this only types the lookup.
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export type DepartmentScope = { department: 'ICS' | 'IBE' | null; departments: string[]; error: string | null };
+// programs: the programs the Coordinator covers, or null when no grant is limited to programs (whole departments only).
+export type DepartmentScope = { department: 'ICS' | 'IBE' | null; departments: string[]; programs?: string[] | null; error: string | null };
 
 // Closed table -> id-column map: a typo in either is a compile error, not a runtime miss.
 export type RecordKeys = {

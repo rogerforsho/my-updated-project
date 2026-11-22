@@ -32,6 +32,10 @@ _Avoid_: Approved user (approval may refer to an individual request or record)
 A school account responsible for academic OJT workflows within its granted department scope.
 _Avoid_: OJT Staff, Program Head
 
+**Program Access**:
+What the Super Admin grants an OJT Coordinator inside a department: the whole department (ICS or IBE), or only some of its programs (e.g. BSIT). A program-only Coordinator sees, notifies and sends to those programs' students only; the department group chat and the department's non-working days stay shared by the whole department.
+_Avoid_: Sub-department, track
+
 **Super Admin**:
 A system account responsible for account provisioning, system settings, and backup and audit metadata.
 _Avoid_: Admin, System Administrator

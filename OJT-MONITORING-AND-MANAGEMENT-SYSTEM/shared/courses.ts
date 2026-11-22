@@ -10,6 +10,45 @@ export const COURSE_DEPARTMENT: Record<StudentRegistrationCourse, 'ICS' | 'IBE'>
   BSENTREP: 'IBE',
 };
 
+export const DEPARTMENT_PROGRAMS: Record<'ICS' | 'IBE', StudentRegistrationCourse[]> = {
+  ICS: ['BSIT', 'BS-CPE'],
+  IBE: ['BSBA-HRM', 'BSENTREP'],
+};
+
+// Mirrors program_key_for_course() in migration 20261122000100: contains-matching so legacy spellings resolve alike.
+export const PROGRAM_COURSE_PATTERNS: Record<StudentRegistrationCourse, string[]> = {
+  BSIT: ['BSIT', 'INFORMATION TECHNOLOGY'],
+  'BS-CPE': ['BS-CPE', 'BSCPE', 'COMPUTER ENGINEERING'],
+  'BSBA-HRM': ['BSBA', 'HUMAN RESOURCE'],
+  BSENTREP: ['BSENTREP', 'ENTREPRENEURSHIP'],
+};
+
+/** The program a course belongs to, or null (legacy BSCS/BSA have none). Same order as program_key_for_course(). */
+export function programForCourse(course: string | null | undefined): StudentRegistrationCourse | null {
+  const text = (course ?? '').toUpperCase();
+  return STUDENT_REGISTRATION_COURSES.find(program => PROGRAM_COURSE_PATTERNS[program].some(pattern => text.includes(pattern))) ?? null;
+}
+
+/** Access as a list of departments ('ICS' = every program of it) and/or programs ('BSIT'), flattened to programs. */
+export function accessPrograms(items: readonly string[] | null | undefined): string[] {
+  return [...new Set((items ?? []).flatMap(item => item === 'ICS' || item === 'IBE' ? DEPARTMENT_PROGRAMS[item] : [item]))];
+}
+
+/**
+ * A Coordinator's access picked as programs becomes one grant per department.
+ * programs null = every program of the department (stored as NULL, so a program added later is covered).
+ */
+export function programGrants(programs: readonly string[]): Array<{ department: 'ICS' | 'IBE'; programs: StudentRegistrationCourse[] | null }> {
+  const picked = new Set(programs);
+  const grants: Array<{ department: 'ICS' | 'IBE'; programs: StudentRegistrationCourse[] | null }> = [];
+  for (const department of ['ICS', 'IBE'] as const) {
+    const own = DEPARTMENT_PROGRAMS[department].filter(program => picked.has(program));
+    if (own.length === 0) continue;
+    grants.push({ department, programs: own.length === DEPARTMENT_PROGRAMS[department].length ? null : own });
+  }
+  return grants;
+}
+
 export function isStudentRegistrationCourse(course: string): course is StudentRegistrationCourse {
   return STUDENT_REGISTRATION_COURSES.some((approvedCourse) => approvedCourse === course.trim().toUpperCase());
 }

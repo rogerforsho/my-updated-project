@@ -8,7 +8,7 @@ import { provisionAccount, rollbackIdentities, supabaseAuthAdapter } from '@/src
 import { parseCsv } from '@/src/lib/csv';
 import { recordAuditEvent } from '@/src/lib/audit';
 import { authActionLimit } from '@/src/services/auth/internal';
-import { isStudentRegistrationCourse } from '@ojt/shared';
+import { isStudentRegistrationCourse, programForCourse } from '@ojt/shared';
 import type { AppResult } from '@ojt/shared';
 
 const MAX_ROWS = 500;
@@ -31,12 +31,12 @@ export interface ImportPreview {
 
 async function assertCoordinator() {
   const { user, scope, authorized } = await getCoordinator();
-  return authorized && user ? { user, departments: scope.departments } : null;
+  return authorized && user ? { user, departments: scope.departments, programs: scope.programs ?? null } : null;
 }
 
 const forbidden = { code: 'FORBIDDEN' as const, message: 'Access denied.' };
 
-async function buildPreview(csvText: string, departments: string[]): Promise<AppResult<ImportPreview>> {
+async function buildPreview(csvText: string, departments: string[], programs: string[] | null): Promise<AppResult<ImportPreview>> {
   if (typeof csvText !== 'string' || !csvText.trim())
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'The file is empty.' } };
   if (csvText.length > MAX_CSV_CHARS)
@@ -61,6 +61,7 @@ async function buildPreview(csvText: string, departments: string[]): Promise<App
       const department = getDepartmentByCourse(normalizedCourse);
       if (!department) errors.push('Course has no department. Use BSIT, BS-CPE, BSBA-HRM or BSENTREP.');
       else if (!departments.includes(department)) errors.push('Course is outside your department.');
+      else if (programs && !programs.includes(programForCourse(normalizedCourse) ?? '')) errors.push('Course is outside your programs.');
     }
     return { line: index + 2, full_name, email: email.toLowerCase(), student_number, course: normalizedCourse, errors };
   });
@@ -94,7 +95,7 @@ async function buildPreview(csvText: string, departments: string[]): Promise<App
 export async function previewStudentImport(csvText: string): Promise<AppResult<ImportPreview>> {
   const actor = await assertCoordinator();
   if (!actor) return { data: null, error: forbidden };
-  return buildPreview(csvText, actor.departments);
+  return buildPreview(csvText, actor.departments, actor.programs);
 }
 
 export async function commitStudentImport(csvText: string): Promise<AppResult<{ imported: number }>> {
@@ -103,7 +104,7 @@ export async function commitStudentImport(csvText: string): Promise<AppResult<{ 
   const limited = await authActionLimit('student_import', actor.user.id, 10, 3600, 'user');
   if (limited) return { data: null, error: limited };
 
-  const built = await buildPreview(csvText, actor.departments);
+  const built = await buildPreview(csvText, actor.departments, actor.programs);
   if (built.error || !built.data) return { data: null, error: built.error ?? { code: 'SERVER_FAILURE', message: 'Could not read the file.' } };
   const preview = built.data;
   if (preview.errorCount)

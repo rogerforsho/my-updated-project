@@ -6,6 +6,7 @@ import { getServiceClient } from '@/src/lib/supabase/service';
 import type { AppResult, DbAnnouncement } from '@ojt/shared';
 import { isICSCourse, isIBECourse } from '@/src/lib/departments';
 import { departmentScope } from '@/src/lib/department-scope';
+import { DEPARTMENT_PROGRAMS, programForCourse } from '@ojt/shared';
 
 const serviceClient = getServiceClient;
 
@@ -48,6 +49,8 @@ export async function createAnnouncement(input: AnnouncementInput): Promise<AppR
 
   const targetRole = input.target_role?.trim() || 'All';
   let targetDept = input.target_department?.trim() || 'All';
+  // Set when the Coordinator covers only part of the department: the announcement then reaches only those programs.
+  let targetProgram: string | null = null;
   if (profile.role === 'Coordinator') {
     const scope = await departmentScope(supabase, user.id, profile.role);
     if (scope.error || (targetDept !== 'All' && !scope.departments.includes(targetDept)))
@@ -55,6 +58,9 @@ export async function createAnnouncement(input: AnnouncementInput): Promise<AppR
     if (targetDept === 'All' && !scope.department)
       return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Select a department for this announcement.' } };
     targetDept = targetDept === 'All' ? scope.department! : targetDept;
+    const own = DEPARTMENT_PROGRAMS[targetDept as 'ICS' | 'IBE'] ?? [];
+    const covered = scope.programs ? own.filter(program => scope.programs!.includes(program)) : own;
+    if (covered.length < own.length) targetProgram = covered[0] ?? null;
   }
 
   // Writes use the service role (table write grant removed in migration 033); role, MFA and department were checked above.
@@ -67,6 +73,7 @@ export async function createAnnouncement(input: AnnouncementInput): Promise<AppR
       content: input.content.trim(),
       target_role: targetRole,
       target_department: targetDept,
+      target_program: targetProgram,
     })
     .select()
     .single();
@@ -96,17 +103,20 @@ export async function createAnnouncement(input: AnnouncementInput): Promise<AppR
       } else {
         const [{ data: students }, { data: staffGrants }] = await Promise.all([
           service.from('students').select('user_id, course'),
-          service.from('staff_capability_grants').select('user_id, department_scope')
+          service.from('staff_capability_grants').select('user_id, department_scope, program_scope')
             .eq('capability', 'academic_workflows').is('revoked_at', null),
         ]);
 
         const deptUserIds = new Set<string>();
         (students ?? []).forEach((s) => {
+          if (targetProgram && programForCourse(s.course) !== targetProgram) return;
           if (targetDept === 'ICS' && isICSCourse(s.course)) deptUserIds.add(s.user_id);
           if (targetDept === 'IBE' && isIBECourse(s.course)) deptUserIds.add(s.user_id);
         });
         (staffGrants ?? []).forEach((grant) => {
-          if (grant.department_scope === targetDept) deptUserIds.add(grant.user_id);
+          if (grant.department_scope !== targetDept) return;
+          if (targetProgram && grant.program_scope && !grant.program_scope.includes(targetProgram)) return;
+          deptUserIds.add(grant.user_id);
         });
 
         recipientUserIds = targetUsers
@@ -144,10 +154,15 @@ export async function deleteAnnouncement(announcement_id: string): Promise<AppRe
 
   const service = serviceClient();
   if (profile.role === 'Coordinator') {
-    const { data: target } = await service.from('announcements').select('target_department').eq('announcement_id', announcement_id).maybeSingle();
+    const { data: target } = await service.from('announcements').select('target_department, target_program, author_user_id').eq('announcement_id', announcement_id).maybeSingle();
     const scope = await departmentScope(supabase, user.id, profile.role);
     if (!target || scope.error || !scope.departments.includes(target.target_department))
       return { data: null, error: { code: 'FORBIDDEN', message: 'Announcement is outside your department.' } };
+    // A Coordinator limited to some programs removes only announcements for those programs, or their own.
+    const own = DEPARTMENT_PROGRAMS[target.target_department as 'ICS' | 'IBE'] ?? [];
+    const limited = !!scope.programs && own.some(program => !scope.programs!.includes(program));
+    if (limited && (target.target_program ? !scope.programs!.includes(target.target_program) : target.author_user_id !== user.id))
+      return { data: null, error: { code: 'FORBIDDEN', message: 'Announcement is outside your programs.' } };
   }
   const { error } = await service
     .from('announcements')

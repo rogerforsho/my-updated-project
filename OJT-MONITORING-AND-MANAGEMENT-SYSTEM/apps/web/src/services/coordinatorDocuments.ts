@@ -44,7 +44,7 @@ export async function sendCoordinatorDocument(input: {
   if (error) {
     // The checked file stays in chat/<user>/ unreferenced; acceptable until a storage sweep exists.
     return { data: null, error: { code: error.code === '22023' ? 'VALIDATION_FAILURE' : 'SERVER_FAILURE',
-      message: error.code === '22023' ? 'Recipients must be active students of this department.' : 'The document could not be sent. Please try again.' } };
+      message: error.code === '22023' ? 'Recipients must be active students of your department and programs.' : 'The document could not be sent. Please try again.' } };
   }
   const row = Array.isArray(data) ? data[0] : data;
   return { data: { recipientCount: Number(row?.recipient_count ?? 0) }, error: null };
