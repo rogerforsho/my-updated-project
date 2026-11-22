@@ -80,11 +80,11 @@ export default function PinScreen({ userId, mode, name, email, onUnlock, onExit 
       onComplete={handleComplete}
       extra={setup && canUseBio ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-          <Text style={{ fontFamily: fonts.bold, fontSize: 14, color: '#FFFFFF' }}>Use fingerprint or face unlock</Text>
+          <Text style={{ fontFamily: fonts.bold, fontSize: 14, color: colors.ink }}>Use fingerprint or face unlock</Text>
           <Switch
             value={enableBio}
             onValueChange={setEnableBio}
-            trackColor={{ true: colors.sand, false: 'rgba(255,255,255,0.25)' }}
+            trackColor={{ true: colors.deep, false: '#C7D2C7' }}
             thumbColor="#FFFFFF"
             accessibilityLabel="Use fingerprint or face unlock"
           />
