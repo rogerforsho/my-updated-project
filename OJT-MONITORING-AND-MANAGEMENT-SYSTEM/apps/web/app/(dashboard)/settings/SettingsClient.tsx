@@ -228,8 +228,8 @@ export default function SettingsClient({ user, extraDetails }: Props) {
 
               <div className="pt-1">
                 <a
-                  href="/downloads/CdM-OJT-Portal-Setup-1.0.0.exe"
-                  download="CdM-OJT-Portal-Setup-1.0.0.exe"
+                  href="/downloads/CdM-OJT-Portal-Setup.exe"
+                  download="CdM-OJT-Portal-Setup.exe"
                   className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-[#0A3824] hover:bg-[#092E1D] text-[var(--cdm-sand)] font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />

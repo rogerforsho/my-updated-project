@@ -61,7 +61,7 @@ export default function PublicResourcesDepot() {
 
             <div className="pt-5 mt-4 border-t border-slate-200/60">
               <a
-                href="/downloads/CdM-OJT-Portal-Setup-1.0.0.exe"
+                href="/downloads/CdM-OJT-Portal-Setup.exe"
                 download
                 className="w-full py-2.5 px-3.5 rounded-xl bg-[#092E1D] hover:bg-[#0A3824] text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs"
               >

@@ -86,8 +86,8 @@ export default function PublicFooter() {
             </button>
             <span className="text-slate-300">•</span>
             <a
-              href="/downloads/CdM-OJT-Portal-Setup-1.0.0.exe"
-              download="CdM-OJT-Portal-Setup-1.0.0.exe"
+              href="/downloads/CdM-OJT-Portal-Setup.exe"
+              download="CdM-OJT-Portal-Setup.exe"
               className="hover:underline hover:text-slate-900 font-medium text-slate-700"
             >
               Windows Desktop Client (.exe)

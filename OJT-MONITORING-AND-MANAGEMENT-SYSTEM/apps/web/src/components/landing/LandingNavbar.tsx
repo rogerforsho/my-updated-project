@@ -200,7 +200,7 @@ export default function LandingNavbar({ onOpenAccessPortal }: LandingNavbarProps
               <span>Launch Sign In Portal</span>
             </button>
             <a
-              href="/downloads/CdM-OJT-Portal-Setup-1.0.0.exe"
+              href="/downloads/CdM-OJT-Portal-Setup.exe"
               download
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-white/10 text-slate-300 text-xs font-semibold hover:bg-white/5"
             >

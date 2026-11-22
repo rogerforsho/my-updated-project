@@ -19,7 +19,7 @@ const requirements = ['Parent/Guardian Consent Waiver (notarized)', 'Medical Cer
 const contact = [['OJT Office', '[TBD]'], ['Office hours', '[TBD]'], ['School email', '[TBD]'], ['Coordinator', '[TBD]']];
 
 const resources = [
-  { label: 'Desktop client', title: 'Windows Desktop Application', copy: 'Windows access for OJT Coordinator, admins, and supervisors, with system tray integration.', href: '/downloads/CdM-OJT-Portal-Setup-1.0.0.exe', action: 'Download client' },
+  { label: 'Desktop client', title: 'Windows Desktop Application', copy: 'Windows access for OJT Coordinator, admins, and supervisors, with system tray integration.', href: '/downloads/CdM-OJT-Portal-Setup.exe', action: 'Download client' },
   { label: 'Student mobile app', title: 'Attendance Companion', copy: 'Log attendance with GPS verification, selfie submission, and offline sync.', href: '#capabilities', action: 'Explore attendance' },
   { label: 'Certificate lookup', title: 'Verify a practicum certificate', copy: 'Search for a student certificate by its verification code.', href: '/verify-certificate/search', action: 'Open verification' },
 ];

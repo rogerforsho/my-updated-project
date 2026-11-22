@@ -471,8 +471,8 @@ function SignInContent() {
         {/* Windows Desktop Client Download Option */}
         <div className="mt-4 pt-3 border-t border-slate-100 text-center">
           <a
-            href="/downloads/CdM-OJT-Portal-Setup-1.0.0.exe"
-            download="CdM-OJT-Portal-Setup-1.0.0.exe"
+            href="/downloads/CdM-OJT-Portal-Setup.exe"
+            download="CdM-OJT-Portal-Setup.exe"
             className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-[#0A3824] font-medium transition-colors"
           >
             <Monitor className="w-3.5 h-3.5 text-slate-400" />

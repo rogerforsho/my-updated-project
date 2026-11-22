@@ -82,7 +82,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400">
             <span>Colegio de Montalban MIS</span>
             <div className="flex items-center gap-3">
-              <a href="/downloads/CdM-OJT-Portal-Setup-1.0.0.exe" download className="hover:text-slate-700 transition-colors">
+              <a href="/downloads/CdM-OJT-Portal-Setup.exe" download className="hover:text-slate-700 transition-colors">
                 Desktop App (.exe)
               </a>
               <span>&bull;</span>
