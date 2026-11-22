@@ -1,67 +1,96 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Switch, Text, View } from 'react-native';
+import PinPad, { PinPadLink } from '../../components/PinPad';
+import { colors, fonts } from '../../theme';
 import { authenticateBiometrics, biometricsAvailable, getPin, setBiometrics, setPin, validPin, verifyPin } from '../../lib/pinAuth';
 
-export default function PinScreen({ userId, mode, onUnlock, onExit }: {
-  userId: string; mode: 'setup' | 'unlock'; onUnlock: () => Promise<void>; onExit: () => Promise<void>;
+const MAX_TRIES = 5;
+
+// setup: create the PIN once after the first sign-in. unlock: ask for it when the student returns to the app.
+export default function PinScreen({ userId, mode, name, email, onUnlock, onExit }: {
+  userId: string; mode: 'setup' | 'unlock'; name?: string; email?: string;
+  onUnlock: () => Promise<void>;
+  onExit: () => Promise<void>; // Forgot PIN / Not you? / too many wrong PINs: full sign-out
 }) {
-  const [pin, setValue] = useState('');
   const [first, setFirst] = useState('');
   const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
   const [canUseBio, setCanUseBio] = useState(false);
-  const [enableBio, setEnableBio] = useState(false);
   const [bioEnabled, setBioEnabled] = useState(false);
+  const [enableBio, setEnableBio] = useState(false);
+  const bioRunning = useRef(false);
+
+  async function biometricUnlock() {
+    if (bioRunning.current) return;
+    bioRunning.current = true;
+    try {
+      if (await authenticateBiometrics()) await onUnlock();
+    } catch { setError('Fingerprint unlock unavailable. Use your PIN.'); }
+    finally { bioRunning.current = false; }
+  }
+
   useEffect(() => {
     let alive = true;
-    void biometricsAvailable().then(value => { if (alive) setCanUseBio(value); }).catch(() => {});
-    if (mode === 'unlock') void getPin(userId).then(record => { if (alive) setBioEnabled(!!record?.biometrics); });
+    (async () => {
+      const available = await biometricsAvailable().catch(() => false);
+      const record = mode === 'unlock' ? await getPin(userId) : null;
+      if (!alive) return;
+      setCanUseBio(available);
+      setBioEnabled(!!record?.biometrics);
+      if (mode === 'unlock' && available && record?.biometrics) void biometricUnlock(); // like GCash, ask right away
+    })().catch(() => {});
     return () => { alive = false; };
   }, []);
 
-  async function submit() {
-    if (busy) return;
+  async function handleComplete(pin: string): Promise<'error' | void> {
     setError('');
-    if (!/^\d{4}$/.test(pin)) { setError('Enter exactly four digits.'); return; }
     if (mode === 'setup') {
       if (!first) {
-        if (!validPin(pin)) { setError('Choose a less predictable PIN.'); return; }
-        setFirst(pin); setValue(''); return;
+        if (!validPin(pin)) { setError('Choose a less predictable PIN. Not 1234 or 1111.'); return 'error'; }
+        setFirst(pin);
+        return;
       }
-      if (pin !== first) { setFirst(''); setValue(''); setError('PINs did not match. Start again.'); return; }
-    }
-    setBusy(true);
-    try {
-      if (mode === 'setup') {
+      if (pin !== first) { setFirst(''); setError('PINs did not match. Start again.'); return 'error'; }
+      try {
         await setPin(userId, pin);
         if (canUseBio && enableBio) await setBiometrics(userId, true);
         await onUnlock();
-      } else {
-        const result = await verifyPin(userId, pin);
-        if (result === 'locked') { await onExit(); return; }
-        if (result === 'wrong') { setError('Incorrect PIN. Five attempts require password sign-in.'); return; }
-        await onUnlock();
+      } catch { setError('Could not save your PIN. Check your connection and try again.'); return 'error'; }
+      return;
+    }
+    try {
+      const result = await verifyPin(userId, pin);
+      if (result === 'locked') { await onExit(); return; }
+      if (result === 'wrong') {
+        const left = MAX_TRIES - ((await getPin(userId))?.failures ?? 0);
+        setError(`Incorrect PIN. ${left} ${left === 1 ? 'try' : 'tries'} left.`);
+        return 'error';
       }
-    } catch { setError('Could not unlock. Check your connection and try again.'); }
-    finally { setValue(''); setBusy(false); }
+      await onUnlock();
+    } catch { setError('Could not unlock. Check your connection and try again.'); return 'error'; }
   }
 
-  async function biometricUnlock() {
-    if (busy) return;
-    setBusy(true);
-    try {
-      if (await authenticateBiometrics()) await onUnlock();
-    } catch { setError('Biometric unlock unavailable. Use your PIN.'); }
-    finally { setBusy(false); }
-  }
-  return <View style={{ flex: 1, justifyContent: 'center', padding: 28, backgroundColor: '#F4F6F2', gap: 18 }}>
-    <Text style={{ fontSize: 24, fontWeight: '800', color: '#0A3824' }}>{mode === 'setup' ? first ? 'Confirm your PIN' : 'Create a quick-login PIN' : 'Enter 4-digit PIN'}</Text>
-    <Text style={{ color: '#526257' }}>{mode === 'setup' ? 'This PIN unlocks your student account on this phone.' : 'Unlock your account to access attendance.'}</Text>
-    <TextInput value={pin} onChangeText={value => setValue(value.replace(/\D/g, '').slice(0, 4))} keyboardType="number-pad" secureTextEntry maxLength={4} autoFocus accessibilityLabel="Four-digit PIN" style={{ backgroundColor: 'white', padding: 16, borderRadius: 12, fontSize: 22, letterSpacing: 12, color: '#0A3824' }} />
-    {!!error && <Text accessibilityRole="alert" style={{ color: '#b91c1c' }}>{error}</Text>}
-    <TouchableOpacity onPress={() => void submit()} disabled={busy} accessibilityRole="button" style={{ backgroundColor: '#0A3824', padding: 16, borderRadius: 12, alignItems: 'center' }}><Text style={{ color: 'white', fontWeight: '700' }}>{busy ? <ActivityIndicator color="white" /> : mode === 'setup' ? first ? 'Save PIN' : 'Continue' : 'Unlock'}</Text></TouchableOpacity>
-    {mode === 'setup' && canUseBio && <TouchableOpacity onPress={() => setEnableBio(value => !value)} accessibilityRole="checkbox" accessibilityState={{ checked: enableBio }}><Text style={{ color: '#0A3824' }}>{enableBio ? '☑' : '□'} Enable biometric unlock</Text></TouchableOpacity>}
-    {mode === 'unlock' && canUseBio && bioEnabled && <TouchableOpacity onPress={() => void biometricUnlock()} disabled={busy} accessibilityRole="button"><Text style={{ textAlign: 'center', color: '#0A3824' }}>Unlock with biometrics</Text></TouchableOpacity>}
-    <TouchableOpacity onPress={() => void onExit()} disabled={busy} accessibilityRole="button"><Text style={{ textAlign: 'center', color: '#526257' }}>Forgot PIN / Switch Account</Text></TouchableOpacity>
-  </View>;
+  const setup = mode === 'setup';
+  return (
+    <PinPad
+      title={setup ? (first ? 'Confirm your PIN' : 'Create your PIN') : 'Enter your PIN'}
+      subtitle={setup ? 'Four digits that unlock your account on this phone.' : undefined}
+      error={error}
+      account={!setup && name ? { name, email, onSwitch: () => void onExit() } : undefined}
+      onBiometric={!setup && canUseBio && bioEnabled ? () => void biometricUnlock() : undefined}
+      onComplete={handleComplete}
+      extra={setup && canUseBio ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+          <Text style={{ fontFamily: fonts.bold, fontSize: 14, color: '#FFFFFF' }}>Use fingerprint or face unlock</Text>
+          <Switch
+            value={enableBio}
+            onValueChange={setEnableBio}
+            trackColor={{ true: colors.sand, false: 'rgba(255,255,255,0.25)' }}
+            thumbColor="#FFFFFF"
+            accessibilityLabel="Use fingerprint or face unlock"
+          />
+        </View>
+      ) : undefined}
+      footer={!setup ? <PinPadLink label="Forgot PIN?" onPress={() => void onExit()} /> : undefined}
+    />
+  );
 }

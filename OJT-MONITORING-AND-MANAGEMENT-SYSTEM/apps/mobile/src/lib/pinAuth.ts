@@ -41,6 +41,17 @@ export function setPin(userId: string, pin: string): Promise<void> {
   });
 }
 
+// Replaces the PIN but keeps the fingerprint/face preference (setPin starts a fresh record with it off).
+export function changePin(userId: string, pin: string): Promise<void> {
+  if (!validPin(pin)) throw new Error('Choose a less predictable 4-digit PIN.');
+  return serialized(async () => {
+    const record = await read();
+    if (!record || record.userId !== userId) throw new Error('PIN is unavailable.');
+    const salt = Array.from(await Crypto.getRandomBytesAsync(16), byte => byte.toString(16).padStart(2, '0')).join('');
+    await save({ userId, salt, hash: await digest(pin, salt), failures: 0, biometrics: record.biometrics });
+  });
+}
+
 export function verifyPin(userId: string, pin: string): Promise<'ok' | 'wrong' | 'locked'> {
   return serialized(async () => {
     const record = await read();
@@ -58,13 +69,12 @@ export function verifyPin(userId: string, pin: string): Promise<'ok' | 'wrong' |
   });
 }
 
-// Profile "Sign Out" locks to the PIN screen instead of ending the session; App.tsx listens.
-let lockListener: (() => void) | null = null;
-export function onLock(listener: () => void): () => void {
-  lockListener = listener;
-  return () => { if (lockListener === listener) lockListener = null; };
-}
-export function lockApp(): void { lockListener?.(); }
+// True once the student has proven who they are this session (password sign-in or PIN). App.tsx resets it on
+// sign-out and when the student comes back after being away; SignInScreen sets it before a password sign-in so the
+// PIN is not asked right after the password.
+let unlockedFlag = false;
+export const isUnlocked = (): boolean => unlockedFlag;
+export function setUnlocked(value: boolean): void { unlockedFlag = value; }
 
 export function clearPin(): Promise<void> { return serialized(() => SecureStore.deleteItemAsync(KEY)); }
 export function setBiometrics(userId: string, enabled: boolean): Promise<void> {

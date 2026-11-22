@@ -51,18 +51,57 @@ test('correct PIN resets failed attempts', async () => {
   assert.equal(await pin.verifyPin('student-a', '1111'), 'wrong');
 });
 
-test('Profile Sign Out locks to the PIN screen instead of wiping the PIN', async () => {
+test('changing the PIN keeps the fingerprint choice and the old PIN stops working', async () => {
   const { pin } = fixture();
-  let locks = 0;
-  const off = pin.onLock(() => { locks++; });
-  pin.lockApp();
-  off();
-  pin.lockApp();
-  assert.equal(locks, 1);
-  const profile = fs.readFileSync(path.join(__dirname, '../apps/mobile/src/screens/profile/ProfileScreen.tsx'), 'utf8');
-  const handler = profile.slice(profile.indexOf('function handleSignOut'), profile.indexOf('async function handlePinChange'));
-  assert.match(handler, /onPress: lockApp/);
-  assert.doesNotMatch(handler, /signOut\(/);
+  await pin.setPin('student-a', '8052');
+  await pin.setBiometrics('student-a', true);
+  await pin.changePin('student-a', '7391');
+  assert.equal((await pin.getPin('student-a')).biometrics, true);
+  assert.equal(await pin.verifyPin('student-a', '8052'), 'wrong');
+  assert.equal(await pin.verifyPin('student-a', '7391'), 'ok');
+  await assert.rejects(pin.changePin('student-b', '7391'));
+  assert.throws(() => pin.changePin('student-a', '1234'));
+});
+
+test('unlocked flag is a plain true/false the app and the sign-in screen share', () => {
+  const { pin } = fixture();
+  assert.equal(pin.isUnlocked(), false);
+  pin.setUnlocked(true);
+  assert.equal(pin.isUnlocked(), true);
+  pin.setUnlocked(false);
+  assert.equal(pin.isUnlocked(), false);
+});
+
+const read = file => fs.readFileSync(path.join(__dirname, '../apps/mobile', file), 'utf8');
+
+test('Sign Out is a real sign-out that keeps the PIN; only forgetDevice wipes it', () => {
+  const auth = read('src/services/auth.ts');
+  const signOut = auth.slice(auth.indexOf('export async function signOut'), auth.indexOf('export async function changeUserPassword'));
+  assert.ok(signOut.includes('if (options.forgetDevice) await clearPin()'));
+  assert.ok(signOut.includes('if (options.forgetDevice) await SecureStore.deleteItemAsync'));
+  const profile = read('src/screens/profile/ProfileScreen.tsx');
+  const handler = profile.slice(profile.indexOf('function handleSignOut'), profile.indexOf('async function toggleBiometrics'));
+  assert.ok(handler.includes('await signOut()'));
+  assert.doesNotMatch(handler, /forgetDevice|lockApp/);
+  const app = read('App.tsx');
+  assert.ok(app.includes('await signOut({ forgetDevice: true })'));
+});
+
+test('PIN pad has its own keypad (no phone keyboard), four dots and all ten digits', () => {
+  const pad = read('src/components/PinPad.tsx');
+  assert.doesNotMatch(pad, /TextInput/);
+  assert.ok(pad.includes('const PIN_LENGTH = 4'));
+  assert.ok(pad.includes("const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9']"));
+  assert.ok(pad.includes("press('0')"));
+  const profile = read('src/screens/profile/ProfileScreen.tsx');
+  assert.doesNotMatch(profile, /Current PIN|Confirm new PIN/);
+});
+
+test('the PIN is created once, and a password sign-in does not ask for it again', () => {
+  const app = read('App.tsx');
+  assert.ok(app.includes("!hasPin ? 'setup' : isUnlocked() ? 'open' : 'unlock'"));
+  const signIn = read('src/screens/auth/SignInScreen.tsx');
+  assert.ok(signIn.indexOf('setUnlocked(true)') < signIn.indexOf('await signIn('));
 });
 
 test('the app asks for the PIN again when the student returns after a short grace period', () => {

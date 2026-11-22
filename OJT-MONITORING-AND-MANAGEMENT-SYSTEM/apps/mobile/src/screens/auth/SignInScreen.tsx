@@ -2,6 +2,7 @@ import { Linking, Pressable, Text } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { colors } from '../../theme';
+import { setUnlocked } from '../../lib/pinAuth';
 import AuthShell, { a, AuthAlert, AuthFootnote, AuthInput, PasswordInput, PrimaryButton, SecondaryButton } from './AuthShell';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
@@ -107,6 +108,9 @@ export default function SignInScreen({ navigation }: Props) {
     setLoading(true);
 
     const targetEmail = rememberedProfile && !useAnotherAccount ? rememberedProfile.email : email;
+    // The password proves who this is, so the PIN is not asked right after it. Set before signing in because the
+    // SIGNED_IN event reaches App.tsx before signIn returns.
+    setUnlocked(true);
     const result = await signIn({ email: targetEmail, password });
 
     if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
@@ -114,6 +118,7 @@ export default function SignInScreen({ navigation }: Props) {
     setIsSlow(false);
 
     if (result.error) {
+      setUnlocked(false);
       setError(result.error.message);
     } else if (result.data) {
       if (result.data.account_status === 'rejected' && result.data.role === 'Student') {
