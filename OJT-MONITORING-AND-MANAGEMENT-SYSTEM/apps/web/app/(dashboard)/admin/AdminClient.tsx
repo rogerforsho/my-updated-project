@@ -3,6 +3,7 @@
 import { RowsLoading } from '@/src/components/ui/RowsLoading';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { DEPARTMENT_PROGRAMS } from '@ojt/shared';
 import { Card, CardContent } from '@/src/components/ui/Card';
 import { Badge } from '@/src/components/ui/Badge';
 import { Button } from '@/src/components/ui/Button';
@@ -102,6 +103,52 @@ function csvCell(value: string) {
   return `"${safe.replace(/"/g, '""')}"`;
 }
 
+const DEPARTMENT_NAMES = {
+  ICS: 'Institute of Computing Studies (ICS)',
+  IBE: 'Institute of Business and Entrepreneurship (IBE)',
+} as const;
+
+// A whole department, or only some of its programs (e.g. just BSIT). Ticking a department ticks all its programs.
+function ProgramAccessFields({ value, onChange }: { value: string[]; onChange: (programs: string[]) => void }) {
+  return (
+    <fieldset className="space-y-3">
+      <legend className="text-xs font-semibold text-slate-700">Department access</legend>
+      {(['ICS', 'IBE'] as const).map(department => {
+        const programs: readonly string[] = DEPARTMENT_PROGRAMS[department];
+        const picked = programs.filter(program => value.includes(program));
+        return (
+          <div key={department} className="space-y-1.5">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={picked.length === programs.length}
+                ref={element => { if (element) element.indeterminate = picked.length > 0 && picked.length < programs.length; }}
+                onChange={event => onChange(event.target.checked
+                  ? [...new Set([...value, ...programs])]
+                  : value.filter(program => !programs.includes(program)))}
+              />
+              {DEPARTMENT_NAMES[department]}
+            </label>
+            <div className="ml-6 flex flex-wrap gap-x-5 gap-y-1">
+              {programs.map(program => (
+                <label key={program} className="flex items-center gap-2 text-sm text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={value.includes(program)}
+                    onChange={event => onChange(event.target.checked ? [...value, program] : value.filter(item => item !== program))}
+                  />
+                  {program}
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      <p className="text-[11px] text-slate-500">Tick a whole department, or only some of its programs. A program-only Coordinator sees only those students.</p>
+    </fieldset>
+  );
+}
+
 export default function AdminClient({ initialUsers, totalUsers: initialTotal, overview }: Props) {
   const [users, setUsers] = useState<UserManagementItem[]>(initialUsers);
   const [totalCount, setTotalCount] = useState(initialTotal);
@@ -127,7 +174,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
 
   // Edit Coordinator departments modal state
   const [deptTarget, setDeptTarget] = useState<UserManagementItem | null>(null);
-  const [deptSelection, setDeptSelection] = useState<Array<'ICS' | 'IBE'>>([]);
+  const [deptSelection, setDeptSelection] = useState<string[]>([]);
   const [deptLoading, setDeptLoading] = useState(false);
   const [deptError, setDeptError] = useState('');
 
@@ -137,7 +184,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
     full_name: '',
     email: '',
     role: 'OJT Coordinator',
-    department_scopes: ['ICS'],
+    programs: [...DEPARTMENT_PROGRAMS.ICS],
   });
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState('');
@@ -328,7 +375,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
 
   const openDepartmentEditor = (u: UserManagementItem) => {
     setDeptError('');
-    setDeptSelection((u.department?.split(', ') ?? []).filter((d): d is 'ICS' | 'IBE' => d === 'ICS' || d === 'IBE'));
+    setDeptSelection(u.programs ?? []);
     setDeptTarget(u);
   };
 
@@ -381,7 +428,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
       full_name: '',
       email: '',
       role: 'OJT Coordinator',
-      department_scopes: ['ICS'],
+      programs: [...DEPARTMENT_PROGRAMS.ICS],
     });
     fetchUsers(page, roleFilter, statusFilter, searchQuery, departmentFilter);
     loadAudit();
@@ -1115,23 +1162,9 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
       <Modal title="Edit Department Access" open={!!deptTarget} onClose={() => { if (!deptLoading) setDeptTarget(null); }}>
         <div className="space-y-4">
           <p className="text-xs text-slate-600">
-            Departments <span className="font-semibold">{deptTarget?.full_name}</span> can manage. Removing a department is blocked while its students have active placements.
+            Departments or programs <span className="font-semibold">{deptTarget?.full_name}</span> can manage. Removing a department or program is blocked while its students have active placements.
           </p>
-          <fieldset className="space-y-2">
-            <legend className="text-xs font-semibold text-slate-700">Department access</legend>
-            {(['ICS', 'IBE'] as const).map(department => (
-              <label key={department} className="flex items-center gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={deptSelection.includes(department)}
-                  onChange={event => setDeptSelection(event.target.checked
-                    ? [...deptSelection, department]
-                    : deptSelection.filter(item => item !== department))}
-                />
-                {department === 'ICS' ? 'Institute of Computing Studies (ICS)' : 'Institute of Business and Entrepreneurship (IBE)'}
-              </label>
-            ))}
-          </fieldset>
+          <ProgramAccessFields value={deptSelection} onChange={setDeptSelection} />
           {deptError && (
             <div role="alert" className="p-3 rounded-lg bg-red-50 text-red-700 text-xs font-medium border border-red-200">{deptError}</div>
           )}
@@ -1170,24 +1203,7 @@ export default function AdminClient({ initialUsers, totalUsers: initialTotal, ov
             required
           />
 
-          <fieldset className="space-y-2">
-            <legend className="text-xs font-semibold text-slate-700">Department access</legend>
-            {(['ICS', 'IBE'] as const).map(department => (
-              <label key={department} className="flex items-center gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={staffForm.department_scopes.includes(department)}
-                  onChange={event => setStaffForm({
-                    ...staffForm,
-                    department_scopes: event.target.checked
-                      ? [...staffForm.department_scopes, department]
-                      : staffForm.department_scopes.filter(item => item !== department),
-                  })}
-                />
-                {department === 'ICS' ? 'Institute of Computing Studies (ICS)' : 'Institute of Business and Entrepreneurship (IBE)'}
-              </label>
-            ))}
-          </fieldset>
+          <ProgramAccessFields value={staffForm.programs} onChange={programs => setStaffForm({ ...staffForm, programs })} />
 
           {createError && (
             <div className="p-3 rounded-lg bg-red-50 text-red-700 text-xs font-medium border border-red-200">

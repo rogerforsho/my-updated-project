@@ -7,31 +7,41 @@ import { restrictDepartment } from '@/src/lib/department-scope';
 import { courseDepartment } from '@/src/lib/departments';
 import { provisionAccount, supabaseAuthAdapter } from '@/src/lib/account-provisioning';
 import crypto from 'crypto';
+import { DEPARTMENT_PROGRAMS, PROGRAM_COURSE_PATTERNS, STUDENT_REGISTRATION_COURSES, accessPrograms, programGrants } from '@ojt/shared';
 import type { AppResult, UserRole, AccountStatus } from '@ojt/shared';
 
 const serviceClient = getServiceClient;
 
 type Service = ReturnType<typeof serviceClient>;
 const COORDINATOR_CAPABILITIES = ['academic_workflows', 'department_reports'];
+type Department = 'ICS' | 'IBE';
+type GrantRow = { department_scope: string; program_scope: string[] | null };
 
-// A Coordinator "has" the students of their granted departments; block while any of those departments has an active placement.
-async function departmentStudentsBlocked(service: Service, departments: string[], action: string): Promise<AppResult<null> | null> {
-  for (const department of departments) {
-    const { count, error } = await restrictDepartment(
-      service.from('students').select('student_id, student_assignments!inner(assignment_id)', { count: 'exact', head: true })
-        .eq('student_assignments.assignment_status', 'active'),
-      department as 'ICS' | 'IBE');
+// The programs a grant covers; NULL program_scope is the whole department.
+const grantPrograms = (grant: GrantRow): string[] => grant.program_scope ?? DEPARTMENT_PROGRAMS[grant.department_scope as Department] ?? [];
+
+// A Coordinator "has" the students of their granted programs. `scopes` are departments ('ICS') or programs ('BSIT');
+// block while any of them has an active placement.
+async function departmentStudentsBlocked(service: Service, scopes: string[], action: string): Promise<AppResult<null> | null> {
+  for (const scope of scopes) {
+    const base = service.from('students').select('student_id, student_assignments!inner(assignment_id)', { count: 'exact', head: true })
+      .eq('student_assignments.assignment_status', 'active');
+    const patterns = PROGRAM_COURSE_PATTERNS[scope as keyof typeof PROGRAM_COURSE_PATTERNS];
+    const { count, error } = await (patterns
+      ? base.or(patterns.map(pattern => `course.ilike.*${pattern}*`).join(','))
+      : restrictDepartment(base, scope as Department));
     if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not verify the Coordinator\'s active students.' } };
-    if (count) return { data: null, error: { code: 'FORBIDDEN', message: `This Coordinator still has ${count} active student(s) in ${department}. Complete or reassign their placements before ${action}.` } };
+    if (count) return { data: null, error: { code: 'FORBIDDEN', message: `This Coordinator still has ${count} active student(s) in ${scope}. Complete or reassign their placements before ${action}.` } };
   }
   return null;
 }
 
 async function coordinatorRemovalBlocked(service: Service, userId: string): Promise<AppResult<null> | null> {
-  const { data: grants, error } = await service.from('staff_capability_grants').select('department_scope')
+  const { data: grants, error } = await service.from('staff_capability_grants').select('department_scope, program_scope')
     .eq('user_id', userId).eq('capability', 'academic_workflows').is('revoked_at', null);
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not verify the Coordinator\'s active students.' } };
-  return departmentStudentsBlocked(service, (grants ?? []).map(grant => grant.department_scope), 'deactivating the account');
+  // A whole-department grant checks the department (it also covers legacy courses); a program grant checks its programs.
+  return departmentStudentsBlocked(service, (grants ?? []).flatMap(grant => grant.program_scope ?? [grant.department_scope]), 'deactivating the account');
 }
 
 async function supervisorRemovalBlocked(service: Service, userId: string): Promise<AppResult<null> | null> {
@@ -63,13 +73,16 @@ export interface UserManagementItem {
   account_category: string;
   created_at: string;
   department: string | null;
+  /** A Coordinator's programs (a whole department lists all of its programs); empty for everyone else. */
+  programs: string[];
 }
 
 export interface CreateSystemUserInput {
   full_name: string;
   email: string;
   role: 'OJT Coordinator';
-  department_scopes: Array<'ICS' | 'IBE'>;
+  /** Departments ('ICS' = all its programs) and/or programs ('BSIT') the Coordinator is granted. */
+  programs: string[];
   employee_number?: string;
 }
 
@@ -120,24 +133,30 @@ export async function listAllUsers(
   const userIds = rows.map(row => row.user_id as string);
   const [studentRows, grantRows] = await Promise.all([
     service.from('students').select('user_id, course').in('user_id', userIds),
-    service.from('staff_capability_grants').select('user_id, department_scope')
+    service.from('staff_capability_grants').select('user_id, department_scope, program_scope')
       .eq('capability', 'academic_workflows').is('revoked_at', null).in('user_id', userIds),
   ]);
   if (studentRows.error || grantRows.error)
     return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to load user records.' } };
   const departments = new Map<string, Set<string>>();
-  const addDepartment = (userId: string, department: string | null) => {
-    if (!department) return;
-    departments.set(userId, (departments.get(userId) ?? new Set()).add(department));
+  const programs = new Map<string, string[]>();
+  const addDepartment = (userId: string, label: string | null) => {
+    if (!label) return;
+    departments.set(userId, (departments.get(userId) ?? new Set()).add(label));
   };
   for (const row of studentRows.data ?? []) addDepartment(row.user_id, courseDepartment(row.course));
-  for (const row of grantRows.data ?? []) addDepartment(row.user_id, row.department_scope);
+  for (const row of grantRows.data ?? []) {
+    // "ICS" is the whole department, "ICS (BSIT)" only that program.
+    addDepartment(row.user_id, row.program_scope ? `${row.department_scope} (${row.program_scope.join(', ')})` : row.department_scope);
+    programs.set(row.user_id, [...(programs.get(row.user_id) ?? []), ...grantPrograms(row)]);
+  }
 
   return {
     data: {
       users: rows.map(row => ({
         ...row,
         department: departments.has(row.user_id) ? [...departments.get(row.user_id)!].sort().join(', ') : null,
+        programs: programs.get(row.user_id) ?? [],
       })) as UserManagementItem[],
       total: count ?? 0,
     },
@@ -155,12 +174,13 @@ export async function createSystemUser(
 
   const fullName = input.full_name?.trim();
   const email = input.email?.trim().toLowerCase();
-  const departments = [...new Set(input.department_scopes ?? [])];
+  const programs = accessPrograms(input.programs);
+  const grantsByDepartment = programGrants(programs);
   if (!fullName) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Full name is required.' } };
   if (!email) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Email is required.' } };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Enter a valid email address.' } };
-  if (input.role !== 'OJT Coordinator' || departments.length === 0 || departments.some(department => !['ICS', 'IBE'].includes(department))) {
-    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Select at least one OJT Coordinator department.' } };
+  if (input.role !== 'OJT Coordinator' || programs.length === 0 || programs.some(program => !(STUDENT_REGISTRATION_COURSES as readonly string[]).includes(program))) {
+    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Select at least one department or program for the OJT Coordinator.' } };
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -171,12 +191,11 @@ export async function createSystemUser(
     email, role: 'Coordinator', full_name: fullName, redirectTo,
     staff: { employee_number: input.employee_number?.trim() || `CO-${crypto.randomBytes(6).toString('hex').toUpperCase()}` },
     setup: async newUserId => {
-      const { error } = await service.from('coordinators').insert({ user_id: newUserId, department: departments[0] });
+      const { error } = await service.from('coordinators').insert({ user_id: newUserId, department: grantsByDepartment[0].department });
       if (error) return error;
-      const grants = departments.flatMap(department => [
-        { user_id: newUserId, capability: 'academic_workflows', department_scope: department, granted_by_user_id: adminUser.id },
-        { user_id: newUserId, capability: 'department_reports', department_scope: department, granted_by_user_id: adminUser.id },
-      ]);
+      const grants = grantsByDepartment.flatMap(({ department, programs: scoped }) => COORDINATOR_CAPABILITIES.map(capability => (
+        { user_id: newUserId, capability, department_scope: department, program_scope: scoped, granted_by_user_id: adminUser.id }
+      )));
       return (await service.from('staff_capability_grants').insert(grants)).error;
     },
   });
@@ -197,7 +216,7 @@ export async function createSystemUser(
     action: 'OJT_COORDINATOR_INVITED',
     entity_type: 'user',
     entity_id: newUserId,
-    details: { role: 'OJT Coordinator', email, departments },
+    details: { role: 'OJT Coordinator', email, departments: grantsByDepartment.map(grant => grant.department), programs },
   });
   return { data: { user_id: newUserId }, error: null };
 }
@@ -340,14 +359,17 @@ export async function deactivateSystemUser(
 
 export async function updateCoordinatorDepartments(
   user_id: string,
-  departmentScopes: Array<'ICS' | 'IBE'>
+  programs: string[]
 ): Promise<AppResult<null>> {
   const { authorized, user } = await getSuperAdmin();
   if (!authorized || !user) return { data: null, error: { code: 'FORBIDDEN', message: 'Super Admin access required.' } };
 
-  const next = [...new Set(departmentScopes ?? [])];
-  if (next.length === 0 || next.some(department => !['ICS', 'IBE'].includes(department)))
-    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Select at least one OJT Coordinator department.' } };
+  const next = accessPrograms(programs);
+  if (next.length === 0 || next.some(program => !(STUDENT_REGISTRATION_COURSES as readonly string[]).includes(program)))
+    return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Select at least one department or program for the OJT Coordinator.' } };
+  const wanted = new Map<string, string[] | null>(programGrants(next).map(grant => [grant.department, grant.programs]));
+  // null = the whole department, so a program added to it later is covered.
+  const sameScope = (a: string[] | null, b: string[] | null) => a === null || b === null ? a === b : a.length === b.length && a.every(program => b.includes(program));
 
   const service = serviceClient();
   const { data: target } = await service.from('users').select('role, account_status').eq('user_id', user_id).maybeSingle();
@@ -355,33 +377,47 @@ export async function updateCoordinatorDepartments(
   if (target.role !== 'Coordinator' || target.account_status !== 'active')
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'Department access can only be edited on an active OJT Coordinator account.' } };
 
-  const { data: grants, error: grantError } = await service.from('staff_capability_grants').select('capability, department_scope')
+  const { data: grants, error: grantError } = await service.from('staff_capability_grants').select('capability, department_scope, program_scope')
     .eq('user_id', user_id).in('capability', COORDINATOR_CAPABILITIES).is('revoked_at', null);
   if (grantError) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Could not load the Coordinator\'s department access.' } };
+  const rows = (grants ?? []).map(grant => ({ ...grant, program_scope: grant.program_scope ?? null })) as Array<GrantRow & { capability: string }>;
 
-  const held = new Set((grants ?? []).map(grant => `${grant.capability}:${grant.department_scope}`));
-  const removed = [...new Set((grants ?? []).map(grant => grant.department_scope as string))].filter(department => !(next as string[]).includes(department));
-  const added = next.filter(department => COORDINATOR_CAPABILITIES.some(capability => !held.has(`${capability}:${department}`)));
-  if (removed.length === 0 && added.length === 0) return { data: null, error: null };
+  const heldDepartments = [...new Set(rows.map(grant => grant.department_scope))];
+  const removed = heldDepartments.filter(department => !wanted.has(department));
+  // What the Coordinator stops covering: a removed department (or its programs), or programs dropped from a kept one.
+  const lost: string[] = [];
+  for (const department of heldDepartments) {
+    const before = rows.find(grant => grant.department_scope === department && grant.capability === 'academic_workflows') ?? rows.find(grant => grant.department_scope === department)!;
+    if (!wanted.has(department)) lost.push(...(before.program_scope ?? [department]));
+    else lost.push(...grantPrograms(before).filter(program => !(wanted.get(department) ?? DEPARTMENT_PROGRAMS[department as Department]).includes(program as never)));
+  }
+  const rescoped = [...wanted].filter(([department, scope]) => rows.some(grant => grant.department_scope === department && !sameScope(grant.program_scope, scope))).map(([department]) => department);
+  const missing = [...wanted].flatMap(([department, scope]) => COORDINATOR_CAPABILITIES
+    .filter(capability => !rows.some(grant => grant.capability === capability && grant.department_scope === department))
+    .map(capability => ({ user_id, capability, department_scope: department, program_scope: scope, granted_by_user_id: user.id })));
+  if (removed.length === 0 && rescoped.length === 0 && missing.length === 0) return { data: null, error: null };
+  const added = [...new Set(missing.map(grant => grant.department_scope))];
 
-  const blocked = await departmentStudentsBlocked(service, removed, 'removing that department');
+  const blocked = await departmentStudentsBlocked(service, lost, 'removing that access');
   if (blocked) return blocked;
 
-  // Revoke before granting: a failure part-way leaves less access, never more.
+  // Less access first (revoke, then narrow/widen), then new grants: a failure part-way leaves less access, never more.
   if (removed.length) {
     const { error } = await service.from('staff_capability_grants')
       .update({ revoked_at: new Date().toISOString(), revoked_by_user_id: user.id })
       .eq('user_id', user_id).in('capability', COORDINATOR_CAPABILITIES).in('department_scope', removed).is('revoked_at', null);
     if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to update department access.' } };
   }
-  const missing = added.flatMap(department => COORDINATOR_CAPABILITIES
-    .filter(capability => !held.has(`${capability}:${department}`))
-    .map(capability => ({ user_id, capability, department_scope: department, granted_by_user_id: user.id })));
+  for (const department of rescoped) {
+    const { error } = await service.from('staff_capability_grants').update({ program_scope: wanted.get(department) })
+      .eq('user_id', user_id).in('capability', COORDINATOR_CAPABILITIES).eq('department_scope', department).is('revoked_at', null);
+    if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to update department access.' } };
+  }
   if (missing.length) {
     const { error } = await service.from('staff_capability_grants').insert(missing);
     if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to update department access.' } };
   }
-  const { error: legacyError } = await service.from('coordinators').update({ department: next[0] }).eq('user_id', user_id);
+  const { error: legacyError } = await service.from('coordinators').update({ department: [...wanted.keys()][0] }).eq('user_id', user_id);
   if (legacyError) console.error('[updateCoordinatorDepartments] coordinators.department not synced:', user_id);
 
   await recordAuditEvent({
@@ -389,7 +425,11 @@ export async function updateCoordinatorDepartments(
     action: 'COORDINATOR_DEPARTMENTS_UPDATED',
     entity_type: 'user',
     entity_id: user_id,
-    details: { departments: next, added, removed },
+    details: {
+      departments: [...wanted.keys()], added, removed,
+      ...([...wanted.values()].some(Boolean) && { programs: next }),
+      ...(rescoped.length && { rescoped }),
+    },
   });
   return { data: null, error: null };
 }

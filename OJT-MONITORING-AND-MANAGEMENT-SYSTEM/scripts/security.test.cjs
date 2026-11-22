@@ -1166,7 +1166,7 @@ test('student approval requires a verified email before activation', async () =>
 test('coordinator invitation rolls back failed profile writes and activates only complete accounts', async () => {
   for (const failingWrite of [['users','update'], ['coordinators','insert'], null]) {
     const fixture = workflowFixture('Admin', { fail: (table, op) => table === failingWrite?.[0] && op === failingWrite?.[1] ? 'write failed' : null });
-    const result = await fixture.module('admin').createSystemUser({ full_name: 'Test Coordinator', email: 'staff@example.invalid', role: 'OJT Coordinator', department_scopes: ['ICS'] });
+    const result = await fixture.module('admin').createSystemUser({ full_name: 'Test Coordinator', email: 'staff@example.invalid', role: 'OJT Coordinator', programs: ['ICS'] });
     if (failingWrite) {
       assert.equal(result.error.code, 'SERVER_FAILURE');
       assert.equal(fixture.deleted, 1);
@@ -1186,7 +1186,7 @@ test('coordinator invitation rolls back failed profile writes and activates only
 
 test('staff invitations roll back the created account when the setup email cannot be sent', async () => {
   for (const [name, call] of [
-    ['admin', service => service.createSystemUser({ full_name: 'Test Coordinator', email: 'staff@example.invalid', role: 'OJT Coordinator', department_scopes: ['ICS'] })],
+    ['admin', service => service.createSystemUser({ full_name: 'Test Coordinator', email: 'staff@example.invalid', role: 'OJT Coordinator', programs: ['ICS'] })],
     ['supervisors', service => service.createSupervisor({ full_name: 'Supervisor', email: 'supervisor@example.test', company_id: 'company-1', position: 'Mentor' })],
   ]) {
     const fixture = workflowFixture(name === 'admin' ? 'Admin' : 'Coordinator', { inviteError: 'smtp down' });
