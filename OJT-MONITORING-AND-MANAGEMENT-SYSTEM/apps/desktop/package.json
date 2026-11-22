@@ -42,8 +42,7 @@
     },
     "linux": {
       "target": [
-        "AppImage",
-        "deb"
+        "AppImage"
       ],
       "icon": "assets/icon.png",
       "category": "Education"

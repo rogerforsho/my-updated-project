@@ -1,0 +1,75 @@
+name: Desktop installers
+
+# A tag push runs the copy of this file at the tagged commit, so it works from any branch.
+# workflow_dispatch only appears once this file exists on the default branch.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            script: build:win
+          - os: macos-latest
+            script: build:mac
+          - os: ubuntu-latest
+            script: build:linux
+    defaults:
+      run:
+        working-directory: OJT-MONITORING-AND-MANAGEMENT-SYSTEM
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false' # unsigned builds: do not hunt for a signing certificate
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: OJT-MONITORING-AND-MANAGEMENT-SYSTEM/package-lock.json
+
+      - run: npm ci
+
+      # The desktop shell loads the deployed portal, so the web app is not built here.
+      - run: npm run ${{ matrix.script }} -w apps/desktop -- --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cdm-ojt-desktop-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            OJT-MONITORING-AND-MANAGEMENT-SYSTEM/apps/desktop/dist/*.exe
+            OJT-MONITORING-AND-MANAGEMENT-SYSTEM/apps/desktop/dist/*.dmg
+            OJT-MONITORING-AND-MANAGEMENT-SYSTEM/apps/desktop/dist/*.zip
+            OJT-MONITORING-AND-MANAGEMENT-SYSTEM/apps/desktop/dist/*.AppImage
+
+  release:
+    name: Attach installers to the release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TAG" --notes "Desktop installers"
+          gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber

@@ -749,3 +749,13 @@ test('student email confirmation lands on the public email-confirmed page, not s
   assert.equal(middleware.split("'/auth/email-confirmed'").length - 1, 2, 'listed in PUBLIC_PATHS and KNOWN_PATHS');
   assert.ok(fs.existsSync(path.join(root, 'apps/web/app/auth/email-confirmed/page.tsx')));
 });
+
+test('desktop installer workflow is at the git root and builds Windows, macOS and Linux', () => {
+  // GitHub only reads workflows from the repo root; a nested .github never ran.
+  const wf = fs.readFileSync(path.join(root, '..', '.github', 'workflows', 'desktop-build.yml'), 'utf8');
+  assert.equal(fs.existsSync(path.join(root, '.github', 'workflows', 'desktop-build.yml')), false);
+  for (const needle of ['windows-latest', 'macos-latest', 'ubuntu-latest', 'build:win', 'build:mac', 'build:linux', "tags: ['v*']", '--publish never'])
+    assert.ok(wf.includes(needle), `workflow is missing ${needle}`);
+  const linux = JSON.parse(fs.readFileSync(path.join(root, 'apps/desktop/package.json'), 'utf8')).build.linux.target;
+  assert.deepEqual(linux, ['AppImage']); // deb needs a package.json author email
+});
