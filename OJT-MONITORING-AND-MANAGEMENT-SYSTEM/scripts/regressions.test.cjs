@@ -619,7 +619,7 @@ test('desktop IPC hides to tray and transitions between valid widget/window size
     setSize: (w, h) => calls.push(['size', w, h]),
     setAlwaysOnTop() {}, setMenuBarVisibility() {}, loadFile: () => Promise.resolve(), loadURL: () => Promise.resolve(), on() {},
     // shortcut: origin copied from the main.js productionUrl fallback, change both together; derive it if it drifts again
-    webContents: { on() {}, send() {}, setWindowOpenHandler() {}, mainFrame: { url: 'https://my-updated-project-git-loop-integration-ojt-project.vercel.app/dashboard' } },
+    webContents: { on() {}, send() {}, setWindowOpenHandler() {}, mainFrame: { url: 'https://my-updated-project-ojt-project.vercel.app/dashboard' } },
   };
   const electron = {
     app: { isPackaged: true, requestSingleInstanceLock: () => true, on() {},
