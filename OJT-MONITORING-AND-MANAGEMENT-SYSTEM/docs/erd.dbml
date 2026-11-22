@@ -21,7 +21,15 @@ Table students {
   student_number text [unique]
   course text
   year_level int
-  required_hours int
+  required_hours int [note: 'Target Hours; filled from program_target_hours']
+}
+
+Table program_target_hours {
+  course text [pk, note: 'BSIT, BS-CPE, BSBA-HRM or BSENTREP']
+  required_hours int [note: 'Set by the OJT Coordinator of the course department, 1 to 840']
+  confirmed_at timestamptz [note: 'Empty until a Coordinator saves it']
+  updated_by uuid [ref: > users.user_id]
+  updated_at timestamptz
 }
 
 Table coordinators {

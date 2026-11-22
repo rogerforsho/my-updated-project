@@ -48,6 +48,7 @@ const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Submissions', href: '/coordinator/submissions', icon: ClipboardCheck, section: 'Monitoring' },
     { label: 'Attendance', href: '/coordinator/attendance', icon: Clock, section: 'Monitoring' },
     { label: 'Progress & Reports', href: '/coordinator/progress', icon: TrendingUp, section: 'Monitoring' },
+    { label: 'Target Hours', href: '/coordinator/target-hours', icon: Clock, section: 'Monitoring' },
     { label: 'Holidays & Days Off', href: '/coordinator/non-working-days', icon: Clock, section: 'Monitoring' },
     { label: 'Incident Reports', href: '/coordinator/incident-reports', icon: ShieldAlert, section: 'Monitoring' },
     { label: 'Evaluations', href: '/coordinator/supervisor-evaluations', icon: Star, section: 'Evaluation' },

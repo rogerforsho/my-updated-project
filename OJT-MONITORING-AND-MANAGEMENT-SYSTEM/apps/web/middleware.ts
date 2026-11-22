@@ -8,7 +8,7 @@ const KNOWN_PATHS = new Set([
   '/auth/register', '/auth/mobile-only', '/auth/email-confirmed', '/auth/reset-password', '/auth/sign-in',
   '/coordinator/approvals', '/coordinator/assignments', '/coordinator/companies', '/coordinator/hte-evaluations',
   '/coordinator/progress', '/coordinator/reports', '/coordinator/students', '/coordinator/import', '/coordinator/incident-reports', '/coordinator/submissions', '/coordinator/messages', '/coordinator/group-chat', '/coordinator/documents', '/coordinator/notifications', '/coordinator/what-if', '/coordinator/map',
-  '/coordinator/supervisors', '/coordinator/non-working-days', '/dashboard', '/health', '/map', '/program-head',
+  '/coordinator/supervisors', '/coordinator/non-working-days', '/coordinator/target-hours', '/dashboard', '/health', '/map', '/program-head',
   '/program-head/reports', '/ready', '/robots.txt', '/settings', '/sitemap.xml',
   '/supervisor/attendance', '/supervisor/evaluations', '/supervisor/reports',
   '/supervisor/students', '/supervisor/messages', '/supervisor/notifications', '/verify-certificate', '/verify-certificate/search',

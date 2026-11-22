@@ -18,6 +18,7 @@ There are four roles: OJT Student, Supervisor, OJT Coordinator, Super Admin. The
 - **Registrations:** review, approve, or reject student self-registrations (including resubmissions and ID-card images).
 - **Student accounts:** bulk import from CSV with a per-row error preview (all-or-nothing); one-click password reset to the student number, with a forced change at the next mobile sign-in.
 - **Companies (HTEs):** create companies and multiple branches with a map pin and geofence radius (30–50 m); decide student-submitted company requests with evidence view; create Supervisor accounts.
+- **Target Hours:** set the Required Hours of each program in their department once (Coordinator > Target Hours, e.g. BSIT 486). Students still on the old value follow a change; students with a completion certificate or a value set on purpose do not.
 - **Placement:** assign students to company, branch, supervisor, and dates; review student schedule proposals; reassign students; set status (verified for DROPPED/INC/TERMINATED-type changes).
 - **Monitoring:** department progress summary, attendance list, and submissions. Company and branch pages retain location and geofence setup.
 - **Attendance exceptions:** adjudicate or override attendance with an audited reason (atomic).

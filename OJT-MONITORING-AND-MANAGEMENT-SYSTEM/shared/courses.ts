@@ -14,7 +14,9 @@ export function isStudentRegistrationCourse(course: string): course is StudentRe
   return STUDENT_REGISTRATION_COURSES.some((approvedCourse) => approvedCourse === course.trim().toUpperCase());
 }
 
-// Required practicum hours per program. Mirrors required_hours_for_course() in the database.
+// Seed and fallback values only. The OJT Coordinator sets the real Target Hours per course
+// (program_target_hours table, Coordinator > Target Hours); the app reads them from students.required_hours.
+// These are used only when a student has no value, and as the seed of the table's first rows.
 export const REQUIRED_HOURS_BY_COURSE: Record<StudentRegistrationCourse, number> = {
   BSIT: 486,
   'BS-CPE': 240,
