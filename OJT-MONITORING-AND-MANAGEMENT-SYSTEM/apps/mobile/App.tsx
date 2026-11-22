@@ -12,12 +12,16 @@ import { signOut } from './src/services/auth';
 import { getPin, onLock } from './src/lib/pinAuth';
 import PinScreen from './src/screens/auth/PinScreen';
 import type { AuthUser } from '@ojt/shared';
+import { useFonts } from 'expo-font';
+import { Outfit_800ExtraBold } from '@expo-google-fonts/outfit';
+import { PlusJakartaSans_500Medium, PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans';
 
 export default function App() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [gate, setGate] = useState<'setup' | 'unlock' | 'open'>('open');
   const unlocked = useRef(false);
+  const [fontsLoaded, fontError] = useFonts({ Outfit_800ExtraBold, PlusJakartaSans_500Medium, PlusJakartaSans_700Bold });
 
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -67,7 +71,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      {loading ? (
+      {loading || !(fontsLoaded || fontError) ? (
         <View style={styles.loading}>
           <ActivityIndicator size="large" color="#0A3824" />
         </View>
