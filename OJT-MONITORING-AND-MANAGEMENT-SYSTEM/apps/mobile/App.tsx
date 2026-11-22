@@ -1,6 +1,6 @@
 import { clearAttendanceIdentity } from './src/lib/attendanceCache';
 import { useEffect, useRef, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from './src/lib/supabase';
@@ -15,6 +15,8 @@ import type { AuthUser } from '@ojt/shared';
 import { useFonts } from 'expo-font';
 import { Outfit_800ExtraBold } from '@expo-google-fonts/outfit';
 import { PlusJakartaSans_500Medium, PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans';
+
+const LOCK_AFTER_MS = 15_000;
 
 export default function App() {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -66,7 +68,22 @@ export default function App() {
 
     const offLock = onLock(() => { unlocked.current = false; setGate('unlock'); });
 
-    return () => { cancelled = true; subscription.unsubscribe(); offLock(); };
+    // Ask for the PIN again when the student comes back after being away. The grace period keeps system
+    // permission dialogs (camera, location) and quick app switches from interrupting a time-in.
+    let leftAt: number | null = null;
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'background') { leftAt = Date.now(); return; }
+      if (state !== 'active' || leftAt === null) return;
+      const away = Date.now() - leftAt;
+      leftAt = null;
+      if (away < LOCK_AFTER_MS) return;
+      void (async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && await getPin(session.user.id) && !cancelled) { unlocked.current = false; setGate('unlock'); }
+      })().catch(() => {});
+    });
+
+    return () => { cancelled = true; subscription.unsubscribe(); offLock(); appState.remove(); };
   }, [reloadKey]);
 
   return (

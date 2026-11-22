@@ -64,3 +64,11 @@ test('Profile Sign Out locks to the PIN screen instead of wiping the PIN', async
   assert.match(handler, /onPress: lockApp/);
   assert.doesNotMatch(handler, /signOut\(/);
 });
+
+test('the app asks for the PIN again when the student returns after a short grace period', () => {
+  const app = fs.readFileSync(path.join(__dirname, '../apps/mobile/App.tsx'), 'utf8');
+  assert.match(app, /const LOCK_AFTER_MS = 15_000/);
+  assert.match(app, /AppState\.addEventListener\('change'/);
+  assert.match(app, /state === 'background'/);
+  assert.match(app, /appState\.remove\(\)/);
+});
