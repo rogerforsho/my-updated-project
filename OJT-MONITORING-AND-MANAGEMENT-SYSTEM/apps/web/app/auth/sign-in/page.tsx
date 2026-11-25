@@ -30,6 +30,7 @@ function SignInContent() {
   const searchParams = useSearchParams();
   const isInactiveLogout = searchParams.get('reason') === 'inactivity';
   const isMobileOnly = searchParams.get('reason') === 'mobile_only';
+  const isCallbackFailed = searchParams.get('error') === 'auth_callback_failed';
 
   // Saved Profiles State (Facebook/Google style)
   const [savedProfiles, setSavedProfiles] = useState<SavedProfile[]>([]);
@@ -219,6 +220,7 @@ function SignInContent() {
 
     return (
       <div className="page-fade-in">
+      {isCallbackFailed && <Alert type="error" message="This setup link is invalid or has expired. Request a new setup link from your administrator." />}
         {isInactiveLogout && (
           <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
             <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
@@ -374,6 +376,7 @@ function SignInContent() {
   // VIEW 3: Standard Clean Sign-In Form
   return (
     <div className="page-fade-in">
+      {isCallbackFailed && <Alert type="error" message="This setup link is invalid or has expired. Request a new setup link from your administrator." />}
       {isInactiveLogout && (
         <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
           <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />

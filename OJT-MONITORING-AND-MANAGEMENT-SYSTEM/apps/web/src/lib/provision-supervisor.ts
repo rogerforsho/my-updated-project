@@ -16,7 +16,7 @@ export async function provisionSupervisor(input: { full_name: string; email: str
   const fullName = input.full_name.trim();
   const email = input.email.trim().toLowerCase();
   const employeeNumber = `SUP-${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
-  const redirectTo = `${siteUrl.replace(/\/$/, '')}/auth/callback?next=${encodeURIComponent('/auth/set-password')}`;
+  const redirectTo = `${siteUrl.replace(/\/$/, '')}/auth/callback/finish?next=${encodeURIComponent('/auth/set-password')}`;
   const result = await provisionAccount(supabaseAuthAdapter(service), {
     email, role: 'Supervisor', full_name: fullName, redirectTo,
     staff: { employee_number: employeeNumber },

@@ -18,7 +18,7 @@ function loader(mocks, globals = {}) {
     const exports = {};
     modules.set(filename, exports);
     const output = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
-      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
       fileName: filename,
     }).outputText;
     vm.runInNewContext(output, {
@@ -537,6 +537,46 @@ test('auth callback keeps success and failure redirects on the browser-facing ho
     return { auth: { async exchangeCodeForSession() { return { error: { message: 'bad' } }; } } };
   } } })('apps/web/app/auth/callback/route.ts');
   assert.equal((await bad.GET(new NextRequest('http://127.0.0.1:3000/auth/callback?code=bad'))).headers.get('location'), '/auth/sign-in?error=auth_callback_failed');
+});
+
+test('password setup and browser callback are public routes', async () => {
+  const request = webFixture();
+  for (const path of ['/auth/callback/finish', '/auth/set-password']) {
+    const response = await request(`http://localhost${path}`);
+    assert.equal(response.status, 200, path);
+    assert.equal(response.headers.get('x-middleware-next'), '1', path);
+  }
+});
+
+test('browser callback establishes recovery sessions before opening password setup', async () => {
+  const effects = [];
+  const calls = [];
+  const destinations = [];
+  const browser = { location: { search: '?next=%2Fauth%2Fset-password', hash: '#access_token=access&refresh_token=refresh', replace(path) { destinations.push(path); } } };
+  const load = loader({
+    react: { useEffect(effect) { effects.push(effect); } },
+    'react/jsx-runtime': { jsx() { return null; } },
+    '@/src/lib/supabase/client': { createClient() { return { auth: {
+      async setSession(tokens) { calls.push(['tokens', tokens.access_token, tokens.refresh_token]); return { error: null }; },
+      async exchangeCodeForSession(code) { calls.push(['code', code]); return { error: null }; },
+    } }; } },
+  }, { window: browser, URLSearchParams });
+  load('apps/web/app/auth/callback/finish/page.tsx').default();
+  effects[0]();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(calls, [['tokens', 'access', 'refresh']]);
+  assert.deepEqual(destinations, ['/auth/set-password']);
+
+  browser.location.hash = '';
+  browser.location.search = '?code=one-time&next=%2Fauth%2Fset-password';
+  effects[0]();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(calls[1], ['code', 'one-time']);
+  assert.equal(destinations[1], '/auth/set-password');
+
+  browser.location.search = '?next=https%3A%2F%2Fevil.example';
+  effects[0]();
+  assert.equal(destinations[2], '/auth/sign-in?error=auth_callback_failed');
 });
 
 test('forged user metadata cannot grant Admin access, and trusted Admin role still works', async () => {

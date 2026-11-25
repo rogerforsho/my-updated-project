@@ -31,7 +31,7 @@ export async function requestPasswordReset(
     return { data: null, error: { code: 'SERVER_FAILURE', message: 'Recovery links are not configured.' } };
   const redirectTo = expectedRole === 'Student'
     ? 'cdm-ojt-monitoring://auth/reset-password'
-    : `${siteUrl!.replace(/\/$/, '')}/auth/callback?next=${encodeURIComponent('/auth/set-password')}`;
+    : `${siteUrl!.replace(/\/$/, '')}/auth/callback/finish?next=${encodeURIComponent('/auth/set-password')}`;
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, { redirectTo });
   if (error) {
