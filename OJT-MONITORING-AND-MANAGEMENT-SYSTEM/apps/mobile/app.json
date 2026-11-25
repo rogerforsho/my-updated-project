@@ -40,14 +40,20 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.CAMERA"
-      ]
+      ],
+      "versionCode": 2
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-secure-store",
-      ["expo-local-authentication", { "faceIDPermission": "Use Face ID to unlock your student account for attendance." }],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Use Face ID to unlock your student account for attendance."
+        }
+      ],
       [
         "expo-notifications",
         {
