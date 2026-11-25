@@ -133,7 +133,7 @@ export default function MobileAppSection() {
             <div>
               <span className="inline-flex items-center gap-2 rounded-full bg-[#E4DBC4]/60 px-2.5 py-1 text-xs font-bold text-[var(--cdm-olive)]"><Smartphone className="h-3.5 w-3.5" />Android · Version 1.1.0</span>
               <h3 className="mt-4 text-lg font-extrabold text-[var(--foreground)]">CDM OJT Monitoring for Android</h3>
-              <p className="mt-1 text-xs text-[var(--text-muted)]">Official build from Colegio de Montalban, for students' Android phones.</p>
+              <p className="mt-1 text-xs text-[var(--text-muted)]">Official build from Colegio de Montalban, for students&apos; Android phones.</p>
               <a href={APK_PATH} download className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--cdm-green)] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[var(--cdm-green-light)] active:scale-[0.98]"><Download className="h-4 w-4" />Download for Android</a>
               <p className="mt-4 text-xs leading-5 text-[var(--text-muted)]">Four quick steps below show what you will see on your phone.</p>
             </div>
