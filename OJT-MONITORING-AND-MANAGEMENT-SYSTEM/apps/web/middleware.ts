@@ -2,10 +2,10 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { authCookieOptions } from './src/lib/supabase/auth-cookie';
 
-const PUBLIC_PATHS = ['/auth/sign-in', '/auth/register', '/auth/mobile-only', '/auth/email-confirmed', '/auth/pending', '/auth/reset-password', '/auth/callback', '/auth/supervisor-invite'];
+const PUBLIC_PATHS = ['/auth/sign-in', '/auth/register', '/auth/mobile-only', '/auth/email-confirmed', '/auth/pending', '/auth/reset-password', '/auth/set-password', '/auth/callback', '/auth/supervisor-invite'];
 const KNOWN_PATHS = new Set([
   '/', '/admin', '/api/internal/auto-time-out', '/api/internal/import-holidays', '/api/internal/process-transactional-email', '/api/mobile/attendance', '/api/mobile/notifications', '/api/mobile/reports', '/api/mobile/registration/resubmit', '/api/mobile/schedule-proposals', '/api/registration/id-card', '/api/registration/submit', '/auth/callback', '/auth/callback/finish', '/auth/pending',
-  '/auth/register', '/auth/mobile-only', '/auth/email-confirmed', '/auth/reset-password', '/auth/sign-in',
+  '/auth/register', '/auth/mobile-only', '/auth/email-confirmed', '/auth/reset-password', '/auth/set-password', '/auth/sign-in',
   '/coordinator/approvals', '/coordinator/assignments', '/coordinator/companies', '/coordinator/hte-evaluations',
   '/coordinator/progress', '/coordinator/reports', '/coordinator/students', '/coordinator/import', '/coordinator/incident-reports', '/coordinator/submissions', '/coordinator/messages', '/coordinator/group-chat', '/coordinator/documents', '/coordinator/notifications', '/coordinator/what-if', '/coordinator/map',
   '/coordinator/supervisors', '/coordinator/non-working-days', '/coordinator/target-hours', '/dashboard', '/health', '/map', '/program-head',

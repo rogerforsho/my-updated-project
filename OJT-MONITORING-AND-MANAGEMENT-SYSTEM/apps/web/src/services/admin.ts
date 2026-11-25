@@ -186,7 +186,7 @@ export async function createSystemUser(
   const siteUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (!siteUrl) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Account invitation is not configured.' } };
   const service = serviceClient();
-  const redirectTo = `${siteUrl.replace(/\/$/, '')}/auth/callback?next=${encodeURIComponent('/auth/set-password')}`;
+  const redirectTo = `${siteUrl.replace(/\/$/, '')}/auth/callback/finish?next=${encodeURIComponent('/auth/set-password')}`;
   const result = await provisionAccount(supabaseAuthAdapter(service), {
     email, role: 'Coordinator', full_name: fullName, redirectTo,
     staff: { employee_number: input.employee_number?.trim() || `CO-${crypto.randomBytes(6).toString('hex').toUpperCase()}` },
@@ -448,7 +448,7 @@ export async function resendStaffInvite(user_id: string): Promise<AppResult<null
     return { data: null, error: { code: 'VALIDATION_FAILURE', message: 'A setup link can only be sent to an active Coordinator or Supervisor account.' } };
 
   // Same one-time password link as the original invitation; it only ever goes to the account's own address.
-  const redirectTo = `${siteUrl.replace(/\/$/, '')}/auth/callback?next=${encodeURIComponent('/auth/set-password')}`;
+  const redirectTo = `${siteUrl.replace(/\/$/, '')}/auth/callback/finish?next=${encodeURIComponent('/auth/set-password')}`;
   const { error } = await service.auth.resetPasswordForEmail(target.email, { redirectTo });
   if (error) return { data: null, error: { code: 'SERVER_FAILURE', message: 'Failed to send the setup link.' } };
 

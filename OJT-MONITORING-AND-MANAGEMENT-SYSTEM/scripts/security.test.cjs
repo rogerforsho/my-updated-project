@@ -189,7 +189,7 @@ function workflowFixture(role = 'Admin', options = {}) {
       return { error: null };
     },
   }, async resetPasswordForEmail(email, input) {
-    assert.match(input.redirectTo, /auth\/callback\?next=/);
+    assert.match(input.redirectTo, /auth\/callback\/finish\?next=/);
     if (options.inviteError) return { data: null, error: { message: options.inviteError } };
     const user = tables.users.find(row => row.email === email && row.user_id === 'new-user');
     if (!user) return { data: null, error: { message: 'User not found' } };
@@ -1840,7 +1840,7 @@ test('password recovery sends scoped one-time links without revealing unknown or
   profile = { user_id: 'coordinator-1', role: 'Coordinator', account_status: 'active' };
   profile.account_status = 'active';
   assert.equal((await recovery.requestPasswordReset('student@example.test', 'Web')).error, null);
-  assert.equal(sent[1].options.redirectTo, 'https://portal.example.test/auth/callback?next=%2Fauth%2Fset-password');
+  assert.equal(sent[1].options.redirectTo, 'https://portal.example.test/auth/callback/finish?next=%2Fauth%2Fset-password');
   assert.equal(audited.length, 2);
 
   profile = null;
@@ -1899,7 +1899,7 @@ test('supervisor onboarding sends a setup invitation without creating a password
   assert.equal(invitation.email, 'supervisor@example.test');
   assert.equal(creation.app_metadata.role, 'Supervisor');
   assert.equal(Object.hasOwn(creation, 'password'), false);
-  assert.match(invitation.options.redirectTo, /auth\/callback/);
+  assert.match(invitation.options.redirectTo, /auth\/callback\/finish/);
   assert.equal(Object.hasOwn(invitation.options, 'password'), false);
   assert.equal(creation.email_confirm, true);
   assert.equal(deleted, 0);
