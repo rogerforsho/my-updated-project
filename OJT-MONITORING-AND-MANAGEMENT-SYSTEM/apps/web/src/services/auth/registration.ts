@@ -137,11 +137,12 @@ export async function registerStudent(
 
   if (authError || !authData.user || authData.user.identities?.length === 0) {
     const duplicate = authError?.message?.toLowerCase().includes('already registered') || authData?.user?.identities?.length === 0;
+    if (authError && !duplicate) console.error('[registerStudent] Auth signup failed', { code: authError.code, status: authError.status });
     return { data: null, error: {
       code: duplicate ? 'DUPLICATE_REQUEST' : 'SERVER_FAILURE',
       message: duplicate || authData?.user?.identities?.length === 0
         ? DUPLICATE_REGISTRATION_MESSAGE
-        : 'Registration could not be completed. Check the email address or try again later.',
+        : 'Registration could not be completed because account confirmation is unavailable. Please try again later.',
     } };
   }
 

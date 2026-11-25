@@ -58,7 +58,13 @@ export async function provisionAccount(adapter: AuthAdapter, input: {
     return { ok: false, kind };
   };
 
-  if (input.redirectTo && (await adapter.sendSetupLink(input.email, input.redirectTo))) return rollback('invite_failed');
+  if (input.redirectTo) {
+    const emailError = await adapter.sendSetupLink(input.email, input.redirectTo);
+    if (emailError) {
+      console.error('[provisionAccount] Setup email failed', { code: 'code' in emailError ? emailError.code : undefined });
+      return rollback('invite_failed');
+    }
+  }
   if (input.staff && (await adapter.initStaffProfile(userId, { role: input.role, full_name: input.full_name, email: input.email, employee_number: input.staff.employee_number }))) return rollback('setup_failed');
   if (await input.setup(userId)) return rollback('setup_failed');
   return { ok: true, userId };

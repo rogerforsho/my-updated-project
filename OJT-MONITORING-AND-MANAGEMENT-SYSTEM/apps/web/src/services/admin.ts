@@ -205,6 +205,7 @@ export async function createSystemUser(
       case 'invite_unavailable': return fail('SERVER_FAILURE', 'Account invitation is not available right now.');
       case 'duplicate': return fail('DUPLICATE_REQUEST', 'Email address is already registered. No existing account was changed.');
       case 'cleanup_needed': return fail('SERVER_FAILURE', 'Coordinator setup did not finish; the new account needs administrator cleanup before retrying.');
+      case 'invite_failed': return fail('SERVER_FAILURE', 'The setup email could not be sent. Check the authentication email service, then retry. The new account was removed.');
       case 'setup_failed': return fail('SERVER_FAILURE', 'Coordinator setup did not finish. The newly invited account was removed; please check the details and retry.');
       default: return fail('SERVER_FAILURE', 'Failed to send the setup invitation.');
     }
