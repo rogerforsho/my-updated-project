@@ -24,7 +24,7 @@ function checkServerReady(url, timeoutMs = 8000) {
         path: `${parsed.pathname || '/'}${parsed.search}`,
         method: 'HEAD',
         timeout: timeoutMs,
-        headers: { 'User-Agent': 'CdM-Desktop-Client/1.0.0' },
+        headers: { 'User-Agent': 'CdM-Desktop-Client/1.0.1' },
       }, (res) => {
         const statusCode = res.statusCode || 0;
         res.resume();

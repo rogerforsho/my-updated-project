@@ -658,25 +658,26 @@ test('installer downloads allow only known filenames and reject traversal before
 
 test('installer downloads follow the latest release asset and fall back only when GitHub is unreachable', async () => {
   const asset = (name) => ({ name, browser_download_url: 'https://dl.example/' + name });
-  const release = { assets: [asset('CdM-OJT-Portal-Portable-1.0.1.exe'), asset('CdM-OJT-Portal-Setup-1.0.1.exe'), asset('CdM OJT Portal-1.0.1.dmg')] };
+  const release = { assets: [asset('CdM-OJT-Portal-Portable-1.0.1.exe'), asset('CdM-OJT-Portal-Setup-1.0.1.exe'), asset('CdM OJT Portal-1.0.1.dmg'), asset('CdM OJT Portal-1.0.1.AppImage')] };
   const get = (filename, fetchImpl) => load('apps/web/app/downloads/[filename]/route.ts', { fs: { existsSync() { return false; } } }, {}, { fetch: fetchImpl })
     .GET(new Request('http://localhost/downloads/x'), { params: Promise.resolve({ filename }) });
   const ok = async () => ({ ok: true, json: async () => release });
   const down = async () => { throw new Error('offline'); };
 
-  for (const filename of ['CdM-OJT-Portal-Setup.exe', 'CdM-OJT-Portal-Setup-1.0.0.exe', 'CdM OJT Portal Setup 1.0.0.exe']) {
+  for (const filename of ['CdM-OJT-Portal-Setup.exe', 'CdM-OJT-Portal-Setup-1.0.1.exe', 'CdM-OJT-Portal-Setup-1.0.0.exe', 'CdM OJT Portal Setup 1.0.0.exe']) {
     const result = await get(filename, ok);
     assert.equal(result.status, 302);
     assert.equal(result.headers.get('location'), 'https://dl.example/CdM-OJT-Portal-Setup-1.0.1.exe'); // Setup, never Portable
   }
   assert.equal((await get('CdM-OJT-Portal.dmg', ok)).headers.get('location'), 'https://dl.example/CdM OJT Portal-1.0.1.dmg'.replace(/ /g, '%20'));
+  assert.equal((await get('CdM-OJT-Portal.AppImage', ok)).headers.get('location'), 'https://dl.example/CdM OJT Portal-1.0.1.AppImage'.replace(/ /g, '%20'));
 
   const outage = await get('CdM-OJT-Portal-Setup.exe', down);
-  assert.equal(outage.headers.get('location'), 'https://github.com/rogerforsho/my-updated-project/releases/download/v1.0.0/CdM-OJT-Portal-Setup-1.0.0.exe');
+  assert.equal(outage.headers.get('location'), 'https://github.com/rogerforsho/my-updated-project/releases/download/v1.0.1/CdM-OJT-Portal-Setup-1.0.1.exe');
   assert.equal((await get('CdM-OJT-Portal-Setup.exe', async () => ({ ok: false }))).status, 302);
 
   // Not released yet: a clear 404, never a redirect to the releases page.
-  assert.equal((await get('CdM-OJT-Portal.AppImage', ok)).status, 404);
+  assert.equal((await get('CdM-OJT-Portal.AppImage', async () => ({ ok: true, json: async () => ({ assets: [] }) }))).status, 404);
   assert.equal((await get('CdM-OJT-Portal.dmg', down)).status, 404);
 });
 

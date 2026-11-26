@@ -5,6 +5,8 @@ name: Desktop installers
 on:
   push:
     tags: ['v*']
+  pull_request:
+    branches: [production-ready]
   workflow_dispatch:
 
 permissions:
@@ -20,15 +22,11 @@ jobs:
         include:
           - os: windows-latest
             script: build:win
-          - os: macos-latest
-            script: build:mac
           - os: ubuntu-latest
             script: build:linux
     defaults:
       run:
         working-directory: OJT-MONITORING-AND-MANAGEMENT-SYSTEM
-    env:
-      CSC_IDENTITY_AUTO_DISCOVERY: 'false' # unsigned builds: do not hunt for a signing certificate
     steps:
       - uses: actions/checkout@v4
 
@@ -49,8 +47,6 @@ jobs:
           if-no-files-found: error
           path: |
             OJT-MONITORING-AND-MANAGEMENT-SYSTEM/apps/desktop/dist/*.exe
-            OJT-MONITORING-AND-MANAGEMENT-SYSTEM/apps/desktop/dist/*.dmg
-            OJT-MONITORING-AND-MANAGEMENT-SYSTEM/apps/desktop/dist/*.zip
             OJT-MONITORING-AND-MANAGEMENT-SYSTEM/apps/desktop/dist/*.AppImage
 
   release:

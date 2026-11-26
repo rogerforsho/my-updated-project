@@ -7,9 +7,9 @@ export const dynamic = 'force-dynamic';
 
 const REPO = 'rogerforsho/my-updated-project';
 
-// Used only when the GitHub API is unreachable. shortcut: pinned to v1.0.0, so it goes stale
+// Used only when the GitHub API is unreachable. shortcut: pinned to v1.0.1, so it goes stale
 // after a new release; fine for an outage, upgrade if outages are common.
-const FALLBACK_EXE_URL = `https://github.com/${REPO}/releases/download/v1.0.0/CdM-OJT-Portal-Setup-1.0.0.exe`;
+const FALLBACK_EXE_URL = `https://github.com/${REPO}/releases/download/v1.0.1/CdM-OJT-Portal-Setup-1.0.1.exe`;
 
 // The mobile APK lives in its own release (published with --latest=false so /releases/latest keeps
 // serving the desktop installer). shortcut: pinned tag, bump it when a new mobile build is released.
@@ -21,6 +21,7 @@ const SETUP_EXE ={ match: /Setup.*\.exe$/, fallback: FALLBACK_EXE_URL };
 // names, so a new release needs no code change. The versioned names stay for old links.
 const INSTALLERS: Record<string, { match: RegExp; fallback?: string }> = {
   'CdM-OJT-Portal-Setup.exe': SETUP_EXE,
+  'CdM-OJT-Portal-Setup-1.0.1.exe': SETUP_EXE,
   'CdM-OJT-Portal-Setup-1.0.0.exe': SETUP_EXE,
   'CdM OJT Portal Setup 1.0.0.exe': SETUP_EXE,
   'CdM-OJT-Portal.dmg': { match: /\.dmg$/ },
@@ -56,7 +57,7 @@ export async function GET(
     const possiblePaths = [
       path.join(process.cwd(), 'public', 'downloads', filename),
       path.join(process.cwd(), '..', 'desktop', 'dist', filename),
-      path.join(process.cwd(), '..', 'desktop', 'dist', 'CdM-OJT-Portal-Setup-1.0.0.exe'),
+      path.join(process.cwd(), '..', 'desktop', 'dist', 'CdM-OJT-Portal-Setup-1.0.1.exe'),
       path.join(process.cwd(), '..', 'desktop', 'dist', 'CdM OJT Portal Setup 1.0.0.exe'),
     ];
 

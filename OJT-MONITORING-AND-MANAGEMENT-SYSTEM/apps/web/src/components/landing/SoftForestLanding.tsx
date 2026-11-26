@@ -20,9 +20,9 @@ const requirements = ['Parent/Guardian Consent Waiver (notarized)', 'Medical Cer
 const contact = [['OJT Office', '[TBD]'], ['Office hours', '[TBD]'], ['School email', '[TBD]'], ['Coordinator', '[TBD]']];
 
 const resources = [
-  { label: 'Desktop client', title: 'Windows Desktop Application', copy: 'Windows access for OJT Coordinator, admins, and supervisors, with system tray integration.', href: '/downloads/CdM-OJT-Portal-Setup.exe', action: 'Download client' },
-  { label: 'Student mobile app', title: 'Attendance Companion', copy: 'Log attendance with GPS verification, selfie submission, and offline sync.', href: '#app', action: 'Download the app' },
-  { label: 'Certificate lookup', title: 'Verify a practicum certificate', copy: 'Search for a student certificate by its verification code.', href: '/verify-certificate/search', action: 'Open verification' },
+  { label: 'Desktop client', title: 'Desktop Application', copy: 'Windows and Linux access for OJT Coordinators, Supervisors, and Super Admins.', href: '/downloads/CdM-OJT-Portal-Setup.exe', action: 'Download for Windows (.exe)', linuxHref: '/downloads/CdM-OJT-Portal.AppImage' },
+  { label: 'Student mobile app', title: 'Attendance Companion', copy: 'Log attendance with GPS verification, selfie submission, and offline sync.', href: '#app', action: 'Download the app', linuxHref: null },
+  { label: 'Certificate lookup', title: 'Verify a practicum certificate', copy: 'Search for a student certificate by its verification code.', href: '/verify-certificate/search', action: 'Open verification', linuxHref: null },
 ];
 
 function SectionLabel({ children }: { children: ReactNode }) {
@@ -132,7 +132,7 @@ export default function SoftForestLanding({
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <SectionLabel>Official tools and verification</SectionLabel><h2 className="mt-2 max-w-2xl text-2xl font-extrabold tracking-tight text-[var(--foreground)] sm:text-3xl">System resources</h2>
             <div className="mt-7 grid gap-4 md:grid-cols-3">
-              {resources.map((resource) => <article key={resource.title} className="flex flex-col rounded-2xl border border-[var(--line)] bg-[var(--surface-muted)] p-5"><p className="text-xs font-bold text-[var(--cdm-olive)]">{resource.label}</p><h3 className="mt-3 text-sm font-bold text-[var(--foreground)]">{resource.title}</h3><p className="mt-2 flex-1 text-xs leading-5 text-[var(--text-muted)]">{resource.copy}</p><Link href={resource.href} className="mt-5 inline-flex items-center justify-between border-t border-[var(--line)] pt-4 text-xs font-bold text-[var(--cdm-green)]">{resource.action}<span aria-hidden="true">→</span></Link></article>)}
+              {resources.map((resource) => <article key={resource.title} className="flex flex-col rounded-2xl border border-[var(--line)] bg-[var(--surface-muted)] p-5"><p className="text-xs font-bold text-[var(--cdm-olive)]">{resource.label}</p><h3 className="mt-3 text-sm font-bold text-[var(--foreground)]">{resource.title}</h3><p className="mt-2 flex-1 text-xs leading-5 text-[var(--text-muted)]">{resource.copy}</p><Link href={resource.href} className="mt-5 inline-flex items-center justify-between border-t border-[var(--line)] pt-4 text-xs font-bold text-[var(--cdm-green)]">{resource.action}<span aria-hidden="true">→</span></Link>{resource.linuxHref && <Link href={resource.linuxHref} className="mt-3 inline-flex items-center justify-between text-xs font-bold text-[var(--cdm-green)]">Download for Linux (.AppImage)<span aria-hidden="true">→</span></Link>}</article>)}
             </div>
           </div>
         </section>

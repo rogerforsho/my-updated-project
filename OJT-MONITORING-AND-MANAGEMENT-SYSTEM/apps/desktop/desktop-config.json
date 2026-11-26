@@ -4,6 +4,6 @@
   "developmentUrl": "http://localhost:3000/auth/sign-in",
   "appName": "CdM OJT Portal",
   "institution": "Colegio de Montalban",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "supportEmail": "mis@cdm.edu.ph"
 }
