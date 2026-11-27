@@ -127,6 +127,19 @@ body {
 :focus-visible { outline: 2px solid #45644A; outline-offset: 2px; }
 .dark :focus-visible { outline-color: #B8C9B8; }
 
+/* Invitation pages use the public landing palette even when the dashboard theme is dark. */
+.invitation-flow {
+  color-scheme: light;
+  --cdm-green: #0A3824;
+  --cdm-green-light: #174E32;
+}
+.dark .invitation-flow input {
+  background-color: #FFFEFB !important;
+  border-color: #DCE5DB !important;
+  color: #18271D !important;
+}
+.dark .invitation-flow label { color: #37483C !important; }
+
 .skip-link {
   position: fixed;
   z-index: 100;
