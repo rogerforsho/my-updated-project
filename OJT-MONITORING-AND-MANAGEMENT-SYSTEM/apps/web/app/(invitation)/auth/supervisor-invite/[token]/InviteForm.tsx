@@ -21,7 +21,7 @@ export function InviteForm({ token }: { token: string }) {
 
   if (sent) {
     return (
-      <div role="status" className="rounded-xl border border-[#0A3824]/20 bg-[#0A3824]/5 p-5 text-xs text-slate-700 leading-relaxed">
+      <div role="status" className="rounded-xl border border-[#DCE5DB] bg-[#EDF2EB] p-5 text-sm text-[#37483C] leading-6">
         <p className="font-bold text-[#0A3824] mb-1">Check your email</p>
         We sent a one-time link to choose your password. Then sign in to the web portal.
       </div>
@@ -29,12 +29,12 @@ export function InviteForm({ token }: { token: string }) {
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3">
+    <form onSubmit={submit} className="flex flex-col gap-4">
       <Input label="Full name" value={form.full_name} maxLength={150} required onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))} />
       <Input label="Work email" type="email" value={form.email} maxLength={254} required onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
       <Input label="Position" value={form.position} maxLength={150} required onChange={(e) => setForm((f) => ({ ...f, position: e.target.value }))} />
-      {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-xs text-red-800">{error}</p>}
-      <Button type="submit" loading={loading}>Create Supervisor account</Button>
+      {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+      <Button type="submit" loading={loading} className="w-full">Create Supervisor account</Button>
     </form>
   );
 }
